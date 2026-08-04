@@ -1,0 +1,323 @@
+import { Jurusan, Kelas, Siswa, PresensiRecord, ModulAjar, Berita, User, ForumTopic, NotificationItem } from '../types';
+
+export const SCHOOL_INFO = {
+  name: 'SMKS PLUS AT THAHIRIN',
+  tagline: 'Unggul, Berkarakter & Ahli Administrasi Perkantoran Digital',
+  npsn: '20232426',
+  akreditasi: 'B (Baik)',
+  alamat: 'JL. SIRNAGALIH NO.09 RT 06/RW 02, Desa Cipayung Girang, Kec. Megamendung, Kab. Bogor, Jawa Barat 16770',
+  telepon: '(0251) 8254123',
+  whatsapp: '+62 812-3456-7890',
+  email: 'info@smksplusatthahirin.sch.id',
+  website: 'https://smksplusatthahirin.sch.id',
+  kepalaSekolah: 'Ir. Surantro',
+  sambutan: 'Selamat datang di SMKS PLUS AT THAHIRIN Megamendung. Sebagai lembaga pendidikan kejuruan swasta terakreditasi B yang berfokus penuh pada keahlian Administrasi Perkantoran, kami berkomitmen membentuk lulusan yang mahir dalam tata kelola administrasi digital, kearsipan elektronik, komunikasi bisnis, serta berakhlak mulia dan siap kerja di era industri modern.',
+  stats: {
+    siswa: 380,
+    guru: 26,
+    jurusan: 1,
+    mitraIndustri: 24,
+    persenKerja: '93.5%'
+  }
+};
+
+export const INITIAL_USERS: User[] = [
+  {
+    id: 'u1',
+    name: 'Ir. Surantro',
+    email: 'admin@smksplusatthahirin.sch.id',
+    role: 'admin',
+    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+    nipNisn: '19700512 199803 1 002',
+    jabatan: 'Kepala Sekolah SMKS PLUS AT THAHIRIN'
+  },
+  {
+    id: 'u2',
+    name: 'Bpk. Ahmad Fauzi, S.Pd.',
+    email: 'guru@smksplusatthahirin.sch.id',
+    role: 'guru',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    nipNisn: '19890215 201502 1 003',
+    jabatan: 'Guru Produktif Administrasi Perkantoran & Wali Kelas X AP 1'
+  },
+  {
+    id: 'u3',
+    name: 'Muhammad Rizky Pratama',
+    email: 'siswa@smksplusatthahirin.sch.id',
+    role: 'siswa',
+    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+    nipNisn: '0068123491',
+    classId: 'k1',
+    jabatan: 'Ketua Kelas X AP 1'
+  }
+];
+
+export const JURUSAN_LIST: Jurusan[] = [
+  {
+    id: 'j1',
+    code: 'AP',
+    name: 'Administrasi Perkantoran',
+    iconName: 'Briefcase',
+    description: 'Konsentrasi keahlian tata kelola administrasi perkantoran digital, otomatisasi perkantoran, manajemen kearsipan elektronik, korespondensi bisnis, serta pelayanan publik modern terintegrasi teknologi.',
+    kepalaJurusan: 'Dra. Hj. Sri Wahyuni, M.Pd.',
+    prospekKerja: ['Administrator Perkantoran Digital', 'Sekretaris Eksekutif', 'Staf Kearsipan Elektronik', 'Customer Relation & Public Relations', 'Staf Tata Usaha & Keuangan'],
+    fasilitas: ['Lab Simulator Kantor Modern', 'Komputer Administrasi & Software Kearsipan', 'Perangkat Telekonferensi HD', 'Mesin Otomatisasi Perkantoran & Scanner Digital'],
+    color: 'from-emerald-600 to-teal-700'
+  }
+];
+
+export const INITIAL_KELAS: Kelas[] = [
+  {
+    id: 'k1',
+    name: 'X AP 1',
+    jurusanCode: 'AP',
+    tingkat: 'X',
+    ruang: 'Gedung A - R.101',
+    waliKelas: 'Bpk. Ahmad Fauzi, S.Pd.',
+    jumlahSiswa: 32,
+    jadwal: [
+      { hari: 'Senin', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab AP 1' },
+      { hari: 'Senin', jamKe: '4 - 6', jamRentan: '09.30 - 11.45', mataPelajaran: 'Pendidikan Agama Islam', guru: 'Drs. Usman Hidayat', ruangan: 'R.101' },
+      { hari: 'Selasa', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Teknologi Perkantoran & Aplikasi Perkantoran', guru: 'Dra. Hj. Sri Wahyuni, M.Pd.', ruangan: 'Lab Komputer' },
+      { hari: 'Selasa', jamKe: '5 - 7', jamRentan: '10.15 - 12.30', mataPelajaran: 'Bahasa Indonesia & Korespondensi Bisnis', guru: 'Nurbaiti, M.Pd.', ruangan: 'R.101' },
+      { hari: 'Rabu', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Komunikasi Humas & Keprotokolan', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'R.101' },
+      { hari: 'Kamis', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Bahasa Inggris Perkantoran', guru: 'Sarah Wijaya, S.Pd.', ruangan: 'R.101' },
+      { hari: 'Jumat', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Otomatisasi Tata Kelola Keuangan', guru: 'Hardi, M.H.', ruangan: 'R.101' }
+    ]
+  },
+  {
+    id: 'k2',
+    name: 'XI AP 2',
+    jurusanCode: 'AP',
+    tingkat: 'XI',
+    ruang: 'Gedung B - R.201',
+    waliKelas: 'Ibu Dra. Hj. Sri Wahyuni, M.Pd.',
+    jumlahSiswa: 30,
+    jadwal: [
+      { hari: 'Senin', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Otomatisasi Tata Kelola Kepegawaian', guru: 'Sri Wahyuni, M.Pd.', ruangan: 'Lab AP 2' },
+      { hari: 'Selasa', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Manajemen Kearsipan Elektronik', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab AP 1' }
+    ]
+  },
+  {
+    id: 'k3',
+    name: 'XII AP 1',
+    jurusanCode: 'AP',
+    tingkat: 'XII',
+    ruang: 'Gedung C - R.301',
+    waliKelas: 'Bpk. Ir. Surantro',
+    jumlahSiswa: 28,
+    jadwal: [
+      { hari: 'Senin', jamKe: '1 - 6', jamRentan: '07.00 - 11.45', mataPelajaran: 'Praktik Simulasi Perkantoran & Public Relations', guru: 'Ir. Surantro', ruangan: 'Lab Simulator Perkantoran' }
+    ]
+  }
+];
+
+export const INITIAL_SISWA: Siswa[] = [
+  { id: 's1', nisn: '0068123491', name: 'Muhammad Rizky Pratama', classId: 'k1', gender: 'L', foto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887711' },
+  { id: 's2', nisn: '0068123492', name: 'Adinda Putri Maharani', classId: 'k1', gender: 'P', foto: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887722' },
+  { id: 's3', nisn: '0068123493', name: 'Bagas Aditya Nugroho', classId: 'k1', gender: 'L', foto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887733' },
+  { id: 's4', nisn: '0068123494', name: 'Cantika Aulia Zahra', classId: 'k1', gender: 'P', foto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887744' },
+  { id: 's5', nisn: '0068123495', name: 'Daffa Ahmad Raihan', classId: 'k1', gender: 'L', foto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887755' },
+  { id: 's6', nisn: '0068123496', name: 'Elsa Febriani', classId: 'k1', gender: 'P', foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887766' },
+  { id: 's7', nisn: '0068123497', name: 'Fikri Haikal', classId: 'k1', gender: 'L', foto: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887777' },
+  { id: 's8', nisn: '0068123498', name: 'Gita Nabila Syifa', classId: 'k1', gender: 'P', foto: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887788' },
+  { id: 's9', nisn: '0068123501', name: 'Siti Nurhaliza', classId: 'k2', gender: 'P', foto: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80', noHpOrangTua: '081299887799' }
+];
+
+export const INITIAL_PRESENSI: PresensiRecord[] = [
+  { id: 'p1', tanggal: '2026-08-03', classId: 'k1', siswaId: 's1', siswaName: 'Muhammad Rizky Pratama', nisn: '0068123491', status: 'Hadir', waktuInput: '06:55:12' },
+  { id: 'p2', tanggal: '2026-08-03', classId: 'k1', siswaId: 's2', siswaName: 'Adinda Putri Maharani', nisn: '0068123492', status: 'Hadir', waktuInput: '07:01:05' },
+  { id: 'p3', tanggal: '2026-08-03', classId: 'k1', siswaId: 's3', siswaName: 'Bagas Aditya Nugroho', nisn: '0068123493', status: 'Sakit', keterangan: 'Demam tinggi (Surat dokter terlampir)', waktuInput: '07:15:00' },
+  { id: 'p4', tanggal: '2026-08-03', classId: 'k1', siswaId: 's4', siswaName: 'Cantika Aulia Zahra', nisn: '0068123494', status: 'Hadir', waktuInput: '06:48:30' },
+  { id: 'p5', tanggal: '2026-08-03', classId: 'k1', siswaId: 's5', siswaName: 'Daffa Ahmad Raihan', nisn: '0068123495', status: 'Izin', keterangan: 'Mendampingi lomba Pramuka tingkat Kabupaten', waktuInput: '07:00:00' },
+  { id: 'p6', tanggal: '2026-08-03', classId: 'k1', siswaId: 's6', siswaName: 'Elsa Febriani', nisn: '0068123496', status: 'Hadir', waktuInput: '06:58:19' },
+  { id: 'p7', tanggal: '2026-08-03', classId: 'k1', siswaId: 's7', siswaName: 'Fikri Haikal', nisn: '0068123497', status: 'Alpa', keterangan: 'Tanpa keterangan', waktuInput: '07:30:00' },
+  { id: 'p8', tanggal: '2026-08-03', classId: 'k1', siswaId: 's8', siswaName: 'Gita Nabila Syifa', nisn: '0068123498', status: 'Hadir', waktuInput: '06:52:44' }
+];
+
+export const INITIAL_MODUL_AJAR: ModulAjar[] = [
+  {
+    id: 'm1',
+    judul: 'Modul Ajar Digitalisasi & Otomatisasi Kearsipan Perkantoran',
+    mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
+    jurusan: 'Administrasi Perkantoran',
+    faseKelas: 'Fase F (Kelas XI)',
+    alokasiWaktu: '4 x 45 Menit (2 Pertemuan)',
+    tanggalDibuat: '2026-07-28',
+    pembuat: 'Ahmad Fauzi, S.Pd.',
+    data: {
+      judul: 'Modul Ajar Digitalisasi & Otomatisasi Kearsipan Perkantoran',
+      identitas: {
+        sekolah: 'SMKS PLUS AT THAHIRIN',
+        mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
+        jurusan: 'Administrasi Perkantoran',
+        faseKelas: 'Fase F (Kelas XI)',
+        alokasiWaktu: '4 x 45 Menit (2 Pertemuan)',
+        tahunAjaran: '2026/2027'
+      },
+      profilPelajarPancasila: [
+        'Bernalar Kritis: Menganalisis klasifikasi dan Indeks arsip dokumen fisik dan digital',
+        'Kreatif: Merancang struktur kearsipan elektronik yang terorganisir',
+        'Mandiri: Melakukan pemindaian, pengindeksan, dan penyimpanan dokumen digital'
+      ],
+      saranaPrasarana: [
+        'Laboratorium Administrasi Perkantoran',
+        'Komputer, Scanner Komersial & Cloud Drive',
+        'LCD Projector & Modul Kearsipan Digital'
+      ],
+      targetPesertaDidik: 'Peserta didik konsentrasi keahlian Administrasi Perkantoran',
+      modelPembelajaran: 'Project Based Learning (PjBL) terintegrasi Industri Perkantoran',
+      komponenInti: {
+        tujuanPembelajaran: [
+          'Peserta didik mampu memahami konsep pengelolaan dokumen dan kearsipan elektronik.',
+          'Peserta didik dapat mengoperasikan perangkat pemindai (scanner) dan membuat indeks penamaan arsip digital.',
+          'Peserta didik mampu mensimulasikan penataan arsip berbasis cloud storage secara rapi dan aman.'
+        ],
+        pemahamanBermakna: 'Kearsipan digital yang rapi dan terstruktur mempercepat temu balik informasi di instansi serta menjaga keamanan dokumen penting perkantoran.',
+        pertanyaanPemantik: [
+          'Bagaimana cara sebuah perusahaan besar menemukan dokumen kontrak 5 tahun lalu hanya dalam 10 detik?',
+          'Apa perbedaan utama kearsipan berbasis kertas konvensional dengan kearsipan digital?'
+        ],
+        kegiatanPembelajaran: {
+          pendahuluan: [
+            'Guru membuka pembelajaran dengan salam, berdoa, dan memeriksa kehadiran siswa. (10 Menit)',
+            'Apersepsi: Guru memperlihatkan simulasi tumpukan berkas fisik vs pencarian berkas digital di komputer proyektor. (10 Menit)',
+            'Guru menyampaikan tujuan pembelajaran serta pembagian kelompok praktikum kearsipan. (10 Menit)'
+          ],
+          inti: [
+            'Fase 1 (Pertanyaan Mendasar): Diskusi kelompok tentang permasalahan kearsipan di kantor modern. (20 Menit)',
+            'Fase 2 (Mendesain Proyek): Siswa membuat skema kode klasifikasi arsip perkantoran. (30 Menit)',
+            'Fase 3 (Menyusun Jadwal): Siswa menyusun alur pengerjaan pemindaian dan pengindeksan file. (15 Menit)',
+            'Fase 4 (Praktik Kearsipan): Siswa memindai dokumen fisik, memberi nama file sesuai standar indeks, dan mengunggah ke sistem cloud. (60 Menit)',
+            'Fase 5 (Pengujian): Guru melakukan uji simpul temu balik dokumen secara acak. (25 Menit)'
+          ],
+          penutup: [
+            'Fase 6 (Evaluasi & Refleksi): Setiap kelompok mempresentasikan hasil penataan kearsipan digitalnya. (20 Menit)',
+            'Umpan balik dan penguatan konsep dari guru. (10 Menit)',
+            'Pembersihan lab AP, doa penutup, dan salam. (10 Menit)'
+          ]
+        },
+        asesmen: {
+          diagnostik: 'Kuis diagnostik mengenai dasar-dasar surat-menyurat dan kearsipan.',
+          formatif: 'Observasi keaktifan praktikum pemindaian scanner dan akurasi indeks nama file.',
+          sumatif: 'Penilaian produk akhir portofolio arsip digital dan uji kecepatan temu balik berkas.'
+        },
+        pengayaanDanRemidial: 'Pengayaan: Konfigurasi enkripsi berkas sensitif perkantoran. Remedial: Bimbingan ulang klasifikasi indeks alfabetis.'
+      },
+      lampiran: {
+        lembarKerjaSiswa: 'Lakukan pemindaian 5 surat dinas masuk, tentukan indeks subjeknya, dan simpan pada direktori drive sesuai kode klasifikasi.',
+        bahanBacaanGuruSiswa: 'Buku Ajar Administrasi Perkantoran & Panduan E-Arsip Kementerian.',
+        glosarium: [
+          'E-Arsip: Sistem manajemen kearsipan elektronik berbasis sistem informasi.',
+          'Indeks: Tanda pengenal berkas untuk memudahkan pementaan dan pencarian kembali.',
+          'Pemindaian (Scanning): Proses pengubahan dokumen kertas menjadi berkas digital.'
+        ]
+      }
+    }
+  }
+];
+
+export const BERITA_LIST: Berita[] = [
+  {
+    id: 'b1',
+    judul: 'Siswa Administrasi Perkantoran SMKS PLUS AT THAHIRIN Meraih Juara 1 LKS Kejuruan Perkantoran',
+    tanggal: '01 Agustus 2026',
+    kategori: 'Prestasi',
+    ringkasan: 'Selamat kepada ananda Muhammad Rizky Pratama dari X AP 1 yang berhasil meraih gelar juara pada bidang perlombaan Otomatisasi Perkantoran.',
+    konten: 'Prestasi membanggakan diukir oleh civitas akademika SMKS PLUS AT THAHIRIN Megamendung Bogor. Dalam ajang Lomba Kompetensi Siswa (LKS) Kejuruan bidang Administrasi Perkantoran / Otomatisasi Perkantoran, perwakilan sekolah berhasil meraih juara pertama di bawah bimbingan Bpk. Ir. Surantro dan tim pengajar.',
+    gambar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+    penulis: 'Humas SMKS PLUS AT THAHIRIN'
+  },
+  {
+    id: 'b2',
+    judul: 'Penandatanganan MoU Kerjasama Industri Perkantoran & Magang Kerja dengan Perusahaan Terkemuka',
+    tanggal: '25 Juli 2026',
+    kategori: 'Mitra Industri',
+    ringkasan: 'Memperkuat link and match jurusan Administrasi Perkantoran dengan dunia usaha dan industri.',
+    konten: 'Kepala SMKS PLUS AT THAHIRIN, Bpk. Ir. Surantro, secara resmi menandatangani nota kesepahaman (MoU) dengan berbagai instansi dan perusahaan swasta untuk program Praktik Kerja Lapangan (PKL) serta rekrutmen lulusan Administrasi Perkantoran.',
+    gambar: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?w=800&auto=format&fit=crop&q=80',
+    penulis: 'Tim Bursa Kerja Khusus (BKK)'
+  },
+  {
+    id: 'b3',
+    judul: 'Peluncuran Sistem Absensi QR Code & Generator Modul Ajar AI Kurikulum Merdeka',
+    tanggal: '15 Juli 2026',
+    kategori: 'Pengumuman',
+    ringkasan: 'Digitalisasi layanan sekolah terpadu bagi seluruh guru dan siswa Administrasi Perkantoran.',
+    konten: 'Memasuki Tahun Ajaran 2026/2027, SMKS PLUS AT THAHIRIN meluncurkan portal web terpadu yang memuat presensi QR Code, jadwal kelas, serta pembuatan Modul Ajar AI Kurikulum Merdeka berbasis Gemini.',
+    gambar: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&auto=format&fit=crop&q=80',
+    penulis: 'Tim IT SMKS PLUS AT THAHIRIN'
+  }
+];
+
+export const INITIAL_FORUM_TOPICS: ForumTopic[] = [
+  {
+    id: 'ft1',
+    title: 'Diskusi Praktik Otomatisasi Tata Kelola Kearsipan Digital',
+    categoryType: 'mapel',
+    categoryName: 'Otomatisasi Tata Kelola Kearsipan Digital',
+    authorId: 'u2',
+    authorName: 'Bpk. Ahmad Fauzi, S.Pd.',
+    authorRole: 'guru',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-08-02 09:30',
+    content: 'Halo siswa-siswi kelas X & XI Administrasi Perkantoran! Untuk tugas kearsipan digital pekan ini, pastikan penamaan berkas hasil scan mengikuti format [KODE_ARSIP]_[TANGGAL]_[NAMA_INSTANSI].pdf. Panduan lengkap dapat diunduh pada lampiran berikut.',
+    tags: ['Kearsipan', 'AdminPerkantoran', 'TugasAP', 'DigitalArsip'],
+    likes: 12,
+    likedBy: ['u1', 'u3'],
+    views: 145,
+    isPinned: true,
+    isResolved: false,
+    attachments: [
+      {
+        id: 'fa1',
+        name: 'Panduan_Standar_Indeks_Arsip_Digital.pdf',
+        url: '#',
+        size: '1.2 MB',
+        type: 'pdf'
+      }
+    ],
+    replies: [
+      {
+        id: 'fr1',
+        authorId: 'u3',
+        authorName: 'Muhammad Rizky Pratama',
+        authorRole: 'siswa',
+        authorAvatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+        createdAt: '2026-08-02 10:15',
+        content: 'Terima kasih Pak Fauzi! Untuk file surat masuk dinas luar daerah tetap dimasukkan ke folder Klasifikasi Umum ya Pak?',
+        likes: 5,
+        likedBy: ['u2']
+      }
+    ]
+  }
+];
+
+export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'n1',
+    title: 'Pengarahan Kepala Sekolah Ir. Surantro',
+    message: 'Bapak/Ibu Guru Administrasi Perkantoran dimohon menghadiri rapat dinas sekolah mengenai persiapan akreditasi dan Kurikulum Merdeka.',
+    targetRole: 'guru',
+    category: 'Pengumuman',
+    createdAt: '2026-08-03 08:00',
+    isReadBy: [],
+    senderName: 'Ir. Surantro (Kepala Sekolah)',
+    senderRole: 'admin',
+    isEmailSent: true
+  },
+  {
+    id: 'n2',
+    title: 'Tugas Baru: Praktikum Kearsipan Digital',
+    message: 'Tugas praktikum Otomatisasi Kearsipan Digital telah diperbarui. Silakan cek detail di Forum Diskusi.',
+    targetRole: 'siswa',
+    targetClassId: 'k1',
+    category: 'Tugas',
+    createdAt: '2026-08-02 09:35',
+    isReadBy: ['u3'],
+    actionUrl: 'forum',
+    senderName: 'Bpk. Ahmad Fauzi, S.Pd.',
+    senderRole: 'guru',
+    isEmailSent: true
+  }
+];

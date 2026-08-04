@@ -1,0 +1,6 @@
+{
+  "name": "SMKS PLUS AT THAHIRIN Web & Sistem Manajemen Sekolah",
+  "description": "Aplikasi Landing Page Sekolah, Sistem Absensi, Pengelolaan Kelas, dan Pembuatan Modul Ajar AI Kurikulum Merdeka Administrasi Perkantoran untuk SMKS PLUS AT THAHIRIN Megamendung",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

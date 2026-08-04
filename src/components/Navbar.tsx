@@ -1,0 +1,313 @@
+import React, { useState } from 'react';
+import { User } from '../types';
+import { SCHOOL_INFO } from '../data/initialData';
+import { 
+  School, 
+  UserCheck, 
+  Users, 
+  BookOpen, 
+  Home, 
+  LogIn, 
+  LogOut, 
+  Menu, 
+  X, 
+  Sparkles,
+  ChevronDown,
+  ShieldAlert,
+  GraduationCap,
+  MessageSquare,
+  Bell,
+  User as UserIcon
+} from 'lucide-react';
+
+interface NavbarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+  currentUser: User | null;
+  unreadCount?: number;
+  onLoginClick: () => void;
+  onLogoutClick: () => void;
+  onSelectDemoUser: (role: 'admin' | 'guru' | 'siswa') => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  setActiveTab,
+  currentUser,
+  unreadCount = 2,
+  onLoginClick,
+  onLogoutClick,
+  onSelectDemoUser
+}) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
+
+  const navItems = [
+    { id: 'landing', label: 'Beranda', icon: Home },
+    { id: 'absensi', label: 'Sistem Absensi', icon: UserCheck },
+    { id: 'kelas', label: 'Pengelolaan Kelas', icon: Users },
+    { id: 'modul-ajar', label: 'Modul Ajar AI', icon: BookOpen },
+    { id: 'forum', label: 'Forum Diskusi', icon: MessageSquare },
+    { id: 'notifikasi', label: 'Notifikasi', icon: Bell, badge: unreadCount },
+    { id: 'profil', label: 'Profil', icon: UserIcon },
+  ];
+
+  return (
+    <header id="main-header" className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+      {/* Top Notification Bar */}
+      <div className="bg-slate-900 text-slate-300 text-xs py-1.5 px-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Sistem Informasi {SCHOOL_INFO.name}
+            </span>
+            <span className="hidden sm:inline text-slate-500">|</span>
+            <span className="hidden sm:inline text-slate-400">Tahun Ajaran 2026/2027</span>
+          </div>
+          
+          <div className="flex items-center gap-3 text-xs">
+            {/* Quick Demo Role Selector */}
+            <div className="relative">
+              <button
+                id="demo-role-dropdown-btn"
+                onClick={() => setDemoMenuOpen(!demoMenuOpen)}
+                className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2.5 py-1 rounded-md transition-colors text-xs font-medium cursor-pointer border border-slate-700"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Simulasi Mode: <strong className="text-white capitalize">{currentUser ? currentUser.role : 'Tamunya'}</strong></span>
+                <ChevronDown className="w-3 h-3 ml-0.5" />
+              </button>
+
+              {demoMenuOpen && (
+                <div className="absolute right-0 mt-1 w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1 z-50 text-slate-200 text-xs">
+                  <div className="px-3 py-1.5 border-b border-slate-800 font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                    Ganti Role Pengguna Demo
+                  </div>
+                  <button
+                    id="demo-role-admin-btn"
+                    onClick={() => { onSelectDemoUser('admin'); setDemoMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                    <div>
+                      <div className="font-medium text-white">Admin Sekolah</div>
+                      <div className="text-[10px] text-slate-400">Akses penuh semua fitur</div>
+                    </div>
+                  </button>
+                  <button
+                    id="demo-role-guru-btn"
+                    onClick={() => { onSelectDemoUser('guru'); setDemoMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                    <div>
+                      <div className="font-medium text-white">Guru / Pendidik</div>
+                      <div className="text-[10px] text-slate-400">Absensi & Generator Modul AI</div>
+                    </div>
+                  </button>
+                  <button
+                    id="demo-role-siswa-btn"
+                    onClick={() => { onSelectDemoUser('siswa'); setDemoMenuOpen(false); }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <div>
+                      <div className="font-medium text-white">Siswa / Wali Murid</div>
+                      <div className="text-[10px] text-slate-400">Lihat Jadwal & Rekap Presensi</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <a href={`tel:${SCHOOL_INFO.telepon}`} className="hidden md:inline hover:text-white transition-colors">
+              {SCHOOL_INFO.telepon}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Navigation */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-18">
+          
+          {/* School Brand */}
+          <div 
+            className="flex items-center gap-3 cursor-pointer group"
+            onClick={() => setActiveTab('landing')}
+          >
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-800 flex items-center justify-center text-white shadow-md shadow-emerald-700/20 group-hover:scale-105 transition-transform">
+              <School className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-lg tracking-tight text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  {SCHOOL_INFO.name}
+                </span>
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded-xs border border-emerald-300 uppercase">
+                  MEGAMENDUNG
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">
+                Sistem Informasi & Pembelajaran Terpadu
+              </p>
+            </div>
+          </div>
+
+          {/* Desktop Nav Items */}
+          <nav className="hidden lg:flex items-center gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  id={`nav-link-${item.id}`}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer relative ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-700 shadow-xs border border-emerald-200'
+                      : 'text-slate-600 hover:text-emerald-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <span>{item.label}</span>
+                  {item.id === 'modul-ajar' && (
+                    <span className="ml-0.5 text-[10px] bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                      AI
+                    </span>
+                  )}
+                  {item.id === 'notifikasi' && unreadCount > 0 && (
+                    <span className="ml-1 bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* User Auth Section */}
+          <div className="hidden sm:flex items-center gap-3">
+            {currentUser ? (
+              <div className="flex items-center gap-3 bg-slate-50 p-1.5 pl-3 rounded-full border border-slate-200">
+                <div 
+                  className="text-right cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => setActiveTab('profil')}
+                >
+                  <div className="text-xs font-bold text-slate-800 leading-tight">{currentUser.name}</div>
+                  <div className="text-[10px] font-semibold text-emerald-600 capitalize">
+                    {currentUser.jabatan || currentUser.role}
+                  </div>
+                </div>
+                <img 
+                  src={currentUser.avatar} 
+                  alt={currentUser.name} 
+                  onClick={() => setActiveTab('profil')}
+                  title="Lihat Profil Saya"
+                  className="w-8 h-8 rounded-full object-cover border border-emerald-500 shadow-xs cursor-pointer hover:scale-105 transition-transform"
+                />
+                <button
+                  id="user-logout-btn"
+                  onClick={onLogoutClick}
+                  title="Keluar"
+                  className="w-8 h-8 rounded-full bg-slate-200 hover:bg-rose-100 hover:text-rose-600 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                id="open-login-modal-btn"
+                onClick={onLoginClick}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Masuk Portal</span>
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden flex items-center gap-2">
+            <button
+              id="mobile-menu-toggle"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Mobile Drawer Navigation */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top duration-200">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
+                  isActive
+                    ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
+                {item.id === 'modul-ajar' && (
+                  <span className="ml-auto text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                    AI Gemini
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          <div className="pt-3 border-t border-slate-100">
+            {currentUser ? (
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <img src={currentUser.avatar} alt={currentUser.name} className="w-10 h-10 rounded-full object-cover" />
+                  <div>
+                    <div className="text-sm font-bold text-slate-800">{currentUser.name}</div>
+                    <div className="text-xs text-emerald-600 capitalize">{currentUser.role}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onLogoutClick();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  onLoginClick();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white font-bold py-3 rounded-xl shadow-md cursor-pointer"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>Masuk Portal Akun</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+};

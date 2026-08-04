@@ -1,0 +1,407 @@
+import React, { useState } from 'react';
+import { Kelas, Siswa, ScheduleItem, User } from '../types';
+import { 
+  Users, 
+  Plus, 
+  Calendar, 
+  BookOpen, 
+  UserCheck, 
+  MapPin, 
+  GraduationCap, 
+  ChevronRight, 
+  Search,
+  Clock,
+  UserPlus,
+  Building2,
+  Check
+} from 'lucide-react';
+
+interface KelasSectionProps {
+  kelasList: Kelas[];
+  setKelasList: React.Dispatch<React.SetStateAction<Kelas[]>>;
+  siswaList: Siswa[];
+  setSiswaList: React.Dispatch<React.SetStateAction<Siswa[]>>;
+  currentUser: User | null;
+}
+
+export const KelasSection: React.FC<KelasSectionProps> = ({
+  kelasList,
+  setKelasList,
+  siswaList,
+  setSiswaList,
+  currentUser
+}) => {
+  const [selectedKelas, setSelectedKelas] = useState<Kelas | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'roster' | 'jadwal'>('roster');
+  
+  // Modal states
+  const [showAddClassModal, setShowAddClassModal] = useState(false);
+  const [showAddSiswaModal, setShowAddSiswaModal] = useState(false);
+
+  // Form New Class state
+  const [newClassName, setNewClassName] = useState('');
+  const [newJurusanCode, setNewJurusanCode] = useState('AP');
+  const [newTingkat, setNewTingkat] = useState<'X' | 'XI' | 'XII'>('X');
+  const [newRuang, setNewRuang] = useState('Gedung A - R.105');
+  const [newWaliKelas, setNewWaliKelas] = useState('');
+
+  // Form New Siswa state
+  const [newSiswaName, setNewSiswaName] = useState('');
+  const [newSiswaNisn, setNewSiswaNisn] = useState('');
+  const [newSiswaGender, setNewSiswaGender] = useState<'L' | 'P'>('L');
+
+  // Add New Class submit
+  const handleAddClassSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClassName || !newWaliKelas) return;
+
+    const created: Kelas = {
+      id: 'k-' + Date.now(),
+      name: newClassName,
+      jurusanCode: newJurusanCode,
+      tingkat: newTingkat,
+      ruang: newRuang,
+      waliKelas: newWaliKelas,
+      jumlahSiswa: 0,
+      jadwal: []
+    };
+
+    setKelasList([created, ...kelasList]);
+    setShowAddClassModal(false);
+    setNewClassName('');
+    setNewWaliKelas('');
+  };
+
+  // Add New Siswa submit
+  const handleAddSiswaSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSiswaName || !newSiswaNisn || !selectedKelas) return;
+
+    const createdSiswa: Siswa = {
+      id: 's-' + Date.now(),
+      nisn: newSiswaNisn,
+      name: newSiswaName,
+      classId: selectedKelas.id,
+      gender: newSiswaGender,
+      foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      noHpOrangTua: '0812' + Math.floor(10000000 + Math.random() * 90000000)
+    };
+
+    setSiswaList([...siswaList, createdSiswa]);
+    
+    // Update count
+    setKelasList(prev => prev.map(k => k.id === selectedKelas.id ? { ...k, jumlahSiswa: k.jumlahSiswa + 1 } : k));
+
+    setShowAddSiswaModal(false);
+    setNewSiswaName('');
+    setNewSiswaNisn('');
+  };
+
+  return (
+    <div id="kelas-module" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      
+      {/* Module Title */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs">
+        <div>
+          <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full mb-2">
+            <Users className="w-3.5 h-3.5" />
+            <span>Manajemen Rombongan Belajar</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Pengelolaan Kelas & Jadwal Pelajaran
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Daftar Rombongan Belajar (Rombel), Penetapan Wali Kelas, Roster Siswa, dan Penjadwalan Mata Pelajaran.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowAddClassModal(true)}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-3 rounded-xl shadow-md transition-all cursor-pointer shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Tambah Kelas Baru</span>
+        </button>
+      </div>
+
+      {/* GRID OF CLASSES */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {kelasList.map((k) => {
+          const classStudents = siswaList.filter(s => s.classId === k.id);
+          const studentCount = classStudents.length || k.jumlahSiswa;
+
+          return (
+            <div 
+              key={k.id}
+              className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all p-6 space-y-5 flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg">
+                    {k.jurusanCode} — Kelas {k.tingkat}
+                  </span>
+                  <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{k.ruang}</span>
+                  </span>
+                </div>
+
+                <h3 className="text-2xl font-extrabold text-slate-900">{k.name}</h3>
+
+                <div className="space-y-1.5 text-xs text-slate-600 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Wali Kelas:</span>
+                    <span className="font-bold text-slate-800">{k.waliKelas}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Total Siswa Terdaftar:</span>
+                    <span className="font-bold text-emerald-700">{studentCount} Siswa</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedKelas(k);
+                    setActiveSubTab('roster');
+                  }}
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl transition-colors cursor-pointer text-center"
+                >
+                  Siswa & Roster
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedKelas(k);
+                    setActiveSubTab('jadwal');
+                  }}
+                  className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs py-2.5 rounded-xl border border-emerald-200 transition-colors cursor-pointer text-center"
+                >
+                  Jadwal Pelajaran
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* MODAL / DRAWER DETAIL KELAS */}
+      {selectedKelas && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-md">
+                  {selectedKelas.jurusanCode}
+                </span>
+                <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{selectedKelas.name}</h3>
+                <p className="text-xs text-slate-500">Wali Kelas: {selectedKelas.waliKelas} • Ruang: {selectedKelas.ruang}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedKelas(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sub Tabs Inside Detail Modal */}
+            <div className="flex items-center justify-between border-b border-slate-200">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setActiveSubTab('roster')}
+                  className={`pb-3 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
+                    activeSubTab === 'roster'
+                      ? 'border-emerald-600 text-emerald-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Daftar Siswa ({siswaList.filter(s => s.classId === selectedKelas.id).length})
+                </button>
+                <button
+                  onClick={() => setActiveSubTab('jadwal')}
+                  className={`pb-3 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
+                    activeSubTab === 'jadwal'
+                      ? 'border-emerald-600 text-emerald-700'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Jadwal Pelajaran Mingguan
+                </button>
+              </div>
+
+              {activeSubTab === 'roster' && (
+                <button
+                  onClick={() => setShowAddSiswaModal(true)}
+                  className="bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Tambah Siswa</span>
+                </button>
+              )}
+            </div>
+
+            {/* Sub Tab Content: Roster Siswa */}
+            {activeSubTab === 'roster' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {siswaList.filter(s => s.classId === selectedKelas.id).map((siswa, idx) => (
+                    <div key={siswa.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
+                      <img src={siswa.foto} alt={siswa.name} className="w-10 h-10 rounded-full object-cover border border-emerald-500" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-900 truncate">{idx + 1}. {siswa.name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">NISN: {siswa.nisn}</div>
+                        <div className="text-[10px] text-slate-400">Kontak OrangTua: {siswa.noHpOrangTua || '-'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sub Tab Content: Jadwal Pelajaran */}
+            {activeSubTab === 'jadwal' && (
+              <div className="space-y-4">
+                {selectedKelas.jadwal && selectedKelas.jadwal.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedKelas.jadwal.map((j, idx) => (
+                      <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                        <div className="space-y-1">
+                          <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md text-[10px]">
+                            {j.hari} • Jam {j.jamKe} ({j.jamRentan})
+                          </span>
+                          <h4 className="font-bold text-slate-900 text-sm">{j.mataPelajaran}</h4>
+                          <p className="text-slate-500">Guru Pengajar: {j.guru}</p>
+                        </div>
+                        <span className="text-slate-600 font-semibold bg-white px-2.5 py-1 rounded-md border border-slate-200">
+                          {j.ruangan}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    Jadwal pelajaran belum diatur untuk kelas ini.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSelectedKelas(null)}
+                className="bg-slate-800 text-white font-bold px-5 py-2 rounded-xl text-xs hover:bg-slate-700 cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FORM TAMBAH KELAS */}
+      {showAddClassModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="font-bold text-lg text-slate-900">Tambah Rombongan Belajar Baru</h3>
+            <form onSubmit={handleAddClassSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Kelas (contoh: X AP 2)</label>
+                <input 
+                  type="text" 
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  required
+                  placeholder="X AP 2" 
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jurusan</label>
+                <select 
+                  value={newJurusanCode} 
+                  onChange={(e) => setNewJurusanCode(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                >
+                  <option value="AP">AP — Administrasi Perkantoran</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Wali Kelas</label>
+                <input 
+                  type="text" 
+                  value={newWaliKelas}
+                  onChange={(e) => setNewWaliKelas(e.target.value)}
+                  required
+                  placeholder="Bpk. Suryadi, S.Pd." 
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                />
+              </div>
+
+              <div className="pt-3 flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowAddClassModal(false)} className="px-4 py-2 bg-slate-200 rounded-xl font-bold">Batal</button>
+                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">Simpan Kelas</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FORM TAMBAH SISWA */}
+      {showAddSiswaModal && selectedKelas && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="font-bold text-lg text-slate-900">Tambah Siswa Baru ke {selectedKelas.name}</h3>
+            <form onSubmit={handleAddSiswaSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Lengkap Siswa</label>
+                <input 
+                  type="text" 
+                  value={newSiswaName}
+                  onChange={(e) => setNewSiswaName(e.target.value)}
+                  required
+                  placeholder="Ahmad Bagus Pratama" 
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">NISN</label>
+                <input 
+                  type="text" 
+                  value={newSiswaNisn}
+                  onChange={(e) => setNewSiswaNisn(e.target.value)}
+                  required
+                  placeholder="0068123999" 
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jenis Kelamin</label>
+                <select 
+                  value={newSiswaGender}
+                  onChange={(e: any) => setNewSiswaGender(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                >
+                  <option value="L">Laki-Laki</option>
+                  <option value="P">Perempuan</option>
+                </select>
+              </div>
+
+              <div className="pt-3 flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowAddSiswaModal(false)} className="px-4 py-2 bg-slate-200 rounded-xl font-bold">Batal</button>
+                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">Simpan Siswa</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
