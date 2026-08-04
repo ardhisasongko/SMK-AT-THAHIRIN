@@ -19,9 +19,9 @@
  *   - Siswa: email s<NISN>@smksplusatthahirin.sch.id, login NISN, password awal = NISN
  *   - Guru : email g<NIK>@smksplusatthahirin.sch.id,  login NIK,  password awal = NIK
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
 import { pbkdf2Sync, randomBytes } from 'node:crypto';
 import XLSX from 'xlsx';
@@ -50,7 +50,7 @@ function hashPassword(password) {
   return `pbkdf2$${PASSWORD_ITERATIONS}$${salt.toString('hex')}$${hash.toString('hex')}`;
 }
 
-function toIso(d) {
+export function toIso(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
@@ -64,7 +64,7 @@ const IDN_MONTHS = {
   october: 10, december: 12, mai: 5,
 };
 
-function normalizeDate(v) {
+export function normalizeDate(v) {
   if (v == null || v === '') return null;
   if (v instanceof Date && !Number.isNaN(v.getTime())) return toIso(v);
   if (typeof v === 'number' && v > 20000 && v < 60000) {
@@ -100,7 +100,7 @@ function normalizeDate(v) {
   return null;
 }
 
-function mapGender(v) {
+export function mapGender(v) {
   const s = String(v ?? '').trim().toLowerCase();
   if (s === 'l' || s === 'm' || s === 'pria' || s.startsWith('laki')) return 'L';
   if (s === 'p' || s === 'f' || s === 'wanita' || s.startsWith('peremp')) return 'P';
@@ -115,7 +115,7 @@ function toPlainString(v) {
 }
 
 // ---- Deteksi kolom dari header sheet ----------------------------------
-function detectColumns(headers) {
+export function detectColumns(headers) {
   const map = { no: null, name: null, gender: null, nisn: null, nik: null, ttl: null };
   headers.forEach((h, idx) => {
     const n = norm(h);
@@ -132,7 +132,7 @@ function detectColumns(headers) {
 // ---- Baca sheet ---------------------------------------------------------
 // Struktur file riil: baris judul/TA/"KELAS : X", lalu baris header kolom.
 // Baris header dicari otomatis (baris yang mengandung NAMA + NISN/NIK).
-function readSheet(ws) {
+export function readSheet(ws) {
   const allRows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true, header: 1 });
   if (!allRows.length) return { map: {}, rows: [], tingkat: null };
 
@@ -162,7 +162,7 @@ function readSheet(ws) {
   return { map, rows, tingkat };
 }
 
-function mapSheetToTingkat(sheetName, detectedTingkat) {
+export function mapSheetToTingkat(sheetName, detectedTingkat) {
   if (detectedTingkat) return detectedTingkat;
   const byName = { '10': 'X', '11': 'XI', '12': 'XII' };
   if (byName[String(sheetName).trim()]) return byName[String(sheetName).trim()];
@@ -177,27 +177,14 @@ function pick(row, map, key) {
   return map[key] != null ? row[map[key]] : undefined;
 }
 
-// ---- Main -----------------------------------------------------------------
-function main() {
-  const file = process.argv[2];
-  if (!file) {
-    console.error('Gunakan: node scripts/import-data.mjs <file.xlsx>');
-    process.exit(1);
-  }
-  if (!existsSync(file)) {
-    console.error(`File tidak ditemukan: ${file}`);
-    process.exit(1);
-  }
-
-  const wb = XLSX.readFile(file, { cellDates: true });
+// ---- Proses workbook (pure, bisa di-unit-test) ---------------------------
+export function processWorkbook(wb, { padNisn = false, placeholderNisn = false, hash = hashPassword } = {}) {
   const siswaOut = [];
   const guruRows = [];
   const warnings = [];
   const seenNisn = new Set();
   const seenNik = new Set();
   let countByTingkat = { X: 0, XI: 0, XII: 0 };
-  const padNisn = process.argv.includes('--pad-nisn');
-  const placeholderNisn = process.argv.includes('--placeholder-nisn');
   let placeholderCounter = 0;
 
   for (const sheetName of wb.SheetNames) {
@@ -278,12 +265,12 @@ function main() {
   // ---- Bangun SQL akun (siswa + guru) ------------------------------------
   let akunSql = '-- Akun login hasil import Excel (PBKDF2-SHA256). Password awal = NISN/NIK.\n';
   const upsert = (id, name, email, identifier, role, classId, password, nik, ttl) => {
-    const hash = hashPassword(password);
+    const passwordHash = hash(password);
     const cols = ['id', 'name', 'email', 'nip_nisn', 'role', 'class_id', 'password_hash', 'nik', 'tanggal_lahir', 'jabatan', 'ketua_status'];
     const esc = (s) => String(s).replace(/'/g, "''");
     const vals = [
       `'${esc(id)}'`, `'${esc(name)}'`, `'${esc(email)}'`, `'${esc(identifier)}'`, `'${role}'`,
-      classId ? `'${esc(classId)}'` : 'NULL', `'${esc(hash)}'`,
+      classId ? `'${esc(classId)}'` : 'NULL', `'${esc(passwordHash)}'`,
       nik ? `'${esc(nik)}'` : 'NULL', ttl ? `'${esc(ttl)}'` : 'NULL', 'NULL', `'none'`,
     ];
     return `INSERT INTO users (${cols.join(', ')})\n  VALUES (${vals.join(', ')})\n  ON CONFLICT(email) DO UPDATE SET\n    name = excluded.name,\n    nip_nisn = excluded.nip_nisn,\n    role = excluded.role,\n    class_id = excluded.class_id,\n    password_hash = excluded.password_hash,\n    nik = excluded.nik,\n    tanggal_lahir = excluded.tanggal_lahir,\n    ketua_status = 'none';\n`;
@@ -299,6 +286,27 @@ function main() {
   // ---- SQL koleksi siswa_v1 ------------------------------------------------
   const siswaJson = JSON.stringify(siswaOut);
   const siswaSql = `INSERT INTO app_data (key, value, updated_at)\n  VALUES ('siswa_v1', '${siswaJson.replace(/'/g, "''")}', unixepoch())\n  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;\n`;
+
+  return { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql };
+}
+
+// ---- Main (CLI) --------------------------------------------------------------
+function main() {
+  const file = process.argv[2];
+  if (!file) {
+    console.error('Gunakan: node scripts/import-data.mjs <file.xlsx>');
+    process.exit(1);
+  }
+  if (!existsSync(file)) {
+    console.error(`File tidak ditemukan: ${file}`);
+    process.exit(1);
+  }
+
+  const wb = XLSX.readFile(file, { cellDates: true });
+  const { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql } = processWorkbook(wb, {
+    padNisn: process.argv.includes('--pad-nisn'),
+    placeholderNisn: process.argv.includes('--placeholder-nisn'),
+  });
 
   // ---- Patch jumlahSiswa di kelas_v1 (opsional, ambil data remote) ----------
   let kelasSql = '';
@@ -352,4 +360,6 @@ function main() {
   if (kelasSql) console.log('  npx wrangler d1 execute smk-at-tahirin-db --remote --file=imported/kelas.sql');
 }
 
-main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
