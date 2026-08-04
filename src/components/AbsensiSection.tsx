@@ -39,6 +39,44 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const [selectedClassId, setSelectedClassId] = useState<string>(kelasList[0]?.id || 'k1');
   const [activeTabMode, setActiveTabMode] = useState<'harian' | 'qr-scanner' | 'rekap'>('harian');
 
+  // ===== RBAC: hak akses berdasarkan role =====
+  const canEditClass = (classId: string): boolean => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    if (currentUser.role === 'guru') {
+      const k = kelasList.find(x => x.id === classId);
+      return !!(k && k.waliKelas.trim() === (currentUser.name || '').trim());
+    }
+    if (currentUser.role === 'ketua_kelas') {
+      return currentUser.ketuaStatus === 'approved' && currentUser.classId === classId;
+    }
+    return false;
+  };
+
+  // Daftar kelas yang boleh diedit user (untuk selektor & default)
+  const fullClassIds = kelasList.map(k => k.id);
+  const editableClassIds: string[] =
+    currentUser?.role === 'admin'
+      ? fullClassIds
+      : currentUser?.role === 'guru'
+        ? kelasList.filter(k => k.waliKelas.trim() === (currentUser.name || '').trim()).map(k => k.id)
+        : (currentUser?.role === 'ketua_kelas' && currentUser.ketuaStatus === 'approved' && currentUser.classId)
+          ? [currentUser.classId]
+          : [];
+
+  const classOptions = editableClassIds.length ? kelasList.filter(k => editableClassIds.includes(k.id)) : kelasList;
+  const canEditCurrent = canEditClass(selectedClassId);
+  const isReadOnly = !canEditCurrent;
+
+  // Jaga selectedClassId selalu valid & dalam kewenangan user
+  useEffect(() => {
+    const allow = editableClassIds.length ? editableClassIds : fullClassIds;
+    if (allow.length && !allow.includes(selectedClassId)) {
+      setSelectedClassId(allow[0] || 'k1');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, currentUser?.role, currentUser?.ketuaStatus, editableClassIds.join(','), selectedClassId]);
+
   // QR Simulator state
   const [qrNisnInput, setQrNisnInput] = useState<string>('');
   const [scanMessage, setScanMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -302,6 +340,17 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
       </div>
 
+      {/* Read-only banner */}
+      {currentUser && isReadOnly && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold p-3 rounded-2xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>
+            Anda login sebagai <strong>{currentUser.role === 'siswa' ? 'Siswa' : currentUser.role}</strong> dan hanya dapat
+            melihat presensi (mode baca). Riwayat kehadiran pribadi bisa dilihat di menu <strong>Profil</strong>.
+          </span>
+        </div>
+      )}
+
       {/* STATS OVERVIEW CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
@@ -376,7 +425,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                 >
-                  {kelasList.map(k => (
+                  {classOptions.map(k => (
                     <option key={k.id} value={k.id}>
                       {k.name} — Wali Kelas: {k.waliKelas}
                     </option>
@@ -407,7 +456,8 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               </div>
               <button
                 onClick={handleMarkAllHadir}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                disabled={!canEditCurrent}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Check className="w-4 h-4" />
                 <span>Tandai Semua Hadir</span>
@@ -426,12 +476,13 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                   <th className="py-3 px-4 text-center">Status Presensi</th>
                   <th className="py-3 px-4">Keterangan / Catatan</th>
                   <th className="py-3 px-4 text-right">Waktu Input</th>
+                  <th className="py-3 px-4 text-left">Diinput oleh</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredSiswa.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                    <td colSpan={7} className="py-8 text-center text-slate-400">
                       {presensiSearchQuery ? `Tidak ada siswa yang cocok dengan "${presensiSearchQuery}".` : 'Tidak ada data siswa untuk kelas yang dipilih.'}
                     </td>
                   </tr>
@@ -466,8 +517,9 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                               return (
                                 <button
                                   key={st}
+                                  disabled={!canEditCurrent}
                                   onClick={() => handleUpdateStatus(siswa, st)}
-                                  className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${activeClass}`}
+                                  className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${activeClass}`}
                                 >
                                   {st}
                                 </button>
@@ -479,13 +531,19 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                           <input 
                             type="text"
                             defaultValue={record?.keterangan || ''}
+                            disabled={!canEditCurrent}
                             placeholder="Catatan..."
                             onBlur={(e) => handleUpdateStatus(siswa, currentStatus, e.target.value)}
-                            className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:bg-white focus:ring-1 focus:ring-emerald-500"
+                            className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:bg-white focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </td>
                         <td className="py-3 px-4 text-right text-xs font-mono text-slate-500">
                           {record?.waktuInput || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-left text-xs text-slate-500">
+                          {record?.inputBy
+                            ? <span>{record.inputBy.name} <span className="text-slate-400">({record.inputBy.role})</span></span>
+                            : (record ? <span className="text-slate-400">dimuat dari seed</span> : '-')}
                         </td>
                       </tr>
                     );
@@ -519,11 +577,12 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               {siswaList.slice(0, 8).map(s => (
                 <button
                   key={s.id}
+                  disabled={!canEditCurrent}
                   onClick={() => {
                     setQrNisnInput(s.nisn);
                     handleQrScanSubmit();
                   }}
-                  className="bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-800 border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg font-mono font-medium transition-all cursor-pointer flex items-center gap-1.5"
+                  className="bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-800 border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg font-mono font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
                   <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   <span>{s.name} ({s.nisn})</span>
@@ -536,13 +595,15 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
             <input 
               type="text"
               value={qrNisnInput}
+              disabled={!canEditCurrent}
               onChange={(e) => setQrNisnInput(e.target.value)}
               placeholder="Masukkan NISN atau Scan QR..."
-              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-md cursor-pointer text-sm"
+              disabled={!canEditCurrent}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-md cursor-pointer text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Scan
             </button>

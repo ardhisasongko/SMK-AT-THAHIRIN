@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { User, UserRole } from '../types';
-import { INITIAL_USERS } from '../data/initialData';
-import { School, LogIn, Lock, Mail, UserCheck, Shield, Sparkles, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { validateCredentials, isPasswordStrong } from '../utils/auth';
+import { AuthSession, UserRole } from '../types';
+import { School, LogIn, Lock, Mail, UserCheck, Shield, Sparkles, CheckCircle, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { loginRequest, isPasswordStrong, DEMO_CREDENTIALS } from '../utils/auth';
 
 interface LoginFormProps {
-  onLoginSuccess: (user: User) => void;
+  onLoginSuccess: (session: AuthSession) => void;
   onClose: () => void;
 }
 
@@ -15,72 +14,47 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleCustomLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (identifier: string, pwd: string) => {
+    setLoading(true);
     setErrorMsg('');
+    const res = await loginRequest(identifier, pwd);
+    setLoading(false);
+    if (res.ok && res.session) {
+      onLoginSuccess(res.session);
+      onClose();
+    } else {
+      setErrorMsg(res.error || 'Login gagal. Silakan coba lagi.');
+    }
+  };
 
-    // Validation
-    if (!emailOrNip || !password) {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
+    const identifier = emailOrNip.trim();
+    if (!identifier || !password) {
       setErrorMsg('Silakan isi email/NIP/NISN dan password Anda.');
       return;
     }
-
-    // Password strength check
     const passwordCheck = isPasswordStrong(password);
     if (!passwordCheck.valid) {
       setErrorMsg(passwordCheck.message);
       return;
     }
-
-    // Validate credentials
-    if (!validateCredentials(emailOrNip, password)) {
-      setErrorMsg('Email/NIP/NISN atau password salah. Silakan coba lagi.');
-      return;
-    }
-
-    // Match user from database
-    const matched = INITIAL_USERS.find(
-      u => u.email.toLowerCase() === emailOrNip.toLowerCase() || u.nipNisn === emailOrNip
-    );
-
-    if (matched) {
-      // Save login timestamp for session management
-      const userWithSession = {
-        ...matched,
-        loginTimestamp: Date.now()
-      };
-      onLoginSuccess(userWithSession as User);
-      onClose();
-    } else {
-      // Create new user session (for flexibility)
-      const role: UserRole = loginType === 'guru' ? 'guru' : 'siswa';
-      const newUser: User = {
-        id: 'u-custom-' + Date.now(),
-        name: emailOrNip.includes('@') ? emailOrNip.split('@')[0] : 'Pengguna SMK',
-        email: emailOrNip.includes('@') ? emailOrNip : `${emailOrNip}@smkatthahirin.sch.id`,
-        role: role,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        nipNisn: emailOrNip,
-        jabatan: role === 'guru' ? 'Guru Pengajar SMK' : 'Siswa SMK AT-THAHIRIN'
-      };
-      onLoginSuccess(newUser);
-      onClose();
-    }
+    handleLogin(identifier, password);
   };
 
-  const handleQuickPreset = (role: 'admin' | 'guru' | 'siswa') => {
-    const preset = INITIAL_USERS.find(u => u.role === role);
-    if (preset) {
-      onLoginSuccess(preset);
-      onClose();
-    }
+  const handleQuickPreset = (role: keyof typeof DEMO_CREDENTIALS) => {
+    if (loading) return;
+    const cred = DEMO_CREDENTIALS[role];
+    handleLogin(cred.identifier, cred.password);
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200 relative overflow-hidden">
-        
+
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
@@ -92,7 +66,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
               <p className="text-xs text-slate-500 font-medium">SMK AT-THAHIRIN DEPOK</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold cursor-pointer transition-colors"
           >
@@ -109,27 +83,38 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
             </span>
             <span className="text-[10px] text-slate-400">1-Klik Langsung Masuk</span>
           </div>
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="grid grid-cols-4 gap-2 pt-1">
             <button
               id="preset-admin-btn"
               onClick={() => handleQuickPreset('admin')}
-              className="bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center"
+              disabled={loading}
+              className="bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center disabled:opacity-50"
             >
-              Admin Sekolah
+              Admin
             </button>
             <button
               id="preset-guru-btn"
               onClick={() => handleQuickPreset('guru')}
-              className="bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center"
+              disabled={loading}
+              className="bg-blue-950/80 hover:bg-blue-900 text-blue-200 border border-blue-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center disabled:opacity-50"
             >
-              Guru / Pendidik
+              Guru
+            </button>
+            <button
+              id="preset-ketua-btn"
+              onClick={() => handleQuickPreset('ketua')}
+              disabled={loading}
+              className="bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center disabled:opacity-50"
+            >
+              Ketua
             </button>
             <button
               id="preset-siswa-btn"
               onClick={() => handleQuickPreset('siswa')}
-              className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center"
+              disabled={loading}
+              className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-800 text-xs py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer text-center disabled:opacity-50"
             >
-              Siswa / OrangTua
+              Siswa
             </button>
           </div>
         </div>
@@ -139,8 +124,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
           <button
             onClick={() => setLoginType('guru')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              loginType === 'guru' 
-                ? 'bg-white text-emerald-700 shadow-xs' 
+              loginType === 'guru'
+                ? 'bg-white text-emerald-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -149,8 +134,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
           <button
             onClick={() => setLoginType('siswa')}
             className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-              loginType === 'siswa' 
-                ? 'bg-white text-emerald-700 shadow-xs' 
+              loginType === 'siswa'
+                ? 'bg-white text-emerald-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -166,14 +151,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleCustomLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               {loginType === 'guru' ? 'Email / NIP Guru' : 'NISN / Email Siswa'}
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input 
+              <input
                 type="text"
                 value={emailOrNip}
                 onChange={(e) => setEmailOrNip(e.target.value)}
@@ -189,7 +174,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input 
+              <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -209,10 +194,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
 
           <button
             type="submit"
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-sm"
+            disabled={loading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-sm disabled:opacity-60"
           >
-            <LogIn className="w-4 h-4" />
-            <span>Masuk Sekarang</span>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+            <span>{loading ? 'Memproses...' : 'Masuk Sekarang'}</span>
           </button>
         </form>
 
@@ -228,6 +214,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
               </div>
               <div className="bg-white p-2 rounded border border-slate-200">
                 <strong>Guru:</strong> guru@smksplusatthahirin.sch.id / guru123
+              </div>
+              <div className="bg-white p-2 rounded border border-slate-200">
+                <strong>Ketua Kelas:</strong> ketua@smksplusatthahirin.sch.id / ketua123
               </div>
               <div className="bg-white p-2 rounded border border-slate-200">
                 <strong>Siswa:</strong> siswa@smksplusatthahirin.sch.id / siswa123

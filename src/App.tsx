@@ -22,17 +22,23 @@ import {
   INITIAL_CBT_EXAMS,
   INITIAL_CBT_SUBMISSIONS
 } from './data/initialData';
-import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, CbtExam, CbtSubmission } from './types';
-import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage';
+import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, CbtExam, CbtSubmission, AuthSession } from './types';
 import { usePersistedCollection } from './hooks/usePersistedCollection';
+import { loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest } from './utils/auth';
+
+const AVATAR_BY_ROLE: Record<string, string> = {
+  admin: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+  guru: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  ketua_kelas: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+  siswa: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('landing');
-  
-  // Load current user from localStorage or null (harus login dulu)
-  const [currentUser, setCurrentUser] = useState<User | null>(() => 
-    loadFromStorage(STORAGE_KEYS.CURRENT_USER, null)
-  );
+
+  // Load sesi (token + user) dari localStorage; user dibawa dari server
+  const [authSession, setAuthSession] = useState<AuthSession | null>(() => loadAuthSession());
+  const currentUser: User | null = authSession?.user ?? null;
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
   // App persistent states - disimpan ke Cloudflare D1 via API
@@ -45,10 +51,14 @@ export default function App() {
   const [cbtExams, setCbtExams] = usePersistedCollection<CbtExam[]>('cbtExams_v1', INITIAL_CBT_EXAMS);
   const [cbtSubmissions, setCbtSubmissions] = usePersistedCollection<CbtSubmission[]>('cbtSubmissions_v1', INITIAL_CBT_SUBMISSIONS);
 
-  // Auto-save to localStorage whenever state changes
+  // Auto-save auth session to localStorage whenever it changes
   useEffect(() => {
-    saveToStorage(STORAGE_KEYS.CURRENT_USER, currentUser);
-  }, [currentUser]);
+    if (authSession) {
+      saveAuthSession(authSession);
+    } else {
+      clearAuthSession();
+    }
+  }, [authSession]);
 
   // Calculate unread notifications count for current user
   const unreadCount = currentUser 
@@ -78,13 +88,23 @@ export default function App() {
   const PUBLIC_TABS = ['landing'];
   const isProtectedTab = !PUBLIC_TABS.includes(activeTab);
 
-  const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
+  const handleLoginSuccess = (session: AuthSession) => {
+    const withAvatar = {
+      ...session,
+      user: {
+        ...session.user,
+        avatar: session.user.avatar || AVATAR_BY_ROLE[session.user.role] || AVATAR_BY_ROLE.siswa,
+      },
+    };
+    setAuthSession(withAvatar);
     setShowLoginModal(false);
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
+    if (authSession) {
+      logoutRequest(authSession.token);
+    }
+    setAuthSession(null);
     setActiveTab('landing');
   };
 
@@ -204,8 +224,8 @@ export default function App() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <LoginForm 
-          onLoginSuccess={(user) => setCurrentUser(user)}
+        <LoginForm
+          onLoginSuccess={handleLoginSuccess}
           onClose={() => setShowLoginModal(false)}
         />
       )}

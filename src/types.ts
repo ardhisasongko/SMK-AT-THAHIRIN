@@ -1,4 +1,4 @@
-export type UserRole = 'guest' | 'admin' | 'guru' | 'siswa';
+export type UserRole = 'guest' | 'admin' | 'guru' | 'ketua_kelas' | 'siswa';
 
 export interface User {
   id: string;
@@ -9,6 +9,18 @@ export interface User {
   nipNisn?: string;
   classId?: string;
   jabatan?: string;
+  ketuaStatus?: 'none' | 'pending' | 'approved';
+}
+
+export interface AuthSession {
+  token: string;
+  user: User;
+}
+
+export interface InputBy {
+  id: string;
+  name: string;
+  role: string;
 }
 
 export interface Jurusan {
@@ -65,6 +77,7 @@ export interface PresensiRecord {
   status: PresensiStatus;
   keterangan?: string;
   waktuInput: string; // HH:mm:ss
+  inputBy?: InputBy; // audit: siapa yang menginput/mengubah
 }
 
 export interface ModulAjarIdentitas {

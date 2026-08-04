@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Kelas, Siswa, ScheduleItem, User } from '../types';
 import { validateNISN, validateName, validateTextField } from '../utils/validation';
+import { authHeaders } from '../utils/auth';
 import { 
   Users, 
   Plus, 
@@ -14,7 +15,11 @@ import {
   Clock,
   UserPlus,
   Building2,
-  Check
+  Check,
+  Crown,
+  ShieldCheck,
+  ShieldX,
+  Loader2
 } from 'lucide-react';
 
 interface KelasSectionProps {
@@ -52,6 +57,79 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   const [newSiswaGender, setNewSiswaGender] = useState<'L' | 'P'>('L');
   const [siswaFormError, setSiswaFormError] = useState('');
   const [kelasFormError, setKelasFormError] = useState('');
+
+  // ===== Kelola Ketua Kelas (admin) =====
+  const isAdmin = currentUser?.role === 'admin';
+  const [ketuaList, setKetuaList] = useState<Array<{ id: string; name: string; classId: string; ketuaStatus: string; approvedAt?: string }>>([]);
+  const [ketuaAssign, setKetuaAssign] = useState<Record<string, string>>({}); // classId -> siswaId
+  const [ketuaLoading, setKetuaLoading] = useState(false);
+  const [ketuaMsg, setKetuaMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const loadKetuaList = async () => {
+    try {
+      const res = await fetch('/api/users/ketua', { headers: authHeaders() });
+      const json = await res.json() as { success?: boolean; data?: Array<{ id: string; name: string; classId: string; ketuaStatus: string; approvedAt?: string }> };
+      if (res.ok && json.success) setKetuaList(json.data || []);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) loadKetuaList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
+
+  const handleAppointKetua = async (classId: string) => {
+    const siswaId = ketuaAssign[classId];
+    if (!siswaId) {
+      setKetuaMsg({ type: 'error', text: 'Pilih siswa terlebih dahulu.' });
+      return;
+    }
+    setKetuaLoading(true);
+    setKetuaMsg(null);
+    try {
+      const res = await fetch('/api/users/ketua', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ siswaId, classId }),
+      });
+      const json = await res.json() as { success?: boolean; error?: string; data?: { id: string; name: string } };
+      if (res.ok && json.success) {
+        setKetuaMsg({ type: 'success', text: `✅ ${json.data?.name} ditetapkan sebagai Ketua Kelas.` });
+        await loadKetuaList();
+      } else {
+        setKetuaMsg({ type: 'error', text: json.error || 'Gagal menetapkan ketua kelas.' });
+      }
+    } catch {
+      setKetuaMsg({ type: 'error', text: 'Gagal terhubung ke server.' });
+    } finally {
+      setKetuaLoading(false);
+    }
+  };
+
+  const handleRevokeKetua = async (userId: string) => {
+    setKetuaLoading(true);
+    setKetuaMsg(null);
+    try {
+      const res = await fetch('/api/users/ketua', {
+        method: 'DELETE',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ userId }),
+      });
+      const json = await res.json() as { success?: boolean; error?: string };
+      if (res.ok && json.success) {
+        setKetuaMsg({ type: 'success', text: 'Status ketua kelas dicabut.' });
+        await loadKetuaList();
+      } else {
+        setKetuaMsg({ type: 'error', text: json.error || 'Gagal mencabut status.' });
+      }
+    } catch {
+      setKetuaMsg({ type: 'error', text: 'Gagal terhubung ke server.' });
+    } finally {
+      setKetuaLoading(false);
+    }
+  };
 
   // FIXED: Add New Class submit with validation
   const handleAddClassSubmit = (e: React.FormEvent) => {
@@ -228,6 +306,99 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
           );
         })}
       </div>
+
+      {/* ADMIN: KELOLA KETUA KELAS */}
+      {isAdmin && (
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1 rounded-full mb-2">
+                <Crown className="w-3.5 h-3.5" />
+                <span>Otorisasi Ketua Kelas</span>
+              </div>
+              <h2 className="text-lg font-extrabold text-slate-900">Tetapkan / Cabut Ketua Kelas</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Ketua kelas yang disetujui admin dapat menginput presensi teman sekelasnya (hanya kelasnya sendiri).
+              </p>
+            </div>
+            {ketuaLoading && <Loader2 className="w-5 h-5 animate-spin text-amber-600" />}
+          </div>
+
+          {ketuaMsg && (
+            <div className={`text-xs font-semibold p-3 rounded-xl border flex items-center gap-2 ${
+              ketuaMsg.type === 'success'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                : 'bg-rose-50 border-rose-300 text-rose-800'
+            }`}>
+              {ketuaMsg.text}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {kelasList.map(k => {
+              const current = ketuaList.find(kk => kk.classId === k.id);
+              const classSiswa = siswaList.filter(s => s.classId === k.id);
+              return (
+                <div key={k.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-extrabold text-slate-900">{k.name}</div>
+                      {current ? (
+                        <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                          <span>
+                            <strong>{current.name}</strong> — disetujui {current.approvedAt ? new Date(current.approvedAt).toLocaleDateString('id-ID') : '-'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-400 mt-1">Belum ada ketua kelas.</div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {current ? (
+                        <button
+                          onClick={() => handleRevokeKetua(current.id)}
+                          disabled={ketuaLoading}
+                          className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <ShieldX className="w-3.5 h-3.5" />
+                          Cabut Status
+                        </button>
+                      ) : (
+                        <>
+                          <select
+                            value={ketuaAssign[k.id] || ''}
+                            onChange={(e) => setKetuaAssign(prev => ({ ...prev, [k.id]: e.target.value }))}
+                            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
+                          >
+                            <option value="">Pilih siswa...</option>
+                            {classSiswa.map(s => (
+                              <option key={s.id} value={s.id}>{s.name} ({s.nisn})</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleAppointKetua(k.id)}
+                            disabled={ketuaLoading || !ketuaAssign[k.id]}
+                            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Tetapkan
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-[10px] text-slate-400">
+            Catatan: Saat menetapkan, akun siswa dibuat di sistem (login pakai NISN, password awal = NISN). Semua tindakan tercatat (approved_by & approved_at).
+          </p>
+        </div>
+      )}
 
       {/* MODAL / DRAWER DETAIL KELAS */}
       {selectedKelas && (
