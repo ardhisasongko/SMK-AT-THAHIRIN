@@ -3,7 +3,8 @@
 //   POST   /api/users/ketua      -> tetapkan siswa sebagai ketua kelas (body: { siswaId, classId })
 //   DELETE /api/users/ketua      -> cabut status ketua (body: { userId })
 
-import { hashPassword, jsonResponse, type AuthUser } from '../../_lib/auth';
+import { hashPassword, type AuthUser } from '../../_lib/auth';
+import { jsonResponse } from '../../_lib/response';
 
 interface Env {
   DB: D1Database;
@@ -76,7 +77,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   }
 
   const nisn = siswa.nisn;
-  const email = `${nisn}@siswa.smkatthahirin.sch.id`;
+  const email = `${nisn}@siswa.smksplusatthahirin.sch.id`;
   const passwordHash = await hashPassword(nisn); // password awal = NISN
   const now = new Date().toISOString();
 

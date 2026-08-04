@@ -1,5 +1,6 @@
 // Generate Modul Ajar Kurikulum Merdeka dengan AI (pengganti endpoint Express).
-import { callGeminiJson, jsonResponse, errorResponse } from "../../_lib/gemini";
+import { callGeminiJson } from "../../_lib/gemini";
+import { jsonResponse, errorResponse } from "../../_lib/response";
 
 interface Env {
   GEMINI_API_KEY?: string;

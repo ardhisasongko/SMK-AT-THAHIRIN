@@ -1,6 +1,7 @@
 import React from 'react';
 import { Award } from 'lucide-react';
 import { CbtExam, CbtSubmission } from '../../types';
+import { Modal } from '../ui/Modal';
 
 interface CbtResultReviewModalProps {
   submission: CbtSubmission;
@@ -10,21 +11,20 @@ interface CbtResultReviewModalProps {
 
 export function CbtResultReviewModal({ submission, exam, onClose }: CbtResultReviewModalProps) {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-100 max-h-[90vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
-            <Award className="w-6 h-6 text-emerald-600" />
-            <span>Hasil Evaluasi Ujian CBT</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
-          >
-            ✕
-          </button>
+    <Modal onClose={onClose} maxWidth="max-w-2xl" scrollable className="space-y-6 sm:p-8">
+      {/* Modal Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
+          <Award className="w-6 h-6 text-emerald-600" />
+          <span>Hasil Evaluasi Ujian CBT</span>
         </div>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
 
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -106,10 +106,9 @@ export function CbtResultReviewModal({ submission, exam, onClose }: CbtResultRev
             onClick={onClose}
             className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl text-xs transition-all cursor-pointer"
           >
-            Tutup Evaluasi
-          </button>
-        </div>
+          Tutup Evaluasi
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

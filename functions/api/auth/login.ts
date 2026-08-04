@@ -1,4 +1,5 @@
-import { verifyPassword, createSession, jsonResponse, type AuthEnv } from '../../_lib/auth';
+import { verifyPassword, createSession, type AuthEnv } from '../../_lib/auth';
+import { jsonResponse } from '../../_lib/response';
 
 interface Env extends AuthEnv {}
 

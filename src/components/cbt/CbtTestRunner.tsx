@@ -9,6 +9,7 @@ import {
   User,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission } from '../../types';
+import { Modal } from '../ui/Modal';
 
 interface CbtTestRunnerProps {
   exam: CbtExam;
@@ -310,52 +311,50 @@ export function CbtTestRunner({ exam, currentUser, onFinish }: CbtTestRunnerProp
 
       {/* Finish Confirmation Modal */}
       {showFinishModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-800 border border-slate-700 text-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-amber-400">
-              <AlertTriangle className="w-8 h-8" />
-              <h3 className="text-lg font-bold text-white">Selesaikan Ujian CBT?</h3>
+        <Modal onClose={() => setShowFinishModal(false)} tone="dark" className="space-y-4">
+          <div className="flex items-center gap-3 text-amber-400">
+            <AlertTriangle className="w-8 h-8" />
+            <h3 className="text-lg font-bold text-white">Selesaikan Ujian CBT?</h3>
+          </div>
+
+          <div className="bg-slate-900 p-4 rounded-xl space-y-2 text-xs text-slate-300 border border-slate-700">
+            <div className="flex justify-between">
+              <span>Total Soal:</span>
+              <strong className="text-white">{exam.questions.length}</strong>
             </div>
-
-            <div className="bg-slate-900 p-4 rounded-xl space-y-2 text-xs text-slate-300 border border-slate-700">
-              <div className="flex justify-between">
-                <span>Total Soal:</span>
-                <strong className="text-white">{exam.questions.length}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Sudah Dijawab:</span>
-                <strong className="text-emerald-400">{answeredCount}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Ragu-ragu:</span>
-                <strong className="text-amber-400">{doubtfulCount}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span>Belum Dijawab:</span>
-                <strong className="text-rose-400">{exam.questions.length - answeredCount}</strong>
-              </div>
+            <div className="flex justify-between">
+              <span>Sudah Dijawab:</span>
+              <strong className="text-emerald-400">{answeredCount}</strong>
             </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Apakah Anda yakin ingin menyelesaikan ujian ini? Setelah dikirim, Anda tidak dapat mengubah jawaban lagi.
-            </p>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={() => setShowFinishModal(false)}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer"
-              >
-                Batal & Periksa Lagi
-              </button>
-              <button
-                onClick={handleConfirmSubmitTest}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer shadow-md"
-              >
-                Ya, Selesaikan Ujian
-              </button>
+            <div className="flex justify-between">
+              <span>Ragu-ragu:</span>
+              <strong className="text-amber-400">{doubtfulCount}</strong>
+            </div>
+            <div className="flex justify-between">
+              <span>Belum Dijawab:</span>
+              <strong className="text-rose-400">{exam.questions.length - answeredCount}</strong>
             </div>
           </div>
-        </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Apakah Anda yakin ingin menyelesaikan ujian ini? Setelah dikirim, Anda tidak dapat mengubah jawaban lagi.
+          </p>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={() => setShowFinishModal(false)}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer"
+            >
+              Batal & Periksa Lagi
+            </button>
+            <button
+              onClick={handleConfirmSubmitTest}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer shadow-md"
+            >
+              Ya, Selesaikan Ujian
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

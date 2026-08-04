@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SCHOOL_INFO } from '../data/initialData';
 import { 
   User as UserIcon, 
   Calendar, 
@@ -341,8 +342,8 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
               <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
                 <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-slate-800">SMK AT-THAHIRIN DEPOK</div>
-                  <div className="text-[11px] text-slate-500">Jl. Raya Sawangan No. 12, Pancoran Mas, Depok</div>
+                  <div className="font-bold text-slate-800">{SCHOOL_INFO.name}</div>
+                  <div className="text-[11px] text-slate-500">{SCHOOL_INFO.alamat}</div>
                 </div>
               </div>
 
@@ -663,7 +664,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                       <td className="p-3">
                         <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Siswa</span>
                       </td>
-                      <td className="p-3 text-slate-500">{s.name.toLowerCase().replace(/\s+/g, '')}@smkatthahirin.sch.id</td>
+                      <td className="p-3 text-slate-500">{s.name.toLowerCase().replace(/\s+/g, '')}@smksplusatthahirin.sch.id</td>
                       <td className="p-3 font-mono">{s.nisn}</td>
                       <td className="p-3">
                         <button 

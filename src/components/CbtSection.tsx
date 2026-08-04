@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission } from '../types';
+import { useFilter } from '../hooks/useFilter';
 import { CbtTestRunner } from './cbt/CbtTestRunner';
 import { CbtResultsTable } from './cbt/CbtResultsTable';
 import { CbtResultReviewModal } from './cbt/CbtResultReviewModal';
@@ -44,7 +45,10 @@ export function CbtSection({
 
   const [showCreateExamModal, setShowCreateExamModal] = useState<boolean>(false);
   const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  const { query: searchTerm, setQuery: setSearchTerm, filtered: filteredExams } = useFilter(
+    cbtExams,
+    ['title', 'subject']
+  );
 
   const [completedResult, setCompletedResult] = useState<CbtSubmission | null>(null);
   const [showReviewModal, setShowReviewModal] = useState<CbtSubmission | null>(null);
@@ -79,11 +83,6 @@ export function CbtSection({
     setCbtExams(prev => [exam, ...prev]);
     setShowCreateExamModal(false);
   };
-
-  const filteredExams = cbtExams.filter(exam =>
-    exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    exam.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   // Full-screen test runner
   if (isTestMode && activeExam && currentUser) {

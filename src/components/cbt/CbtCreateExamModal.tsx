@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Sparkles } from 'lucide-react';
 import { User as UserType, CbtExam, CbtQuestion } from '../../types';
+import { Modal } from '../ui/Modal';
 
 interface CbtCreateExamModalProps {
   currentUser: UserType | null;
@@ -121,20 +122,19 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 border border-slate-100 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-emerald-700 font-bold text-base">
-            <Plus className="w-5 h-5" />
-            <span>Buat Paket Ujian CBT Baru</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
-          >
-            ✕
-          </button>
+    <Modal onClose={onClose} maxWidth="max-w-2xl" scrollable className="space-y-6 sm:p-8">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-2 text-emerald-700 font-bold text-base">
+          <Plus className="w-5 h-5" />
+          <span>Buat Paket Ujian CBT Baru</span>
         </div>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
 
         <form onSubmit={handleSaveExamSubmit} className="space-y-4 text-xs">
           <div>
@@ -272,7 +272,6 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

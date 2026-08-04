@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Lock, LogIn, School } from 'lucide-react';
-import { getDefaultCredentialsInfo } from '../utils/auth';
+import { fetchDemoCredentials, DemoCredentials } from '../utils/auth';
 
 interface LoginGateProps {
   title?: string;
@@ -15,7 +15,17 @@ export const LoginGate: React.FC<LoginGateProps> = ({
   onLoginClick,
   onGoHome,
 }) => {
-  const credentials = getDefaultCredentialsInfo();
+  const [credentials, setCredentials] = useState<DemoCredentials[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    fetchDemoCredentials().then((data) => {
+      if (active) setCredentials(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
@@ -53,10 +63,10 @@ export const LoginGate: React.FC<LoginGateProps> = ({
             </p>
             <div className="grid gap-2">
               {credentials.map((cred) => (
-                <div key={cred.role} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs">
+                <div key={cred.key} className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs">
                   <div>
                     <span className="font-bold text-slate-800">{cred.role}</span>
-                    <p className="text-slate-500 font-mono mt-0.5">{cred.email}</p>
+                    <p className="text-slate-500 font-mono mt-0.5">{cred.identifier}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-slate-400">Password</p>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ModulAjar, ModulAjarData, User } from '../types';
+import { SCHOOL_INFO } from '../data/initialData';
 import { 
   BookOpen, 
   Sparkles, 
@@ -102,7 +103,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
       faseKelas: faseKelas,
       alokasiWaktu: alokasiWaktu,
       tanggalDibuat: new Date().toISOString().split('T')[0],
-      pembuat: currentUser ? currentUser.name : 'Guru SMK AT-THAHIRIN',
+      pembuat: currentUser ? currentUser.name : `Guru ${SCHOOL_INFO.name}`,
       data: generatedResult
     };
 
@@ -126,7 +127,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
             Pembuatan & Pengelolaan Modul Ajar AI
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Generator Modul Ajar Kurikulum Merdeka otomatis berbasis Gemini 3.6 Flash untuk SMK AT-THAHIRIN.
+            Generator Modul Ajar Kurikulum Merdeka otomatis berbasis Gemini 3.6 Flash untuk {SCHOOL_INFO.name}.
           </p>
         </div>
 
@@ -287,7 +288,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">Merancang Modul Ajar Kurikulum Merdeka...</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  AI Gemini 3.6 Flash sedang menyusun komponen inti, kegiatan pendahuluan, inti, penutup, serta asesmen praktikum untuk SMK AT-THAHIRIN.
+                  AI Gemini 3.6 Flash sedang menyusun komponen inti, kegiatan pendahuluan, inti, penutup, serta asesmen praktikum untuk {SCHOOL_INFO.name}.
                 </p>
               </div>
             )}
@@ -331,9 +332,9 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                   
                   {/* Kop Sekolah */}
                   <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
-                    <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">SMK AT-THAHIRIN DEPOK</h2>
+                    <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">{SCHOOL_INFO.name}</h2>
                     <p className="text-[11px] font-semibold text-slate-600">DOKUMEN MODUL AJAR KURIKULUM MERDEKA</p>
-                    <p className="text-[10px] text-slate-500">Jl. Raya Sawangan No. 12, Pancoran Mas, Depok, Jawa Barat</p>
+                    <p className="text-[10px] text-slate-500">{SCHOOL_INFO.alamat}</p>
                   </div>
 
                   <h3 className="text-sm font-bold text-center text-slate-900 uppercase tracking-tight">
@@ -344,7 +345,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                   <div className="space-y-2">
                     <h4 className="font-bold text-slate-900 border-b pb-1 uppercase tracking-wider text-[11px]">I. INFORMASI UMUM</h4>
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div><strong>Nama Sekolah:</strong> {generatedResult.identitas?.sekolah || 'SMK AT-THAHIRIN'}</div>
+                      <div><strong>Nama Sekolah:</strong> {generatedResult.identitas?.sekolah || SCHOOL_INFO.name}</div>
                       <div><strong>Mata Pelajaran:</strong> {generatedResult.identitas?.mataPelajaran}</div>
                       <div><strong>Konsentrasi Keahlian:</strong> {generatedResult.identitas?.jurusan}</div>
                       <div><strong>Fase / Kelas:</strong> {generatedResult.identitas?.faseKelas}</div>
@@ -491,9 +492,9 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
 
           <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200 space-y-6 text-slate-800 text-xs leading-relaxed font-sans">
             <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
-              <h2 className="text-lg font-extrabold uppercase tracking-wide text-slate-900">SMK AT-THAHIRIN DEPOK</h2>
+              <h2 className="text-lg font-extrabold uppercase tracking-wide text-slate-900">{SCHOOL_INFO.name}</h2>
               <p className="text-xs font-semibold text-slate-600">DOKUMEN MODUL AJAR KURIKULUM MERDEKA</p>
-              <p className="text-[10px] text-slate-500">Jl. Raya Sawangan No. 12, Pancoran Mas, Depok, Jawa Barat</p>
+              <p className="text-[10px] text-slate-500">{SCHOOL_INFO.alamat}</p>
             </div>
 
             <h3 className="text-base font-bold text-center text-slate-900 uppercase tracking-tight">

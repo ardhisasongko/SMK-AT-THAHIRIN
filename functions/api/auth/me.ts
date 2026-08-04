@@ -1,4 +1,5 @@
-import { getUserFromRequest, jsonResponse, type AuthEnv } from '../../_lib/auth';
+import { getUserFromRequest, type AuthEnv } from '../../_lib/auth';
+import { jsonResponse } from '../../_lib/response';
 
 interface Env extends AuthEnv {}
 

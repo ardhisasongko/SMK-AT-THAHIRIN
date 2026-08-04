@@ -118,7 +118,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
       setEmailConfirmationData({
         recipientCount,
         targetRoleName,
-        sampleEmail: broadcastTargetRole === 'siswa' ? 'm.rizky@smkatthahirin.sch.id' : 'fauzi@smkatthahirin.sch.id'
+        sampleEmail: broadcastTargetRole === 'siswa' ? 'm.rizky@smksplusatthahirin.sch.id' : 'fauzi@smksplusatthahirin.sch.id'
       });
     }
 

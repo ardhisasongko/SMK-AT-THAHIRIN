@@ -11,7 +11,8 @@
 //   PUT /api/data/:key            -> upsert a collection (body = full JSON array/object)
 //   DELETE /api/data/:key         -> delete a collection (admin only)
 
-import { canEditClass, jsonResponse, type AuthUser } from '../../_lib/auth';
+import { canEditClass, type AuthUser } from '../../_lib/auth';
+import { jsonResponse } from '../../_lib/response';
 
 interface Env {
   DB: D1Database;

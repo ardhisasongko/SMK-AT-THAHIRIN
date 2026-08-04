@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PresensiRecord, PresensiStatus, PresensiLokasi, Kelas, Siswa, User } from '../types';
+import { SCHOOL_INFO } from '../data/initialData';
+import { useFilter } from '../hooks/useFilter';
 import { validateNISN } from '../utils/validation';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
 import { uploadPhoto } from '../utils/photo';
@@ -101,9 +103,6 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const [rekapEndDate, setRekapEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [rekapClassFilter, setRekapClassFilter] = useState<string>('all');
 
-  // Search filter untuk roster presensi harian
-  const [presensiSearchQuery, setPresensiSearchQuery] = useState<string>('');
-
   // Pagination untuk tabel rekap
   const [rekapPage, setRekapPage] = useState<number>(1);
   const [rekapPageSize, setRekapPageSize] = useState<number>(15);
@@ -131,10 +130,9 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const selectedKelasInfo = kelasList.find(k => k.id === selectedClassId);
 
   // Filtered by search query
-  const filteredSiswa = classSiswa.filter(s =>
-    !presensiSearchQuery.trim() ||
-    s.name.toLowerCase().includes(presensiSearchQuery.toLowerCase()) ||
-    s.nisn.includes(presensiSearchQuery.trim())
+  const { query: presensiSearchQuery, setQuery: setPresensiSearchQuery, filtered: filteredSiswa } = useFilter(
+    classSiswa,
+    ['name', 'nisn']
   );
 
   // Get presensi records for selected Date and Class
@@ -346,7 +344,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     } else {
       setScanMessage({
         type: 'error',
-        text: `✗ NISN "${input}" tidak ditemukan dalam database siswa SMK AT-THAHIRIN.`
+        text: `✗ NISN "${input}" tidak ditemukan dalam database siswa ${SCHOOL_INFO.name}.`
       });
     }
 
@@ -456,7 +454,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
             <span>Sistem Pengelolaan Absensi Vokasi</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Presensi & Kehadiran Siswa SMK AT-THAHIRIN
+            Presensi & Kehadiran Siswa {SCHOOL_INFO.name}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Catat presensi harian per kelas, scan QR Kartu Pelajar, serta pantau persentase kehadiran real-time.
@@ -858,7 +856,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
               <h3 className="text-xl font-bold text-slate-900">Rekap Laporan Kehadiran Siswa</h3>
-              <p className="text-xs text-slate-500">SMK AT-THAHIRIN DEPOK — Semester Ganjil 2026/2027</p>
+              <p className="text-xs text-slate-500">{SCHOOL_INFO.name} — Semester Ganjil 2026/2027</p>
             </div>
             
             <div className="print-hidden flex gap-2">

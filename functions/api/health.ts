@@ -15,7 +15,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     JSON.stringify({
       status: "ok",
       school: "SMKS PLUS AT THAHIRIN",
-      app: env.APP_NAME || "SMK AT-THAHIRIN",
+      app: env.APP_NAME || "SMKS PLUS AT THAHIRIN",
       db: dbStatus,
       time: new Date().toISOString(),
     }),

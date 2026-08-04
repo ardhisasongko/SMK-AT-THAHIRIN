@@ -104,8 +104,7 @@ npx wrangler d1 migrations apply smk-at-tahirin-db --local
 npm run pages:dev
 ```
 
-> Untuk development UI cepat tanpa fungsi/D1, tetap bisa pakai:
-> `npm run dev` (Vite + Express di port 3000, data disimpan in-memory).
+> Dev server tunggal: `npm run dev` (build Vite + Pages Functions + D1 lokal di port 8788).
 
 ---
 

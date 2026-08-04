@@ -1,5 +1,5 @@
 /**
- * Client auth utilities untuk SMK AT-THAHIRIN.
+ * Client auth utilities untuk SMKS PLUS AT THAHIRIN.
  * Autentikasi dilakukan SERVER (Pages Functions + D1); file ini hanya
  * mengelola token sesi di browser & validasi ringan sisi client.
  */
@@ -8,13 +8,24 @@ import { AuthSession } from '../types';
 
 const AUTH_STORAGE_KEY = 'smk_auth';
 
-// Password demo untuk tombol login cepat (identik dengan seed users di D1)
-export const DEMO_CREDENTIALS = {
-  admin: { identifier: 'admin@smksplusatthahirin.sch.id', password: 'admin123' },
-  guru: { identifier: 'guru@smksplusatthahirin.sch.id', password: 'guru123' },
-  siswa: { identifier: 'siswa@smksplusatthahirin.sch.id', password: 'siswa123' },
-  ketua: { identifier: 'ketua@smksplusatthahirin.sch.id', password: 'ketua123' },
-} as const;
+export interface DemoCredentials {
+  key: string;
+  role: string;
+  identifier: string;
+  password: string;
+}
+
+/** Ambil kredensial demo dari server (sumber tunggal = seed users di D1). */
+export async function fetchDemoCredentials(): Promise<DemoCredentials[]> {
+  try {
+    const res = await fetch('/api/auth/demo');
+    const json = await res.json() as { success?: boolean; data?: DemoCredentials[] };
+    if (res.ok && json.success && Array.isArray(json.data)) return json.data;
+    return [];
+  } catch {
+    return [];
+  }
+}
 
 export function saveAuthSession(session: AuthSession): void {
   try {
@@ -111,18 +122,6 @@ export async function logoutRequest(token: string | null): Promise<void> {
 
 export function getPasswordRequirements(): string {
   return 'Password minimal 6 karakter';
-}
-
-/**
- * Info kredensial demo untuk ditampilkan di UI.
- */
-export function getDefaultCredentialsInfo() {
-  return [
-    { role: 'Admin', email: 'admin@smksplusatthahirin.sch.id', password: 'admin123' },
-    { role: 'Guru', email: 'guru@smksplusatthahirin.sch.id', password: 'guru123' },
-    { role: 'Ketua Kelas', email: 'ketua@smksplusatthahirin.sch.id', password: 'ketua123' },
-    { role: 'Siswa', email: 'siswa@smksplusatthahirin.sch.id', password: 'siswa123' },
-  ];
 }
 
 /**

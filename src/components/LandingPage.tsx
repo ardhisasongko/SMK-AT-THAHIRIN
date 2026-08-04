@@ -150,7 +150,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 <div className="relative rounded-2xl overflow-hidden border border-slate-700 shadow-2xl bg-slate-800">
                   <img 
                     src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80" 
-                    alt="Siswa SMK AT-THAHIRIN Praktikum" 
+                    alt="Siswa SMKS PLUS AT THAHIRIN Praktikum" 
                     className="w-full h-80 lg:h-96 object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
@@ -458,7 +458,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
             <div>
               <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100 px-3 py-1 rounded-full">
-                Kabar SMK AT-THAHIRIN
+                Kabar {SCHOOL_INFO.name}
               </span>
               <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-2">
                 Berita, Prestasi & Pengumuman Terbaru

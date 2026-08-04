@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Key, Play } from 'lucide-react';
 import { CbtExam } from '../../types';
+import { Modal } from '../ui/Modal';
 
 interface CbtTokenModalProps {
   exam: CbtExam;
@@ -22,20 +23,19 @@ export function CbtTokenModal({ exam, onClose, onStart }: CbtTokenModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
-            <Key className="w-5 h-5" />
-            <span>Konfirmasi Token Ujian CBT</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg font-bold"
-          >
-            ✕
-          </button>
+    <Modal onClose={onClose} className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
+          <Key className="w-5 h-5" />
+          <span>Konfirmasi Token Ujian CBT</span>
         </div>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+        >
+          ✕
+        </button>
+      </div>
 
         <div>
           <h3 className="font-extrabold text-base text-slate-900">{exam.title}</h3>
@@ -75,7 +75,6 @@ export function CbtTokenModal({ exam, onClose, onStart }: CbtTokenModalProps) {
             <span>Mulai Ujian Sekarang</span>
           </button>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

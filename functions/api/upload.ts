@@ -6,7 +6,8 @@
 //
 // Hasil: url = "/api/photo/<id>" yang disajikan oleh photo/[id].ts.
 
-import { jsonResponse, type AuthUser } from '../_lib/auth';
+import { type AuthUser } from '../_lib/auth';
+import { jsonResponse } from '../_lib/response';
 
 interface Env {
   DB: D1Database;

@@ -150,13 +150,3 @@ export function editableClassIds(user: AuthUser): string[] | 'all' {
   }
   return [];
 }
-
-export function jsonResponse(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-store',
-    },
-  });
-}

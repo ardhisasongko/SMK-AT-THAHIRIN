@@ -1,5 +1,5 @@
 /**
- * Input Validation Utilities untuk SMK AT-THAHIRIN
+ * Input Validation Utilities untuk SMKS PLUS AT THAHIRIN
  * Validasi berbagai tipe input sesuai standar Indonesia
  */
 
