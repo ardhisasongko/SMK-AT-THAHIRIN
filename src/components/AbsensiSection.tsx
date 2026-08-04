@@ -3,6 +3,7 @@ import { PresensiRecord, PresensiStatus, PresensiLokasi, Kelas, Siswa, User } fr
 import { validateNISN } from '../utils/validation';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
 import { uploadPhoto } from '../utils/photo';
+import { StudentAbsensiCard } from './StudentAbsensiCard';
 import { 
   UserCheck, 
   QrCode, 
@@ -27,7 +28,8 @@ import {
   ImagePlus,
   Trash2,
   ExternalLink,
-  X
+  X,
+  History
 } from 'lucide-react';
 
 interface AbsensiSectionProps {
@@ -47,7 +49,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedClassId, setSelectedClassId] = useState<string>(kelasList[0]?.id || 'k1');
-  const [activeTabMode, setActiveTabMode] = useState<'harian' | 'qr-scanner' | 'rekap'>('harian');
+  const [activeTabMode, setActiveTabMode] = useState<'harian' | 'qr-scanner' | 'rekap' | 'log'>('harian');
 
   // ===== RBAC: hak akses berdasarkan role =====
   const canEditClass = (classId: string): boolean => {
@@ -105,6 +107,24 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   // Pagination untuk tabel rekap
   const [rekapPage, setRekapPage] = useState<number>(1);
   const [rekapPageSize, setRekapPageSize] = useState<number>(15);
+
+  // Log perubahan (admin only)
+  const [logData, setLogData] = useState<any[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
+  const fetchLog = async () => {
+    if (currentUser?.role !== 'admin') return;
+    setLogLoading(true);
+    try {
+      const res = await fetch('/api/data/presensi_log', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('smk_auth') ? JSON.parse(localStorage.getItem('smk_auth')!).token : ''}` }
+      });
+      const json = await res.json() as { data?: any[] };
+      setLogData(json.data || []);
+    } catch {
+      setLogData([]);
+    }
+    setLogLoading(false);
+  };
 
   // Filtered Siswa for selected class
   const classSiswa = siswaList.filter(s => s.classId === selectedClassId);
@@ -351,6 +371,13 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     };
   }, []);
 
+  // Auto-fetch log saat tab log aktif
+  useEffect(() => {
+    if (activeTabMode === 'log' && currentUser?.role === 'admin') {
+      fetchLog();
+    }
+  }, [activeTabMode, currentUser?.role]);
+
   // Export to CSV function
   const handleExportCSV = () => {
     const headers = ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Total', 'Persentase'];
@@ -405,6 +432,20 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
   return (
     <div id="absensi-module" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+      {/* SISWA: UI sederhana (kartu + riwayat + kelas) */}
+      {currentUser?.role === 'siswa' && currentUser && (
+        <StudentAbsensiCard
+          presensiList={presensiList}
+          setPresensiList={setPresensiList}
+          siswaList={siswaList}
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* ADMIN/GURU/KETUA: UI lengkap */}
+      {currentUser?.role !== 'siswa' && (
+      <>
       
       {/* Header Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs">
@@ -458,6 +499,20 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
             <FileText className="w-4 h-4" />
             <span>Rekap & Laporan</span>
           </button>
+
+          {currentUser?.role === 'admin' && (
+            <button
+              onClick={() => setActiveTabMode('log')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTabMode === 'log'
+                  ? 'bg-white text-emerald-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              <span>Log</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -932,6 +987,63 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
       )}
 
+      {/* MODE 4: LOG PERUBAHAN (admin only) */}
+      {activeTabMode === 'log' && currentUser?.role === 'admin' && (
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">Log Perubahan Presensi</h3>
+              <p className="text-xs text-slate-500 mt-1">Riwayat perubahan data presensi oleh semua pengguna.</p>
+            </div>
+            <button onClick={fetchLog} disabled={logLoading}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50">
+              {logLoading ? 'Memuat...' : 'Refresh'}
+            </button>
+          </div>
+
+          {logData.length === 0 ? (
+            <div className="text-center py-12">
+              <History className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+              <p className="text-sm text-slate-400">Belum ada log perubahan.</p>
+              <p className="text-xs text-slate-300 mt-1">Klik Refresh untuk memuat data terbaru.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Tanggal</th>
+                    <th className="py-3 px-4">Siswa</th>
+                    <th className="py-3 px-4">Field</th>
+                    <th className="py-3 px-4">Lama</th>
+                    <th className="py-3 px-4">Baru</th>
+                    <th className="py-3 px-4">Diubah Oleh</th>
+                    <th className="py-3 px-4">Waktu</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm">
+                  {logData.map((log: any) => (
+                    <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-4 text-xs font-mono text-slate-600">{log.tanggal}</td>
+                      <td className="py-3 px-4 text-sm font-semibold text-slate-800">{log.siswa_name}</td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-mono">{log.field_changed}</span>
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-500 max-w-[150px] truncate">{log.old_value || '-'}</td>
+                      <td className="py-3 px-4 text-xs text-slate-500 max-w-[150px] truncate">{log.new_value || '-'}</td>
+                      <td className="py-3 px-4 text-xs text-slate-600">
+                        {log.changed_by_name} <span className="text-slate-400">({log.changed_by_role})</span>
+                      </td>
+                      <td className="py-3 px-4 text-xs font-mono text-slate-500">{log.changed_at}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MODAL DETAIL: Foto + Tap Location per siswa */}
       {detailSiswa && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1063,6 +1175,8 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
       )}
 
+      </>
+      )}
     </div>
   );
 };
