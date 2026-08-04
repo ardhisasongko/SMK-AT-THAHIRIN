@@ -7,6 +7,8 @@ export interface User {
   role: UserRole;
   avatar: string;
   nipNisn?: string;
+  nik?: string;
+  tanggalLahir?: string;
   classId?: string;
   jabatan?: string;
   ketuaStatus?: 'none' | 'pending' | 'approved';
@@ -57,6 +59,8 @@ export interface Siswa {
   classId: string;
   gender: 'L' | 'P';
   foto: string;
+  nik?: string;
+  tanggalLahir?: string; // YYYY-MM-DD
   noHpOrangTua?: string;
 }
 

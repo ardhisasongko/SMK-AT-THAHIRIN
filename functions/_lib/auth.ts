@@ -10,6 +10,8 @@ export interface AuthUser {
   name: string;
   email: string;
   nipNisn: string | null;
+  nik: string | null;
+  tanggalLahir: string | null;
   role: 'admin' | 'guru' | 'ketua_kelas' | 'siswa';
   classId: string | null;
   ketuaStatus: string;
@@ -100,6 +102,8 @@ function mapUser(row: any): AuthUser | null {
     name: String(row.name),
     email: String(row.email),
     nipNisn: row.nip_nisn != null ? String(row.nip_nisn) : null,
+    nik: row.nik != null ? String(row.nik) : null,
+    tanggalLahir: row.tanggal_lahir != null ? String(row.tanggal_lahir) : null,
     role: row.role as AuthUser['role'],
     classId: row.class_id != null ? String(row.class_id) : null,
     ketuaStatus: String(row.ketua_status || 'none'),
@@ -109,7 +113,7 @@ function mapUser(row: any): AuthUser | null {
 
 export async function getUserById(env: AuthEnv, userId: string): Promise<AuthUser | null> {
   const row = await env.DB.prepare(
-    `SELECT u.id, u.name, u.email, u.nip_nisn, u.role, u.class_id, u.ketua_status, u.jabatan
+    `SELECT u.id, u.name, u.email, u.nip_nisn, u.nik, u.tanggal_lahir, u.role, u.class_id, u.ketua_status, u.jabatan
      FROM users u WHERE u.id = ?`
   ).bind(userId).first();
   return mapUser(row);

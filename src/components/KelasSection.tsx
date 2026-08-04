@@ -467,6 +467,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-slate-900 truncate">{idx + 1}. {siswa.name}</div>
                         <div className="text-[10px] text-slate-500 font-mono">NISN: {siswa.nisn}</div>
+                        <div className="text-[10px] text-slate-400">NIK: {siswa.nik || '-'} • TTL: {siswa.tanggalLahir || '-'}</div>
                         <div className="text-[10px] text-slate-400">Kontak OrangTua: {siswa.noHpOrangTua || '-'}</div>
                       </div>
                     </div>

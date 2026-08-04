@@ -41,6 +41,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       email: String(row.email),
       role: String(row.role),
       nipNisn: row.nip_nisn != null ? String(row.nip_nisn) : null,
+      nik: row.nik != null ? String(row.nik) : null,
+      tanggalLahir: row.tanggal_lahir != null ? String(row.tanggal_lahir) : null,
       classId: row.class_id != null ? String(row.class_id) : null,
       ketuaStatus: String(row.ketua_status || 'none'),
       jabatan: row.jabatan != null ? String(row.jabatan) : null,
