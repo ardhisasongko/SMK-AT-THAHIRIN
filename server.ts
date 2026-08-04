@@ -7,13 +7,17 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 app.use(express.json());
 
-// Initialize Gemini Client
+// Initialize Gemini Client with error handling
+if (!process.env.GEMINI_API_KEY) {
+  console.error('⚠️  WARNING: GEMINI_API_KEY not found in environment variables!');
+}
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY || '',
   httpOptions: {
     headers: {
       'User-Agent': 'aistudio-build',
@@ -190,6 +194,100 @@ Susunlah dokumen Modul Ajar SMKS PLUS AT THAHIRIN ini dengan format JSON rapi de
     res.status(500).json({
       success: false,
       error: error.message || "Gagal membuat modul ajar dengan AI.",
+    });
+  }
+});
+
+// Generate CBT Questions AI Endpoint
+app.post("/api/cbt/generate-questions", async (req, res) => {
+  try {
+    const { subject, numberOfQuestions } = req.body;
+
+    if (!subject) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Mata pelajaran wajib diisi." 
+      });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        error: "API Key Gemini belum dikonfigurasi di server. Hubungi administrator."
+      });
+    }
+
+    const numQuestions = numberOfQuestions || 5;
+    const prompt = `Buatkan ${numQuestions} soal pilihan ganda (A, B, C, D, E) untuk mata pelajaran "${subject}" tingkat SMK Administrasi Perkantoran.
+
+Berikan output dalam format JSON murni (tanpa markdown atau backticks) dengan struktur array seperti ini:
+[
+  {
+    "id": "q1",
+    "question": "Pertanyaan soal...",
+    "options": [
+      { "key": "A", "text": "Pilihan A" },
+      { "key": "B", "text": "Pilihan B" },
+      { "key": "C", "text": "Pilihan C" },
+      { "key": "D", "text": "Pilihan D" },
+      { "key": "E", "text": "Pilihan E" }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Penjelasan singkat mengapa jawaban ini benar"
+  }
+]
+
+Pastikan:
+- Soal relevan dengan konteks SMK Administrasi Perkantoran
+- Pertanyaan jelas dan tidak ambigu
+- Semua opsi masuk akal (hindari opsi yang jelas salah)
+- Penjelasan informatif dan edukatif`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      contents: prompt,
+      config: {
+        systemInstruction: "Anda adalah pakar penyusun soal ujian SMK Administrasi Perkantoran. Buatlah soal yang berkualitas, sesuai standar kompetensi, dan menguji pemahaman konseptual siswa.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              question: { type: Type.STRING },
+              options: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    key: { type: Type.STRING },
+                    text: { type: Type.STRING }
+                  }
+                }
+              },
+              correctAnswer: { type: Type.STRING },
+              explanation: { type: Type.STRING }
+            }
+          }
+        }
+      }
+    });
+
+    const jsonText = response.text || "[]";
+    const questions = JSON.parse(jsonText);
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new Error("AI gagal menghasilkan soal yang valid.");
+    }
+
+    res.json({ success: true, questions });
+
+  } catch (error: any) {
+    console.error("Error generating CBT questions:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Gagal membuat soal ujian dengan AI. Silakan coba lagi.",
     });
   }
 });

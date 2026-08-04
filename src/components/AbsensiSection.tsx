@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PresensiRecord, PresensiStatus, Kelas, Siswa, User } from '../types';
+import { validateNISN } from '../utils/validation';
 import { 
   UserCheck, 
   QrCode, 
@@ -41,10 +42,32 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   // QR Simulator state
   const [qrNisnInput, setQrNisnInput] = useState<string>('');
   const [scanMessage, setScanMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // FIXED: useRef untuk cleanup timer (prevent memory leak)
+  const scanMessageTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Date range filter untuk rekap
+  const [rekapStartDate, setRekapStartDate] = useState<string>('2026-08-01');
+  const [rekapEndDate, setRekapEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [rekapClassFilter, setRekapClassFilter] = useState<string>('all');
+
+  // Search filter untuk roster presensi harian
+  const [presensiSearchQuery, setPresensiSearchQuery] = useState<string>('');
+
+  // Pagination untuk tabel rekap
+  const [rekapPage, setRekapPage] = useState<number>(1);
+  const [rekapPageSize, setRekapPageSize] = useState<number>(15);
 
   // Filtered Siswa for selected class
   const classSiswa = siswaList.filter(s => s.classId === selectedClassId);
   const selectedKelasInfo = kelasList.find(k => k.id === selectedClassId);
+
+  // Filtered by search query
+  const filteredSiswa = classSiswa.filter(s =>
+    !presensiSearchQuery.trim() ||
+    s.name.toLowerCase().includes(presensiSearchQuery.toLowerCase()) ||
+    s.nisn.includes(presensiSearchQuery.trim())
+  );
 
   // Get presensi records for selected Date and Class
   const classPresensi = presensiList.filter(
@@ -63,6 +86,18 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const handleUpdateStatus = (siswa: Siswa, newStatus: PresensiStatus, note?: string) => {
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0];
+
+    // Date validation: prevent adding presensi for future dates
+    const today = now.toISOString().split('T')[0];
+    if (selectedDate > today) {
+      setScanMessage({
+        type: 'error',
+        text: `✗ Tanggal ${selectedDate} belum tiba. Tidak bisa menginput presensi untuk tanggal masa depan.`
+      });
+      if (scanMessageTimerRef.current) clearTimeout(scanMessageTimerRef.current);
+      scanMessageTimerRef.current = setTimeout(() => setScanMessage(null), 5000);
+      return;
+    }
 
     setPresensiList(prev => {
       const existingIndex = prev.findIndex(
@@ -95,30 +130,111 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     });
   };
 
-  // QR Scan Handler
+  // FIXED: QR Scan Handler with validation
   const handleQrScanSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!qrNisnInput.trim()) return;
+    
+    const input = qrNisnInput.trim();
+    if (!input) {
+      setScanMessage({
+        type: 'error',
+        text: 'Silakan masukkan NISN atau scan QR Code terlebih dahulu.'
+      });
+      return;
+    }
 
-    const matchedSiswa = siswaList.find(s => s.nisn === qrNisnInput.trim() || s.id === qrNisnInput.trim());
+    // Validate NISN format (jika input adalah 10 digit angka)
+    if (/^\d+$/.test(input)) {
+      const validation = validateNISN(input);
+      if (!validation.valid) {
+        setScanMessage({
+          type: 'error',
+          text: validation.message
+        });
+        return;
+      }
+    }
+
+    const matchedSiswa = siswaList.find(s => s.nisn === input || s.id === input);
 
     if (matchedSiswa) {
       handleUpdateStatus(matchedSiswa, 'Hadir');
       setScanMessage({
         type: 'success',
-        text: `Presensi BERHASIL! ${matchedSiswa.name} (NISN: ${matchedSiswa.nisn}) dicatat HADIR pukul ${new Date().toLocaleTimeString('id-ID')}`
+        text: `✓ Presensi BERHASIL! ${matchedSiswa.name} (NISN: ${matchedSiswa.nisn}) dicatat HADIR pukul ${new Date().toLocaleTimeString('id-ID')}`
       });
       setQrNisnInput('');
     } else {
       setScanMessage({
         type: 'error',
-        text: `NISN "${qrNisnInput}" tidak ditemukan dalam database siswa SMK AT-THAHIRIN.`
+        text: `✗ NISN "${input}" tidak ditemukan dalam database siswa SMK AT-THAHIRIN.`
       });
     }
 
-    setTimeout(() => {
+    // Clear previous timer if exists
+    if (scanMessageTimerRef.current) {
+      clearTimeout(scanMessageTimerRef.current);
+    }
+
+    // Set new timer
+    scanMessageTimerRef.current = setTimeout(() => {
       setScanMessage(null);
-    }, 4000);
+      scanMessageTimerRef.current = null;
+    }, 5000);
+  };
+
+  // FIXED: Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (scanMessageTimerRef.current) {
+        clearTimeout(scanMessageTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Export to CSV function
+  const handleExportCSV = () => {
+    const headers = ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Total', 'Persentase'];
+    const rows = siswaList
+      .filter(siswa => rekapClassFilter === 'all' || siswa.classId === rekapClassFilter)
+      .map((siswa, idx) => {
+      const sRecords = presensiList.filter(p => p.siswaId === siswa.id && p.tanggal >= rekapStartDate && p.tanggal <= rekapEndDate);
+      const h = sRecords.filter(p => p.status === 'Hadir').length;
+      const s = sRecords.filter(p => p.status === 'Sakit').length;
+      const i = sRecords.filter(p => p.status === 'Izin').length;
+      const a = sRecords.filter(p => p.status === 'Alpa').length;
+      const tot = sRecords.length || 1;
+      const pct = Math.round((h / tot) * 100);
+      const kInfo = kelasList.find(k => k.id === siswa.classId);
+
+      return [
+        idx + 1,
+        siswa.nisn,
+        siswa.name,
+        kInfo?.name || '-',
+        h,
+        s,
+        i,
+        a,
+        tot,
+        `${pct}%`
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Rekap_Absensi_SMK_${rekapStartDate}_to_${rekapEndDate}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Quick mark all present
@@ -147,7 +263,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <div className="print-hidden flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
           <button
             onClick={() => setActiveTabMode('harian')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -189,8 +305,8 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
       {/* STATS OVERVIEW CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="text-xs font-semibold text-slate-500">Siswa di Kelas ini</div>
-          <div className="text-2xl font-extrabold text-slate-900">{totalSiswaSelectedClass} <span className="text-xs font-normal text-slate-400">siswa</span></div>
+          <div className="text-xs font-semibold text-slate-500">{presensiSearchQuery ? 'Hasil Pencarian' : 'Siswa di Kelas ini'}</div>
+          <div className="text-2xl font-extrabold text-slate-900">{filteredSiswa.length} <span className="text-xs font-normal text-slate-400">siswa</span></div>
           <div className="text-[11px] text-emerald-600 font-medium">Kelas {selectedKelasInfo?.name}</div>
         </div>
 
@@ -270,6 +386,25 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={presensiSearchQuery}
+                  onChange={(e) => setPresensiSearchQuery(e.target.value)}
+                  placeholder="Cari nama / NISN..."
+                  className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 sm:w-56"
+                />
+                {presensiSearchQuery && (
+                  <button
+                    onClick={() => setPresensiSearchQuery('')}
+                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    aria-label="Hapus pencarian"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handleMarkAllHadir}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
@@ -294,14 +429,14 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
-                {classSiswa.length === 0 ? (
+                {filteredSiswa.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">
-                      Tidak ada data siswa untuk kelas yang dipilih.
+                      {presensiSearchQuery ? `Tidak ada siswa yang cocok dengan "${presensiSearchQuery}".` : 'Tidak ada data siswa untuk kelas yang dipilih.'}
                     </td>
                   </tr>
                 ) : (
-                  classSiswa.map((siswa, idx) => {
+                  filteredSiswa.map((siswa, idx) => {
                     const record = classPresensi.find(p => p.siswaId === siswa.id);
                     const currentStatus = record?.status || 'Hadir';
 
@@ -428,20 +563,65 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
       {/* MODE 3: REKAP LAPORAN PRESENSI */}
       {activeTabMode === 'rekap' && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-6">
+        <div className="print-full bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div>
               <h3 className="text-xl font-bold text-slate-900">Rekap Laporan Kehadiran Siswa</h3>
               <p className="text-xs text-slate-500">SMK AT-THAHIRIN DEPOK — Semester Ganjil 2026/2027</p>
             </div>
             
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-800 cursor-pointer"
+            <div className="print-hidden flex gap-2">
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-2 bg-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-emerald-700 cursor-pointer transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Excel/CSV</span>
+              </button>
+              
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-2 bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-slate-800 cursor-pointer transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Date Range & Class Filter Controls */}
+          <div className="print-hidden flex flex-col md:flex-row flex-wrap gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-slate-500" />
+              <input
+                type="date"
+                value={rekapStartDate}
+                max={rekapEndDate}
+                onChange={(e) => { setRekapStartDate(e.target.value); setRekapPage(1); }}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <span className="text-slate-400 text-xs">s/d</span>
+              <input
+                type="date"
+                value={rekapEndDate}
+                min={rekapStartDate}
+                onChange={(e) => { setRekapEndDate(e.target.value); setRekapPage(1); }}
+                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <select
+              value={rekapClassFilter}
+              onChange={(e) => { setRekapClassFilter(e.target.value); setRekapPage(1); }}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
-              <span>Cetak Laporan / PDF</span>
-            </button>
+              <option value="all">Semua Kelas</option>
+              {kelasList.map(k => (
+                <option key={k.id} value={k.id}>{k.name}</option>
+              ))}
+            </select>
+            <span className="text-xs text-slate-500 font-medium self-center">
+              Periode: {rekapStartDate} s/d {rekapEndDate}
+            </span>
           </div>
 
           <div className="overflow-x-auto">
@@ -458,31 +638,84 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {siswaList.map(siswa => {
-                  const sRecords = presensiList.filter(p => p.siswaId === siswa.id);
-                  const h = sRecords.filter(p => p.status === 'Hadir').length;
-                  const s = sRecords.filter(p => p.status === 'Sakit').length;
-                  const i = sRecords.filter(p => p.status === 'Izin').length;
-                  const a = sRecords.filter(p => p.status === 'Alpa').length;
-                  const tot = sRecords.length || 1;
-                  const pct = Math.round((h / tot) * 100);
+                {(() => {
+                  const filteredSiswaList = siswaList.filter(siswa => rekapClassFilter === 'all' || siswa.classId === rekapClassFilter);
+                  const totalPages = Math.max(1, Math.ceil(filteredSiswaList.length / rekapPageSize));
+                  const currentPage = Math.min(rekapPage, totalPages);
+                  const startIndex = (currentPage - 1) * rekapPageSize;
+                  const pageItems = filteredSiswaList.slice(startIndex, startIndex + rekapPageSize);
 
-                  const kInfo = kelasList.find(k => k.id === siswa.classId);
+                  return pageItems.map(siswa => {
+                    const sRecords = presensiList.filter(p => p.siswaId === siswa.id && p.tanggal >= rekapStartDate && p.tanggal <= rekapEndDate);
+                    const h = sRecords.filter(p => p.status === 'Hadir').length;
+                    const s = sRecords.filter(p => p.status === 'Sakit').length;
+                    const i = sRecords.filter(p => p.status === 'Izin').length;
+                    const a = sRecords.filter(p => p.status === 'Alpa').length;
+                    const tot = sRecords.length || 1;
+                    const pct = Math.round((h / tot) * 100);
 
-                  return (
-                    <tr key={siswa.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-4 font-bold text-slate-900">{siswa.name} ({siswa.nisn})</td>
-                      <td className="py-3 px-4 font-semibold text-emerald-700">{kInfo?.name || '-'}</td>
-                      <td className="py-3 px-4 font-bold text-emerald-600">{h}</td>
-                      <td className="py-3 px-4 font-bold text-amber-600">{s}</td>
-                      <td className="py-3 px-4 font-bold text-blue-600">{i}</td>
-                      <td className="py-3 px-4 font-bold text-rose-600">{a}</td>
-                      <td className="py-3 px-4 text-right font-extrabold text-slate-800">{pct}%</td>
-                    </tr>
-                  );
-                })}
+                    const kInfo = kelasList.find(k => k.id === siswa.classId);
+
+                    return (
+                      <tr key={siswa.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-4 font-bold text-slate-900">{siswa.name} ({siswa.nisn})</td>
+                        <td className="py-3 px-4 font-semibold text-emerald-700">{kInfo?.name || '-'}</td>
+                        <td className="py-3 px-4 font-bold text-emerald-600">{h}</td>
+                        <td className="py-3 px-4 font-bold text-amber-600">{s}</td>
+                        <td className="py-3 px-4 font-bold text-blue-600">{i}</td>
+                        <td className="py-3 px-4 font-bold text-rose-600">{a}</td>
+                        <td className="py-3 px-4 text-right font-extrabold text-slate-800">{pct}%</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="print-hidden">
+          {(() => {
+            const filteredSiswaList = siswaList.filter(siswa => rekapClassFilter === 'all' || siswa.classId === rekapClassFilter);
+            const totalPages = Math.max(1, Math.ceil(filteredSiswaList.length / rekapPageSize));
+            const currentPage = Math.min(rekapPage, totalPages);
+            return (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                <div className="text-xs text-slate-500 font-medium">
+                  Menampilkan <strong>{filteredSiswaList.length === 0 ? 0 : (currentPage - 1) * rekapPageSize + 1}</strong> - <strong>{Math.min(currentPage * rekapPageSize, filteredSiswaList.length)}</strong> dari <strong>{filteredSiswaList.length}</strong> siswa
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={rekapPageSize}
+                    onChange={(e) => { setRekapPageSize(Number(e.target.value)); setRekapPage(1); }}
+                    className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold cursor-pointer"
+                  >
+                    <option value={10}>10 / halaman</option>
+                    <option value={15}>15 / halaman</option>
+                    <option value={25}>25 / halaman</option>
+                    <option value={50}>50 / halaman</option>
+                  </select>
+                  <button
+                    onClick={() => setRekapPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage <= 1}
+                    className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-slate-200 transition-colors"
+                  >
+                    ← Sebelumnya
+                  </button>
+                  <span className="text-xs font-bold text-slate-700 px-2">
+                    Hal {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setRekapPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer hover:bg-slate-200 transition-colors"
+                  >
+                    Berikutnya →
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
           </div>
         </div>
       )}

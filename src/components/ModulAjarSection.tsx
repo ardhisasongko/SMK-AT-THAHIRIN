@@ -75,7 +75,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
         })
       });
 
-      const json = await response.json();
+      const json = await response.json() as { success?: boolean; data?: unknown; error?: string };
 
       if (json.success && json.data) {
         setGeneratedResult(json.data);
@@ -176,9 +176,10 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                   type="text"
                   value={mataPelajaran}
                   onChange={(e) => setMataPelajaran(e.target.value)}
+                  disabled={isGenerating}
                   required
                   placeholder="Pemrograman Web & Perangkat Bergerak"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -188,7 +189,8 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                   <select 
                     value={jurusan}
                     onChange={(e) => setJurusan(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
+                    disabled={isGenerating}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="Administrasi Perkantoran (AP)">Administrasi Perkantoran (AP)</option>
                   </select>

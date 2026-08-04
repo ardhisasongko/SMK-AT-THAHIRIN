@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   FileText, 
   Clock, 
@@ -26,7 +26,6 @@ import {
   Users
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtQuestion, CbtSubmission, CbtOption } from '../types';
-import { GoogleGenAI } from '@google/genai';
 
 interface CbtSectionProps {
   currentUser: UserType | null;
@@ -75,7 +74,47 @@ export function CbtSection({
   const [newToken, setNewToken] = useState('AP' + Math.floor(1000 + Math.random() * 9000));
   const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>([]);
 
-  // Timer countdown hook for CBT
+  // FIXED: useCallback untuk submit function agar tidak stale di timer
+  const handleConfirmSubmitTest = useCallback(() => {
+    if (!activeExam || !currentUser) return;
+
+    let correct = 0;
+    let wrong = 0;
+
+    activeExam.questions.forEach(q => {
+      const userAnswer = answers[q.id];
+      if (userAnswer === q.correctAnswer) {
+        correct++;
+      } else {
+        wrong++;
+      }
+    });
+
+    const score = Math.round((correct / activeExam.questions.length) * 100);
+    const timeSpent = activeExam.durationMinutes * 60 - timeLeft;
+
+    const submission: CbtSubmission = {
+      id: `sub-${Date.now()}`,
+      examId: activeExam.id,
+      siswaId: currentUser.id,
+      siswaName: currentUser.name,
+      nisn: currentUser.nipNisn || '0068123491',
+      answers,
+      doubtful,
+      score,
+      correctCount: correct,
+      wrongCount: wrong,
+      submittedAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
+      timeSpentSeconds: timeSpent
+    };
+
+    setCbtSubmissions(prev => [submission, ...prev]);
+    setCompletedResult(submission);
+    setIsTestMode(false);
+    setShowFinishModal(false);
+  }, [activeExam, currentUser, answers, doubtful, timeLeft, setCbtSubmissions]);
+
+  // Timer countdown hook for CBT with proper dependency
   useEffect(() => {
     if (!isTestMode || timeLeft <= 0) return;
 
@@ -83,7 +122,9 @@ export function CbtSection({
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleAutoSubmitTest();
+          // Auto submit saat waktu habis
+          alert('Waktu ujian telah habis! Sistem secara otomatis mengirimkan jawaban Anda.');
+          handleConfirmSubmitTest();
           return 0;
         }
         return prev - 1;
@@ -91,7 +132,7 @@ export function CbtSection({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTestMode, timeLeft]);
+  }, [isTestMode, timeLeft, handleConfirmSubmitTest]);
 
   // Format seconds to MM:SS
   const formatTime = (seconds: number) => {
@@ -146,93 +187,29 @@ export function CbtSection({
     }));
   };
 
-  // Submit Test Handler
-  const handleConfirmSubmitTest = () => {
-    if (!activeExam || !currentUser) return;
-
-    let correct = 0;
-    let wrong = 0;
-
-    activeExam.questions.forEach(q => {
-      const userAnswer = answers[q.id];
-      if (userAnswer === q.correctAnswer) {
-        correct++;
-      } else {
-        wrong++;
-      }
-    });
-
-    const score = Math.round((correct / activeExam.questions.length) * 100);
-    const timeSpent = activeExam.durationMinutes * 60 - timeLeft;
-
-    const submission: CbtSubmission = {
-      id: `sub-${Date.now()}`,
-      examId: activeExam.id,
-      siswaId: currentUser.id,
-      siswaName: currentUser.name,
-      nisn: currentUser.nipNisn || '0068123491',
-      answers,
-      doubtful,
-      score,
-      correctCount: correct,
-      wrongCount: wrong,
-      submittedAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
-      timeSpentSeconds: timeSpent
-    };
-
-    setCbtSubmissions(prev => [submission, ...prev]);
-    setCompletedResult(submission);
-    setIsTestMode(false);
-    setShowFinishModal(false);
-  };
-
-  const handleAutoSubmitTest = () => {
-    alert('Waktu ujian telah habis! Sistem secara otomatis mengirimkan jawaban Anda.');
-    handleConfirmSubmitTest();
-  };
-
-  // AI Generator Question for New Exam
+  // AI Generator Question for New Exam - FIXED: Call server endpoint instead
   const handleGenerateAiQuestions = async () => {
     setIsAiGenerating(true);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('API Key Gemini belum terkonfigurasi');
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Buatkan 5 soal pilihan ganda (A, B, C, D, E) untuk mata pelajaran Administrasi Perkantoran "${newSubject}" untuk tingkat SMK Administrasi Perkantoran.
-Format JSON murni tanpa markdown/backticks:
-[
-  {
-    "id": "q1",
-    "question": "Pertanyaan soal...",
-    "options": [
-      { "key": "A", "text": "Pilihan A" },
-      { "key": "B", "text": "Pilihan B" },
-      { "key": "C", "text": "Pilihan C" },
-      { "key": "D", "text": "Pilihan D" },
-      { "key": "E", "text": "Pilihan E" }
-    ],
-    "correctAnswer": "A",
-    "explanation": "Penjelasan singkat jawaban benar"
-  }
-]`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
+      const response = await fetch('/api/cbt/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: newSubject,
+          count: 5
+        })
       });
 
-      const text = response.text || '';
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
+      const json = await response.json() as { success?: boolean; data?: CbtQuestion[]; error?: string };
 
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setNewQuestions(parsed);
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        setNewQuestions(json.data);
+      } else {
+        throw new Error(json.error || 'Gagal menghasilkan soal ujian.');
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error generating questions:', err);
+      alert(`Gagal membuat soal AI: ${err.message}. Menggunakan soal contoh default.`);
       // Fallback default AP questions
       setNewQuestions([
         {

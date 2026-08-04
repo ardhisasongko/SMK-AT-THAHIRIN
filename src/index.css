@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Print styles: sembunyikan navigasi, tampilkan hanya konten saat mencetak laporan */
+@media print {
+  nav,
+  footer,
+  .print-hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  .print-full {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+}

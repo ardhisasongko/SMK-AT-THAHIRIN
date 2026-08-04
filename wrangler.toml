@@ -1,0 +1,22 @@
+# Cloudflare Pages + D1 configuration for SMKS PLUS AT THAHIRIN
+# Docs: https://developers.cloudflare.com/pages/functions/
+
+name = "smk-at-tahirin"
+compatibility_date = "2026-08-04"
+pages_build_output_dir = "dist"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"                                # nama binding (dipakai di fungsi sebagai env.DB)
+database_name = "smk-at-tahirin-db"          # nama database di dashboard Cloudflare
+database_id = "e436d309-e92a-430d-8c48-c47752b3391b"          # ganti dengan database_id asli (lihat instruksi deploy)
+migrations_dir = "migrations"
+
+# Shared variable untuk konfigurasi akses
+[vars]
+APP_NAME = "SMKS PLUS AT THAHIRIN"
+
+# GEMINI_API_KEY sebaiknya di-set sebagai SECRET (bukan vars) di Cloudflare Pages:
+#   Dashboard Pages -> Settings -> Variables and Secrets -> Secrets -> GEMINI_API_KEY
+# atau via CLI:  npx wrangler pages secret put GEMINI_API_KEY --project-name smk-at-tahirin
+

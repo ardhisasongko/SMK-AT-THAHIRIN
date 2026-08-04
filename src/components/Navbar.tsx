@@ -11,7 +11,6 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Sparkles,
   ChevronDown,
   ShieldAlert,
   GraduationCap,
@@ -28,7 +27,6 @@ interface NavbarProps {
   unreadCount?: number;
   onLoginClick: () => void;
   onLogoutClick: () => void;
-  onSelectDemoUser: (role: 'admin' | 'guru' | 'siswa') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,19 +35,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   unreadCount = 2,
   onLoginClick,
-  onLogoutClick,
-  onSelectDemoUser
+  onLogoutClick
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
 
-  // Guest navbar items (Simplified & clean)
+  // Guest navbar items (hanya halaman publik)
   const guestNavItems = [
     { id: 'landing', label: 'Beranda', icon: Home },
-    { id: 'cbt', label: 'Ujian CBT', icon: FileText },
-    { id: 'absensi', label: 'Sistem Absensi', icon: UserCheck },
-    { id: 'kelas', label: 'Pengelolaan Kelas', icon: Users },
-    { id: 'modul-ajar', label: 'Modul Ajar AI', icon: BookOpen },
   ];
 
   // Logged in user navbar items (Tailored for logged in members)
@@ -83,60 +75,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           
           <div className="flex items-center gap-3 text-xs">
-            {/* Quick Demo Role Selector */}
-            <div className="relative">
-              <button
-                id="demo-role-dropdown-btn"
-                onClick={() => setDemoMenuOpen(!demoMenuOpen)}
-                className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2.5 py-1 rounded-md transition-colors text-xs font-medium cursor-pointer border border-slate-700"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>Simulasi Mode: <strong className="text-white capitalize">{currentUser ? currentUser.role : 'Tamunya'}</strong></span>
-                <ChevronDown className="w-3 h-3 ml-0.5" />
-              </button>
-
-              {demoMenuOpen && (
-                <div className="absolute right-0 mt-1 w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1 z-50 text-slate-200 text-xs">
-                  <div className="px-3 py-1.5 border-b border-slate-800 font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
-                    Ganti Role Pengguna Demo
-                  </div>
-                  <button
-                    id="demo-role-admin-btn"
-                    onClick={() => { onSelectDemoUser('admin'); setDemoMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-                    <div>
-                      <div className="font-medium text-white">Admin Sekolah</div>
-                      <div className="text-[10px] text-slate-400">Akses penuh semua fitur</div>
-                    </div>
-                  </button>
-                  <button
-                    id="demo-role-guru-btn"
-                    onClick={() => { onSelectDemoUser('guru'); setDemoMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                    <div>
-                      <div className="font-medium text-white">Guru / Pendidik</div>
-                      <div className="text-[10px] text-slate-400">Absensi & Generator Modul AI</div>
-                    </div>
-                  </button>
-                  <button
-                    id="demo-role-siswa-btn"
-                    onClick={() => { onSelectDemoUser('siswa'); setDemoMenuOpen(false); }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <div>
-                      <div className="font-medium text-white">Siswa / Wali Murid</div>
-                      <div className="text-[10px] text-slate-400">Lihat Jadwal & Rekap Presensi</div>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-
             <a href={`tel:${SCHOOL_INFO.telepon}`} className="hidden md:inline hover:text-white transition-colors">
               {SCHOOL_INFO.telepon}
             </a>

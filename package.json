@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.cjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "db:migrate:local": "wrangler d1 migrations apply smk-at-tahirin-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply smk-at-tahirin-db --remote",
+    "pages:dev": "wrangler pages dev dist --d1 smk-at-tahirin-db",
+    "pages:deploy": "npm run build && wrangler pages deploy dist --project-name smk-at-tahirin"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -23,6 +28,7 @@
     "motion": "^12.23.24"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260804.1",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",

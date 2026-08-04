@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Kelas, Siswa, ScheduleItem, User } from '../types';
+import { validateNISN, validateName, validateTextField } from '../utils/validation';
 import { 
   Users, 
   Plus, 
@@ -49,19 +50,34 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   const [newSiswaName, setNewSiswaName] = useState('');
   const [newSiswaNisn, setNewSiswaNisn] = useState('');
   const [newSiswaGender, setNewSiswaGender] = useState<'L' | 'P'>('L');
+  const [siswaFormError, setSiswaFormError] = useState('');
+  const [kelasFormError, setKelasFormError] = useState('');
 
-  // Add New Class submit
+  // FIXED: Add New Class submit with validation
   const handleAddClassSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newClassName || !newWaliKelas) return;
+    setKelasFormError('');
+
+    // Validate inputs
+    const nameValidation = validateTextField(newClassName, 'Nama Kelas', 2, 20);
+    if (!nameValidation.valid) {
+      setKelasFormError(nameValidation.message);
+      return;
+    }
+
+    const waliValidation = validateName(newWaliKelas);
+    if (!waliValidation.valid) {
+      setKelasFormError(waliValidation.message);
+      return;
+    }
 
     const created: Kelas = {
       id: 'k-' + Date.now(),
-      name: newClassName,
+      name: newClassName.trim(),
       jurusanCode: newJurusanCode,
       tingkat: newTingkat,
       ruang: newRuang,
-      waliKelas: newWaliKelas,
+      waliKelas: newWaliKelas.trim(),
       jumlahSiswa: 0,
       jadwal: []
     };
@@ -70,17 +86,44 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
     setShowAddClassModal(false);
     setNewClassName('');
     setNewWaliKelas('');
+    setKelasFormError('');
   };
 
-  // Add New Siswa submit
+  // FIXED: Add New Siswa submit with validation
   const handleAddSiswaSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSiswaName || !newSiswaNisn || !selectedKelas) return;
+    setSiswaFormError('');
+
+    if (!selectedKelas) {
+      setSiswaFormError('Kelas belum dipilih');
+      return;
+    }
+
+    // Validate name
+    const nameValidation = validateName(newSiswaName);
+    if (!nameValidation.valid) {
+      setSiswaFormError(nameValidation.message);
+      return;
+    }
+
+    // Validate NISN
+    const nisnValidation = validateNISN(newSiswaNisn);
+    if (!nisnValidation.valid) {
+      setSiswaFormError(nisnValidation.message);
+      return;
+    }
+
+    // Check duplicate NISN
+    const isDuplicate = siswaList.some(s => s.nisn === newSiswaNisn.trim());
+    if (isDuplicate) {
+      setSiswaFormError(`NISN ${newSiswaNisn} sudah terdaftar!`);
+      return;
+    }
 
     const createdSiswa: Siswa = {
       id: 's-' + Date.now(),
-      nisn: newSiswaNisn,
-      name: newSiswaName,
+      nisn: newSiswaNisn.trim(),
+      name: newSiswaName.trim(),
       classId: selectedKelas.id,
       gender: newSiswaGender,
       foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -95,6 +138,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
     setShowAddSiswaModal(false);
     setNewSiswaName('');
     setNewSiswaNisn('');
+    setSiswaFormError('');
   };
 
   return (
@@ -306,6 +350,14 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <h3 className="font-bold text-lg text-slate-900">Tambah Rombongan Belajar Baru</h3>
+            
+            {kelasFormError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                <span className="text-rose-500">⚠</span>
+                <span>{kelasFormError}</span>
+              </div>
+            )}
+            
             <form onSubmit={handleAddClassSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Nama Kelas (contoh: X AP 2)</label>
@@ -313,9 +365,8 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                   type="text" 
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
-                  required
                   placeholder="X AP 2" 
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -324,7 +375,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                 <select 
                   value={newJurusanCode} 
                   onChange={(e) => setNewJurusanCode(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="AP">AP — Administrasi Perkantoran</option>
                 </select>
@@ -336,15 +387,25 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                   type="text" 
                   value={newWaliKelas}
                   onChange={(e) => setNewWaliKelas(e.target.value)}
-                  required
                   placeholder="Bpk. Suryadi, S.Pd." 
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="pt-3 flex gap-2 justify-end">
-                <button type="button" onClick={() => setShowAddClassModal(false)} className="px-4 py-2 bg-slate-200 rounded-xl font-bold">Batal</button>
-                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">Simpan Kelas</button>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowAddClassModal(false); setKelasFormError(''); }}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Simpan Kelas
+                </button>
               </div>
             </form>
           </div>
@@ -356,6 +417,14 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <h3 className="font-bold text-lg text-slate-900">Tambah Siswa Baru ke {selectedKelas.name}</h3>
+            
+            {siswaFormError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                <span className="text-rose-500">⚠</span>
+                <span>{siswaFormError}</span>
+              </div>
+            )}
+            
             <form onSubmit={handleAddSiswaSubmit} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Nama Lengkap Siswa</label>
@@ -363,22 +432,22 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                   type="text" 
                   value={newSiswaName}
                   onChange={(e) => setNewSiswaName(e.target.value)}
-                  required
                   placeholder="Ahmad Bagus Pratama" 
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">NISN</label>
+                <label className="block font-bold text-slate-700 mb-1">NISN (10 digit)</label>
                 <input 
                   type="text" 
                   value={newSiswaNisn}
                   onChange={(e) => setNewSiswaNisn(e.target.value)}
-                  required
                   placeholder="0068123999" 
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl font-mono"
+                  maxLength={10}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Format: 10 digit angka</p>
               </div>
 
               <div>
@@ -386,7 +455,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                 <select 
                   value={newSiswaGender}
                   onChange={(e: any) => setNewSiswaGender(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border rounded-xl"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="L">Laki-Laki</option>
                   <option value="P">Perempuan</option>
@@ -394,8 +463,19 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
               </div>
 
               <div className="pt-3 flex gap-2 justify-end">
-                <button type="button" onClick={() => setShowAddSiswaModal(false)} className="px-4 py-2 bg-slate-200 rounded-xl font-bold">Batal</button>
-                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl font-bold">Simpan Siswa</button>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowAddSiswaModal(false); setSiswaFormError(''); }}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Simpan Siswa
+                </button>
               </div>
             </form>
           </div>

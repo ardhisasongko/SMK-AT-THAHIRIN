@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { BottomDock } from './components/BottomDock';
 import { Footer } from './components/Footer';
 import { LandingPage } from './components/LandingPage';
 import { LoginForm } from './components/LoginForm';
+import { LoginGate } from './components/LoginGate';
 import { AbsensiSection } from './components/AbsensiSection';
 import { KelasSection } from './components/KelasSection';
 import { ModulAjarSection } from './components/ModulAjarSection';
@@ -12,7 +13,6 @@ import { NotifikasiSection } from './components/NotifikasiSection';
 import { ProfilSection } from './components/ProfilSection';
 import { CbtSection } from './components/CbtSection';
 import { 
-  INITIAL_USERS, 
   INITIAL_KELAS, 
   INITIAL_SISWA, 
   INITIAL_PRESENSI, 
@@ -23,21 +23,32 @@ import {
   INITIAL_CBT_SUBMISSIONS
 } from './data/initialData';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, CbtExam, CbtSubmission } from './types';
+import { saveToStorage, loadFromStorage, STORAGE_KEYS } from './utils/storage';
+import { usePersistedCollection } from './hooks/usePersistedCollection';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('landing');
-  const [currentUser, setCurrentUser] = useState<User | null>(INITIAL_USERS[1]); // Default to Guru Ahmad Fauzi for immediate feature usability
+  
+  // Load current user from localStorage or null (harus login dulu)
+  const [currentUser, setCurrentUser] = useState<User | null>(() => 
+    loadFromStorage(STORAGE_KEYS.CURRENT_USER, null)
+  );
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
-  // App persistent states
-  const [kelasList, setKelasList] = useState<Kelas[]>(INITIAL_KELAS);
-  const [siswaList, setSiswaList] = useState<Siswa[]>(INITIAL_SISWA);
-  const [presensiList, setPresensiList] = useState<PresensiRecord[]>(INITIAL_PRESENSI);
-  const [modulList, setModulList] = useState<ModulAjar[]>(INITIAL_MODUL_AJAR);
-  const [topics, setTopics] = useState<ForumTopic[]>(INITIAL_FORUM_TOPICS);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [cbtExams, setCbtExams] = useState<CbtExam[]>(INITIAL_CBT_EXAMS);
-  const [cbtSubmissions, setCbtSubmissions] = useState<CbtSubmission[]>(INITIAL_CBT_SUBMISSIONS);
+  // App persistent states - disimpan ke Cloudflare D1 via API
+  const [kelasList, setKelasList] = usePersistedCollection<Kelas[]>('kelas_v1', INITIAL_KELAS);
+  const [siswaList, setSiswaList] = usePersistedCollection<Siswa[]>('siswa_v1', INITIAL_SISWA);
+  const [presensiList, setPresensiList] = usePersistedCollection<PresensiRecord[]>('presensi_v1', INITIAL_PRESENSI);
+  const [modulList, setModulList] = usePersistedCollection<ModulAjar[]>('modulAjar_v1', INITIAL_MODUL_AJAR);
+  const [topics, setTopics] = usePersistedCollection<ForumTopic[]>('forumTopics_v1', INITIAL_FORUM_TOPICS);
+  const [notifications, setNotifications] = usePersistedCollection<NotificationItem[]>('notifications_v1', INITIAL_NOTIFICATIONS);
+  const [cbtExams, setCbtExams] = usePersistedCollection<CbtExam[]>('cbtExams_v1', INITIAL_CBT_EXAMS);
+  const [cbtSubmissions, setCbtSubmissions] = usePersistedCollection<CbtSubmission[]>('cbtSubmissions_v1', INITIAL_CBT_SUBMISSIONS);
+
+  // Auto-save to localStorage whenever state changes
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.CURRENT_USER, currentUser);
+  }, [currentUser]);
 
   // Calculate unread notifications count for current user
   const unreadCount = currentUser 
@@ -63,12 +74,18 @@ export default function App() {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  // Quick Demo User Switcher
-  const handleSelectDemoUser = (role: 'admin' | 'guru' | 'siswa') => {
-    const user = INITIAL_USERS.find(u => u.role === role);
-    if (user) {
-      setCurrentUser(user);
-    }
+  // Halaman publik (tidak butuh login) vs terproteksi
+  const PUBLIC_TABS = ['landing'];
+  const isProtectedTab = !PUBLIC_TABS.includes(activeTab);
+
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    setShowLoginModal(false);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setActiveTab('landing');
   };
 
   return (
@@ -81,12 +98,18 @@ export default function App() {
         currentUser={currentUser}
         unreadCount={unreadCount}
         onLoginClick={() => setShowLoginModal(true)}
-        onLogoutClick={() => setCurrentUser(null)}
-        onSelectDemoUser={handleSelectDemoUser}
+        onLogoutClick={handleLogout}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 pb-20">
+        {!currentUser && isProtectedTab ? (
+          <LoginGate 
+            onLoginClick={() => setShowLoginModal(true)}
+            onGoHome={() => setActiveTab('landing')}
+          />
+        ) : (
+          <>
         {activeTab === 'landing' && (
           <LandingPage 
             setActiveTab={setActiveTab}
@@ -163,6 +186,8 @@ export default function App() {
             setActiveTab={setActiveTab}
             onOpenLogin={() => setShowLoginModal(true)}
           />
+        )}
+          </>
         )}
       </main>
 

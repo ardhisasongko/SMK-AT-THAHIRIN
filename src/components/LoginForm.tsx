@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
 import { INITIAL_USERS } from '../data/initialData';
-import { School, LogIn, Lock, Mail, UserCheck, Shield, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
+import { School, LogIn, Lock, Mail, UserCheck, Shield, Sparkles, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { validateCredentials, isPasswordStrong } from '../utils/auth';
 
 interface LoginFormProps {
   onLoginSuccess: (user: User) => void;
@@ -13,28 +14,48 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
   const [emailOrNip, setEmailOrNip] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleCustomLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
+    // Validation
     if (!emailOrNip || !password) {
-      setErrorMsg('Silakan isi email / NISN / NIP dan kata sandi Anda.');
+      setErrorMsg('Silakan isi email/NIP/NISN dan password Anda.');
       return;
     }
 
-    // Match simulated user
+    // Password strength check
+    const passwordCheck = isPasswordStrong(password);
+    if (!passwordCheck.valid) {
+      setErrorMsg(passwordCheck.message);
+      return;
+    }
+
+    // Validate credentials
+    if (!validateCredentials(emailOrNip, password)) {
+      setErrorMsg('Email/NIP/NISN atau password salah. Silakan coba lagi.');
+      return;
+    }
+
+    // Match user from database
     const matched = INITIAL_USERS.find(
       u => u.email.toLowerCase() === emailOrNip.toLowerCase() || u.nipNisn === emailOrNip
     );
 
     if (matched) {
-      onLoginSuccess(matched);
+      // Save login timestamp for session management
+      const userWithSession = {
+        ...matched,
+        loginTimestamp: Date.now()
+      };
+      onLoginSuccess(userWithSession as User);
       onClose();
     } else {
-      // Fallback create dummy session for input
+      // Create new user session (for flexibility)
       const role: UserRole = loginType === 'guru' ? 'guru' : 'siswa';
-      const dummyUser: User = {
+      const newUser: User = {
         id: 'u-custom-' + Date.now(),
         name: emailOrNip.includes('@') ? emailOrNip.split('@')[0] : 'Pengguna SMK',
         email: emailOrNip.includes('@') ? emailOrNip : `${emailOrNip}@smkatthahirin.sch.id`,
@@ -43,7 +64,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
         nipNisn: emailOrNip,
         jabatan: role === 'guru' ? 'Guru Pengajar SMK' : 'Siswa SMK AT-THAHIRIN'
       };
-      onLoginSuccess(dummyUser);
+      onLoginSuccess(newUser);
       onClose();
     }
   };
@@ -169,13 +190,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input 
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+                className="w-full pl-10 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+            <p className="text-[10px] text-slate-400 mt-1">Password minimal 6 karakter</p>
           </div>
 
           <button
@@ -187,8 +216,24 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
           </button>
         </form>
 
-        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-100">
+        <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-100 space-y-2">
           <p>Lupa kata sandi? Hubungi Unit Layanan IT Tata Usaha SMK AT-THAHIRIN.</p>
+          <details className="text-left bg-slate-50 p-3 rounded-lg">
+            <summary className="cursor-pointer text-emerald-600 font-semibold">
+              Lihat Kredensial Default (Demo)
+            </summary>
+            <div className="mt-2 space-y-1.5 text-[10px] font-mono">
+              <div className="bg-white p-2 rounded border border-slate-200">
+                <strong>Admin:</strong> admin@smksplusatthahirin.sch.id / admin123
+              </div>
+              <div className="bg-white p-2 rounded border border-slate-200">
+                <strong>Guru:</strong> guru@smksplusatthahirin.sch.id / guru123
+              </div>
+              <div className="bg-white p-2 rounded border border-slate-200">
+                <strong>Siswa:</strong> siswa@smksplusatthahirin.sch.id / siswa123
+              </div>
+            </div>
+          </details>
         </div>
 
       </div>
