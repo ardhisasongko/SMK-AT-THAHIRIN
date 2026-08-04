@@ -42,15 +42,28 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [demoMenuOpen, setDemoMenuOpen] = useState(false);
 
-  const navItems = [
+  // Guest navbar items (Simplified & clean)
+  const guestNavItems = [
     { id: 'landing', label: 'Beranda', icon: Home },
     { id: 'absensi', label: 'Sistem Absensi', icon: UserCheck },
     { id: 'kelas', label: 'Pengelolaan Kelas', icon: Users },
     { id: 'modul-ajar', label: 'Modul Ajar AI', icon: BookOpen },
+  ];
+
+  // Logged in user navbar items (Tailored for logged in members)
+  const userNavItems = [
+    { id: 'landing', label: 'Beranda', icon: Home },
+    { id: 'absensi', label: 'Sistem Absensi', icon: UserCheck },
+    { id: 'kelas', label: 'Pengelolaan Kelas', icon: Users },
+    ...(currentUser?.role === 'admin' || currentUser?.role === 'guru' 
+      ? [{ id: 'modul-ajar', label: 'Modul Ajar AI', icon: BookOpen }] 
+      : []),
     { id: 'forum', label: 'Forum Diskusi', icon: MessageSquare },
     { id: 'notifikasi', label: 'Notifikasi', icon: Bell, badge: unreadCount },
-    { id: 'profil', label: 'Profil', icon: UserIcon },
+    { id: 'profil', label: 'Profil Saya', icon: UserIcon },
   ];
+
+  const navItems = currentUser ? userNavItems : guestNavItems;
 
   return (
     <header id="main-header" className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">

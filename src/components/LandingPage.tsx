@@ -22,7 +22,12 @@ import {
   MapPin,
   ExternalLink,
   Quote,
-  ShieldCheck
+  ShieldCheck,
+  MessageSquare,
+  Bell,
+  User as UserIcon,
+  LogIn,
+  Layers
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -74,23 +79,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 Selamat Datang di <strong>{SCHOOL_INFO.name}</strong>. Sekolah Menengah Kejuruan swasta terakreditasi B yang memadukan Kurikulum Merdeka industri, penguasaan teknologi digital Administrasi Perkantoran, dan penguatan karakter.
               </p>
 
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4">
+              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
                 <button
                   id="hero-cta-absensi"
                   onClick={() => setActiveTab('absensi')}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg shadow-emerald-600/30 hover:scale-[1.02] transition-all cursor-pointer text-sm"
                 >
-                  <UserCheck className="w-5 h-5" />
-                  <span>Akses Portal Presensi</span>
+                  <UserCheck className="w-4 h-4" />
+                  <span>Presensi QR Code</span>
+                </button>
+
+                <button
+                  id="hero-cta-kelas"
+                  onClick={() => setActiveTab('kelas')}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                >
+                  <Users className="w-4 h-4 text-emerald-400" />
+                  <span>Pengelolaan Kelas</span>
                 </button>
 
                 <button
                   id="hero-cta-modul"
                   onClick={() => setActiveTab('modul-ajar')}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold px-6 py-3.5 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
                 >
-                  <BookOpen className="w-5 h-5" />
-                  <span>Modul Ajar AI Kurikulum Merdeka</span>
+                  <BookOpen className="w-4 h-4" />
+                  <span>Modul Ajar AI</span>
+                </button>
+
+                <button
+                  id="hero-cta-forum"
+                  onClick={() => setActiveTab('forum')}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Forum Diskusi</span>
                 </button>
               </div>
 
@@ -149,6 +172,87 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
               </div>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* QUICK ACCESS SHORTCUTS TOOLBAR */}
+      <section className="bg-slate-900 border-b border-slate-800 text-slate-200 py-5 px-4 shadow-md">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-slate-800/90 p-4 rounded-2xl border border-slate-700/80 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 font-bold">
+                <Sparkles className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  Akses Cepat Portal Sekolah
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    Pintasan Fitur
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Navigasi langsung ke layanan utama SMKS PLUS AT THAHIRIN Megamendung
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Button Pills */}
+            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
+              <button
+                id="quick-shortcut-absensi"
+                onClick={() => setActiveTab('absensi')}
+                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-xs cursor-pointer hover:scale-105"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Absensi QR</span>
+              </button>
+
+              <button
+                id="quick-shortcut-kelas"
+                onClick={() => setActiveTab('kelas')}
+                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
+              >
+                <Users className="w-3.5 h-3.5 text-blue-400" />
+                <span>Jadwal Kelas AP</span>
+              </button>
+
+              <button
+                id="quick-shortcut-modul"
+                onClick={() => setActiveTab('modul-ajar')}
+                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Modul AI</span>
+              </button>
+
+              <button
+                id="quick-shortcut-forum"
+                onClick={() => setActiveTab('forum')}
+                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span>Forum Diskusi</span>
+              </button>
+
+              <button
+                id="quick-shortcut-notifikasi"
+                onClick={() => setActiveTab('notifikasi')}
+                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
+              >
+                <Bell className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Notifikasi</span>
+              </button>
+
+              <button
+                id="quick-shortcut-login"
+                onClick={onOpenLogin}
+                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3.5 py-2 rounded-xl border border-emerald-500/30 transition-all cursor-pointer hover:scale-105"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Masuk Portal</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
