@@ -91,7 +91,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     return jsonResponse({ success: true, data: { id: String(existing.id), name: siswa.name } });
   }
 
-  const newId = 'u-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const newId = `u-${crypto.randomUUID()}`;
   await env.DB.prepare(
     `INSERT INTO users (id, name, email, nip_nisn, role, class_id, password_hash, jabatan, ketua_status, approved_by, approved_at, created_at)
      VALUES (?, ?, ?, ?, 'ketua_kelas', ?, ?, ?, 'approved', ?, ?, ?)`

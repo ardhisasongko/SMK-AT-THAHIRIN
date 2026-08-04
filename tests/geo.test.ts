@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { mapsUrl, mapsLink, getCurrentLocation } from '../src/utils/geo';
+import { mapsUrl, getCurrentLocation } from '../src/utils/geo';
 
 describe('mapsUrl', () => {
   it('returns correct Google Maps URL', () => {
@@ -12,12 +12,6 @@ describe('mapsUrl', () => {
 
   it('handles negative coordinates', () => {
     expect(mapsUrl(-6.2, -106.8)).toBe('https://www.google.com/maps?q=-6.2,-106.8');
-  });
-});
-
-describe('mapsLink', () => {
-  it('returns same format as mapsUrl', () => {
-    expect(mapsLink(-6.9, 107.6)).toBe(mapsUrl(-6.9, 107.6));
   });
 });
 

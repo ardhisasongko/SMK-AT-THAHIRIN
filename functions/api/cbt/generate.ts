@@ -14,7 +14,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return errorResponse("Mata pelajaran wajib diisi.", 400);
     }
 
-    const prompt = `Buatkan ${count} soal ujian untuk mata pelajaran Administrasi Perkantoran "${subject}" untuk tingkat SMK Administrasi Perkantoran dengan VARIASI TIPE SOAL:
+    const prompt = `Buatkan ${count} soal ujian untuk mata pelajaran "${subject}" untuk tingkat SMK Administrasi Perkantoran dengan VARIASI TIPE SOAL:
 - 60% soal pilihan ganda (type: "pg", 5 opsi A-E)
 - 20% soal benar/salah (type: "truefalse", 2 opsi A="Benar", B="Salah")
 - 20% soal essay (type: "essay", options: [], correctAnswer: "A", expectedAnswer: "kata,kunci,jawaban")

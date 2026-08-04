@@ -1,15 +1,6 @@
 import React from 'react';
-import { 
-  Home, 
-  FileText, 
-  UserCheck, 
-  Users, 
-  BookOpen, 
-  MessageSquare, 
-  Bell, 
-  User as UserIcon
-} from 'lucide-react';
 import { User } from '../types';
+import { getNavItems } from '../navItems';
 
 interface BottomDockProps {
   activeTab: string;
@@ -33,24 +24,7 @@ export const BottomDock: React.FC<BottomDockProps> = ({
     badge?: number;
   };
 
-  const userNavItems: DockItem[] = [
-    { id: 'landing', label: 'Beranda', icon: Home },
-    { id: 'cbt', label: 'Ujian CBT', icon: FileText, highlight: true },
-    { id: 'absensi', label: 'Absensi', icon: UserCheck },
-    { id: 'kelas', label: 'Kelas AP', icon: Users },
-    ...(currentUser?.role === 'admin' || currentUser?.role === 'guru'
-      ? [{ id: 'modul-ajar', label: 'Modul AI', icon: BookOpen, isAi: true }]
-      : []),
-    { id: 'forum', label: 'Forum', icon: MessageSquare },
-    { id: 'notifikasi', label: 'Notif', icon: Bell, badge: unreadCount },
-    { id: 'profil', label: 'Profil', icon: UserIcon }
-  ];
-
-  const guestNavItems: DockItem[] = [
-    { id: 'landing', label: 'Beranda', icon: Home },
-  ];
-
-  const navItems = currentUser ? userNavItems : guestNavItems;
+  const navItems = getNavItems(currentUser, unreadCount) as DockItem[];
 
   return (
     <div className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-[95vw] sm:max-w-max">

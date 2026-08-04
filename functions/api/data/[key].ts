@@ -84,7 +84,7 @@ async function writePresensiLog(
   newValue: string,
   changedBy: AuthUser
 ): Promise<void> {
-  const id = `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = `log-${crypto.randomUUID()}`;
   const nowWib = new Date(Date.now() + 7 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   await db
     .prepare(

@@ -62,7 +62,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     }
 
     // Foto full baru
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const id = crypto.randomUUID();
     await env.DB
       .prepare('INSERT INTO photos (id, data, mime, created_by) VALUES (?, ?, ?, ?)')
       .bind(id, base64, contentType, data.user.id)

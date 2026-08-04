@@ -34,7 +34,3 @@ export function getCurrentLocation(timeoutMs = 10000): Promise<GeoResult> {
 export function mapsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
-
-export function mapsLink(lat: number, lng: number): string {
-  return `https://www.google.com/maps?q=${lat},${lng}`;
-}

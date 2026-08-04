@@ -1,24 +1,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { SCHOOL_INFO } from '../data/initialData';
-import { 
-  School, 
-  UserCheck, 
-  Users, 
-  BookOpen, 
-  Home, 
-  LogIn, 
-  LogOut, 
-  Menu, 
-  X, 
-  ChevronDown,
-  ShieldAlert,
-  GraduationCap,
-  MessageSquare,
-  Bell,
-  User as UserIcon,
-  FileText
-} from 'lucide-react';
+import { School, LogIn, LogOut, Menu, X } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -38,27 +21,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogoutClick
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Guest navbar items (hanya halaman publik)
-  const guestNavItems = [
-    { id: 'landing', label: 'Beranda', icon: Home },
-  ];
-
-  // Logged in user navbar items (Tailored for logged in members)
-  const userNavItems = [
-    { id: 'landing', label: 'Beranda', icon: Home },
-    { id: 'cbt', label: 'Ujian CBT', icon: FileText },
-    { id: 'absensi', label: 'Sistem Absensi', icon: UserCheck },
-    { id: 'kelas', label: 'Pengelolaan Kelas', icon: Users },
-    ...(currentUser?.role === 'admin' || currentUser?.role === 'guru' 
-      ? [{ id: 'modul-ajar', label: 'Modul Ajar AI', icon: BookOpen }] 
-      : []),
-    { id: 'forum', label: 'Forum Diskusi', icon: MessageSquare },
-    { id: 'notifikasi', label: 'Notifikasi', icon: Bell, badge: unreadCount },
-    { id: 'profil', label: 'Profil Saya', icon: UserIcon },
-  ];
-
-  const navItems = currentUser ? userNavItems : guestNavItems;
 
   return (
     <header id="main-header" className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
@@ -180,37 +142,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer: menu akun saja (navigasi sudah dihandle BottomDock) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top duration-200">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
-                <span>{item.label}</span>
-                {item.id === 'modul-ajar' && (
-                  <span className="ml-auto text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
-                    AI Gemini
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-4 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top duration-200">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 px-1">
+            Menu Akun
+          </p>
 
-          <div className="pt-3 border-t border-slate-100">
+          <div className="pt-1">
             {currentUser ? (
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div 
