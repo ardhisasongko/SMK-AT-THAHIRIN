@@ -74,11 +74,13 @@ async function validateAndPatchPresensi(
     const key = `${record.tanggal}|${record.siswaId}`;
     const prev = currentMap.get(key);
 
-    // Deteksi perubahan (status / keterangan / waktuInput / completeness)
+    // Deteksi perubahan (status / keterangan / waktuInput / foto / lokasi / completeness)
     const isChanged = !prev
       || prev.status !== record.status
       || (prev.keterangan || '') !== (record.keterangan || '')
-      || (prev.waktuInput || '') !== (record.waktuInput || '');
+      || (prev.waktuInput || '') !== (record.waktuInput || '')
+      || (prev.fotoUrl || '') !== (record.fotoUrl || '')
+      || JSON.stringify(prev.lokasi || null) !== JSON.stringify(record.lokasi || null);
 
     if (isChanged) {
       // Otorisasi per kelas

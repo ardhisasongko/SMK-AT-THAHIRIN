@@ -23,6 +23,12 @@ export interface InputBy {
   role: string;
 }
 
+export interface PresensiLokasi {
+  lat: number;
+  lng: number;
+  label?: string;
+}
+
 export interface Jurusan {
   id: string;
   code: string;
@@ -78,6 +84,8 @@ export interface PresensiRecord {
   keterangan?: string;
   waktuInput: string; // HH:mm:ss
   inputBy?: InputBy; // audit: siapa yang menginput/mengubah
+  fotoUrl?: string; // foto presensi (URL ke R2)
+  lokasi?: PresensiLokasi; // tap location
 }
 
 export interface ModulAjarIdentitas {

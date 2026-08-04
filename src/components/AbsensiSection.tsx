@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PresensiRecord, PresensiStatus, Kelas, Siswa, User } from '../types';
+import { PresensiRecord, PresensiStatus, PresensiLokasi, Kelas, Siswa, User } from '../types';
 import { validateNISN } from '../utils/validation';
+import { getCurrentLocation, mapsUrl } from '../utils/geo';
+import { compressImage, uploadPhoto } from '../utils/photo';
 import { 
   UserCheck, 
   QrCode, 
@@ -17,7 +19,15 @@ import {
   Users,
   Check,
   Edit3,
-  FileText
+  FileText,
+  Camera,
+  MapPin,
+  Navigation,
+  Loader2,
+  ImagePlus,
+  Trash2,
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 interface AbsensiSectionProps {
@@ -120,8 +130,14 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const countAlpa = classPresensi.filter(p => p.status === 'Alpa').length;
   const totalInputed = countHadir + countSakit + countIzin + countAlpa;
 
-  // Handler to update or create presensi record
-  const handleUpdateStatus = (siswa: Siswa, newStatus: PresensiStatus, note?: string) => {
+  // Handler to update or create presensi record (termasuk foto & lokasi)
+  const updatePresensi = (
+    siswa: Siswa,
+    newStatus: PresensiStatus,
+    note?: string,
+    fotoUrl?: string,
+    lokasi?: PresensiLokasi
+  ) => {
     const now = new Date();
     const timeStr = now.toTimeString().split(' ')[0];
 
@@ -144,11 +160,14 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
       if (existingIndex >= 0) {
         const updated = [...prev];
+        const existing = updated[existingIndex];
         updated[existingIndex] = {
-          ...updated[existingIndex],
+          ...existing,
           status: newStatus,
-          keterangan: note !== undefined ? note : updated[existingIndex].keterangan,
-          waktuInput: timeStr
+          keterangan: note !== undefined ? note : existing.keterangan,
+          waktuInput: timeStr,
+          fotoUrl: fotoUrl !== undefined ? fotoUrl : existing.fotoUrl,
+          lokasi: lokasi !== undefined ? lokasi : existing.lokasi
         };
         return updated;
       } else {
@@ -161,12 +180,115 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
           nisn: siswa.nisn,
           status: newStatus,
           keterangan: note || '',
-          waktuInput: timeStr
+          waktuInput: timeStr,
+          fotoUrl: fotoUrl || undefined,
+          lokasi: lokasi || undefined
         };
         return [newRecord, ...prev];
       }
     });
   };
+
+  const handleUpdateStatus = (siswa: Siswa, newStatus: PresensiStatus, note?: string) => {
+    updatePresensi(siswa, newStatus, note);
+  };
+
+  // ===== State modal detail (foto + tap location) =====
+  const [detailSiswa, setDetailSiswa] = useState<Siswa | null>(null);
+  const [detailStatus, setDetailStatus] = useState<PresensiStatus>('Hadir');
+  const [detailNote, setDetailNote] = useState('');
+  const [detailFotoFile, setDetailFotoFile] = useState<File | null>(null);
+  const [detailFotoPreview, setDetailFotoPreview] = useState<string>('');
+  const [detailLokasi, setDetailLokasi] = useState<PresensiLokasi | null>(null);
+  const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'error' | 'done'>('idle');
+  const [locMsg, setLocMsg] = useState('');
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [detailMsg, setDetailMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const openDetail = (siswa: Siswa) => {
+    const existing = presensiList.find(
+      p => p.tanggal === selectedDate && p.siswaId === siswa.id
+    );
+    setDetailSiswa(siswa);
+    setDetailStatus(existing?.status || 'Hadir');
+    setDetailNote(existing?.keterangan || '');
+    setDetailFotoFile(null);
+    setDetailFotoPreview(existing?.fotoUrl || '');
+    setDetailLokasi(existing?.lokasi || null);
+    setLocStatus('idle');
+    setLocMsg('');
+    setDetailMsg(null);
+  };
+
+  const handleDetailFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDetailFotoFile(file);
+    setDetailFotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleDetailLocate = async () => {
+    setLocStatus('loading');
+    setLocMsg('');
+    try {
+      const loc = await getCurrentLocation();
+      setDetailLokasi(loc);
+      setLocStatus('done');
+    } catch (err) {
+      setLocStatus('error');
+      setLocMsg(err instanceof Error ? err.message : 'Gagal mengambil lokasi.');
+    }
+  };
+
+  const handleDetailSave = async () => {
+    if (!detailSiswa) return;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    if (selectedDate > today) {
+      setDetailMsg({ type: 'error', text: `✗ Tanggal ${selectedDate} belum tiba.` });
+      return;
+    }
+
+    setDetailSaving(true);
+    setDetailMsg(null);
+
+    let newFotoUrl: string | undefined;
+    if (detailFotoFile) {
+      try {
+        const blob = await compressImage(detailFotoFile);
+        const url = await uploadPhoto(blob);
+        if (!url) throw new Error('Upload foto gagal.');
+        newFotoUrl = url;
+      } catch (err) {
+        setDetailSaving(false);
+        setDetailMsg({ type: 'error', text: err instanceof Error ? err.message : 'Upload foto gagal.' });
+        return;
+      }
+    } else {
+      // Tidak ada file baru: pertahankan foto lama (preview terisi), atau hapus foto bila preview kosong
+      const existing = presensiList.find(p => p.tanggal === selectedDate && p.siswaId === detailSiswa.id);
+      newFotoUrl = detailFotoPreview ? (existing?.fotoUrl || detailFotoPreview) : undefined;
+    }
+
+    updatePresensi(
+      detailSiswa,
+      detailStatus,
+      detailNote,
+      newFotoUrl,
+      detailLokasi || undefined
+    );
+
+    setDetailSaving(false);
+    setDetailMsg({ type: 'success', text: `✓ Presensi ${detailSiswa.name} disimpan.` });
+  };
+
+  const closeDetail = () => {
+    setDetailSiswa(null);
+    if (detailFotoPreview && detailFotoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(detailFotoPreview);
+    }
+  };
+
 
   // FIXED: QR Scan Handler with validation
   const handleQrScanSubmit = (e?: React.FormEvent) => {
@@ -477,12 +599,13 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                   <th className="py-3 px-4">Keterangan / Catatan</th>
                   <th className="py-3 px-4 text-right">Waktu Input</th>
                   <th className="py-3 px-4 text-left">Diinput oleh</th>
+                  <th className="py-3 px-4 text-center">Bukti (Foto & Lokasi)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredSiswa.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
                       {presensiSearchQuery ? `Tidak ada siswa yang cocok dengan "${presensiSearchQuery}".` : 'Tidak ada data siswa untuk kelas yang dipilih.'}
                     </td>
                   </tr>
@@ -544,6 +667,35 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                           {record?.inputBy
                             ? <span>{record.inputBy.name} <span className="text-slate-400">({record.inputBy.role})</span></span>
                             : (record ? <span className="text-slate-400">dimuat dari seed</span> : '-')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-2">
+                            {record?.fotoUrl && (
+                              <button
+                                type="button"
+                                onClick={() => openDetail(siswa)}
+                                title="Lihat foto presensi"
+                                className="group relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100"
+                              >
+                                <img src={record.fotoUrl} alt="Foto presensi" className="w-full h-full object-cover group-hover:opacity-80" />
+                              </button>
+                            )}
+                            {record?.lokasi && (
+                              <span className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center" title={`Lokasi: ${record.lokasi.lat.toFixed(5)}, ${record.lokasi.lng.toFixed(5)}`}>
+                                <MapPin className="w-4 h-4" />
+                              </span>
+                            )}
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => openDetail(siswa)}
+                                title="Detail / foto / lokasi"
+                                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700 text-slate-600 flex items-center justify-center transition-colors"
+                              >
+                                <Camera className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -777,6 +929,137 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               </div>
             );
           })()}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DETAIL: Foto + Tap Location per siswa */}
+      {detailSiswa && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <img src={detailSiswa.foto} alt={detailSiswa.name} className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                <div>
+                  <div className="font-bold text-slate-900">{detailSiswa.name}</div>
+                  <div className="text-[11px] text-slate-400 font-mono">NISN: {detailSiswa.nisn} • {detailSiswa.classId.toUpperCase()}</div>
+                </div>
+              </div>
+              <button onClick={closeDetail} className="text-slate-400 hover:text-slate-700 cursor-pointer p-1 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {detailMsg && (
+                <div className={`text-xs px-3 py-2 rounded-lg border ${detailMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>
+                  {detailMsg.text}
+                </div>
+              )}
+
+              {/* Status */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 block">Status</label>
+                <div className="flex flex-wrap gap-2">
+                  {(['Hadir', 'Sakit', 'Izin', 'Alpa'] as PresensiStatus[]).map(st => {
+                    const isSelected = detailStatus === st;
+                    const map: Record<PresensiStatus, string> = {
+                      Hadir: isSelected ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400',
+                      Sakit: isSelected ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400',
+                      Izin: isSelected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400',
+                      Alpa: isSelected ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-200 hover:border-rose-400'
+                    };
+                    return (
+                      <button key={st} type="button" disabled={isReadOnly}
+                        onClick={() => setDetailStatus(st)}
+                        className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${map[st]}`}>
+                        {st}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Foto */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 block">Foto Presensi</label>
+                <div className="space-y-3">
+                  {detailFotoPreview ? (
+                    <div className="relative">
+                      <img src={detailFotoPreview} alt="Preview" className="w-full max-h-56 object-cover rounded-xl border border-slate-200" />
+                      {!isReadOnly && (
+                        <button type="button" onClick={() => { setDetailFotoFile(null); setDetailFotoPreview(''); }}
+                          className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center shadow cursor-pointer hover:bg-rose-700">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    !isReadOnly && (
+                      <label className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 cursor-pointer hover:border-emerald-400 hover:text-emerald-500 transition-colors">
+                        <ImagePlus className="w-7 h-7" />
+                        <span className="text-xs font-semibold">Pilih / Ambil Foto Presensi</span>
+                        <span className="text-[10px]">JPEG maks. 5MB (otomatis dikompres agar hemat R2)</span>
+                        <input type="file" accept="image/*" capture="environment" onChange={handleDetailFotoChange} className="hidden" />
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Lokasi (tap location) */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 block">Lokasi (Tap Location)</label>
+                <div className="space-y-3">
+                  {detailLokasi ? (
+                    <div className="bg-sky-50 border border-sky-200 rounded-xl p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sky-800">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-xs font-mono">
+                          {detailLokasi.lat.toFixed(5)}, {detailLokasi.lng.toFixed(5)}
+                        </span>
+                      </div>
+                      <a href={mapsUrl(detailLokasi.lat, detailLokasi.lng)} target="_blank" rel="noreferrer"
+                        className="text-xs text-sky-600 hover:underline flex items-center gap-1 font-semibold">
+                        Buka Maps <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  ) : null}
+                  {!isReadOnly && (
+                    <button type="button" onClick={handleDetailLocate} disabled={locStatus === 'loading'}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold cursor-pointer hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed">
+                      {locStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+                      {locStatus === 'loading' ? 'Mendeteksi lokasi...' : (detailLokasi ? 'Perbarui Lokasi' : 'Deteksi Lokasi Saya')}
+                    </button>
+                  )}
+                  {locStatus === 'error' && <p className="text-xs text-rose-600">{locMsg}</p>}
+                  {locStatus === 'done' && <p className="text-xs text-emerald-600">Lokasi berhasil dideteksi.</p>}
+                </div>
+              </div>
+
+              {/* Catatan */}
+              <div>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 block">Keterangan / Catatan</label>
+                <textarea value={detailNote} disabled={isReadOnly} onChange={e => setDetailNote(e.target.value)}
+                  rows={2} placeholder="Catatan tambahan..."
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed resize-none" />
+              </div>
+
+              {/* Save */}
+              {!isReadOnly && (
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={closeDetail}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold cursor-pointer hover:bg-slate-200 transition-colors">
+                    Batal
+                  </button>
+                  <button type="button" onClick={handleDetailSave} disabled={detailSaving}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {detailSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Simpan Presensi
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
