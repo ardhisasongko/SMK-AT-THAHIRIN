@@ -8,25 +8,6 @@ import { AuthSession } from '../types';
 
 const AUTH_STORAGE_KEY = 'smk_auth';
 
-export interface DemoCredentials {
-  key: string;
-  role: string;
-  identifier: string;
-  password: string;
-}
-
-/** Ambil kredensial demo dari server (sumber tunggal = seed users di D1). */
-export async function fetchDemoCredentials(): Promise<DemoCredentials[]> {
-  try {
-    const res = await fetch('/api/auth/demo');
-    const json = await res.json() as { success?: boolean; data?: DemoCredentials[] };
-    if (res.ok && json.success && Array.isArray(json.data)) return json.data;
-    return [];
-  } catch {
-    return [];
-  }
-}
-
 export function saveAuthSession(session: AuthSession): void {
   try {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));

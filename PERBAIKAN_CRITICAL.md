@@ -82,7 +82,7 @@ CURRENT_USER
 **Solusi yang Diterapkan:**
 1. Membuat authentication utility `src/utils/auth.ts`
 2. Implementasi password validation (minimal 6 karakter)
-3. Credential verification dengan default passwords untuk demo
+3. Credential verification terhadap akun di D1
 4. Show/hide password toggle untuk better UX
 5. Session management dengan timestamp
 6. Informative error messages
@@ -95,13 +95,6 @@ CURRENT_USER
 - ✏️ `src/components/LoginForm.tsx` - Added password visibility toggle
 - ✏️ `src/components/LoginForm.tsx` - Added credential info UI
 - ✏️ `src/components/LoginForm.tsx` - Improved error messages
-
-**Default Credentials (Demo Mode):**
-```
-Admin:  admin@smksplusatthahirin.sch.id / admin123
-Guru:   guru@smksplusatthahirin.sch.id  / guru123  
-Siswa:  siswa@smksplusatthahirin.sch.id / siswa123
-```
 
 **Benefits:**
 - ✅ Basic authentication implemented
