@@ -22,7 +22,7 @@ type AuthData = Record<string, unknown> & { user: AuthUser | null };
 const isPresensiKey = (k: string) => k === 'presensi_v1';
 
 /** WIB = UTC+7. Cek apakah waktu sekarang sebelum jam 08:00 WIB. */
-function isBeforeCutoffWIB(): boolean {
+export function isBeforeCutoffWIB(): boolean {
   const now = new Date(Date.now() + 7 * 3600 * 1000);
   return now.getUTCHours() < 8;
 }
@@ -57,7 +57,7 @@ async function teacherCanEditClass(db: D1Database, teacherName: string, classId:
 }
 
 /** Siswa hanya boleh edit record sendiri (cek NISN) sebelum jam 08:00 WIB. */
-function studentCanEdit(user: AuthUser, record: any): { ok: boolean; error?: string } {
+export function studentCanEdit(user: AuthUser, record: any): { ok: boolean; error?: string } {
   if (user.role !== 'siswa') return { ok: true };
 
   // Siswa hanya bisa edit record sendiri (cek NISN)

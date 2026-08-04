@@ -423,11 +423,12 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     document.body.removeChild(link);
   };
 
-  // Quick mark all present
-  const handleMarkAllHadir = () => {
-    classSiswa.forEach(siswa => {
-      handleUpdateStatus(siswa, 'Hadir');
-    });
+  // Status badge untuk tampilan ringkas (tabel & kartu)
+  const statusBadgeClass = (s: PresensiStatus): string => {
+    if (s === 'Hadir') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (s === 'Sakit') return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (s === 'Izin') return 'bg-blue-100 text-blue-700 border-blue-200';
+    return 'bg-rose-100 text-rose-700 border-rose-200';
   };
 
   return (
@@ -476,29 +477,33 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
             <span>Presensi Harian</span>
           </button>
 
-          <button
-            onClick={() => setActiveTabMode('qr-scanner')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTabMode === 'qr-scanner' 
-                ? 'bg-white text-emerald-700 shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <QrCode className="w-4 h-4 text-emerald-600" />
-            <span>Scan QR / NISN</span>
-          </button>
+          {currentUser?.role !== 'ketua_kelas' && (
+            <button
+              onClick={() => setActiveTabMode('qr-scanner')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTabMode === 'qr-scanner' 
+                  ? 'bg-white text-emerald-700 shadow-xs' 
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <QrCode className="w-4 h-4 text-emerald-600" />
+              <span>Scan QR / NISN</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setActiveTabMode('rekap')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTabMode === 'rekap' 
-                ? 'bg-white text-emerald-700 shadow-xs' 
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
+          {currentUser?.role !== 'ketua_kelas' && (
+            <button
+              onClick={() => setActiveTabMode('rekap')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTabMode === 'rekap' 
+                  ? 'bg-white text-emerald-700 shadow-xs' 
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
             <FileText className="w-4 h-4" />
             <span>Rekap & Laporan</span>
           </button>
+          )}
 
           {currentUser?.role === 'admin' && (
             <button
@@ -574,13 +579,13 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
       </div>
 
-      {/* MODE 1: PRESENSI HARIAN MANUALL CHECKLIST */}
+      {/* MODE 1: PRESENSI HARIAN */}
       {activeTabMode === 'harian' && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden space-y-6 p-6">
           
           {/* Controls Bar: Select Date & Class */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-            <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-100">
+            <div className="flex flex-wrap items-end gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Tanggal Presensi:</label>
                 <div className="relative">
@@ -594,170 +599,189 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Kelas:</label>
-                <select
-                  value={selectedClassId}
-                  onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {classOptions.map(k => (
-                    <option key={k.id} value={k.id}>
-                      {k.name} — Wali Kelas: {k.waliKelas}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {currentUser?.role === 'ketua_kelas' ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Kelas:</label>
+                  <div className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">
+                    {selectedKelasInfo?.name || '-'}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Pilih Kelas:</label>
+                  <select
+                    value={selectedClassId}
+                    onChange={(e) => setSelectedClassId(e.target.value)}
+                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    {classOptions.map(k => (
+                      <option key={k.id} value={k.id}>
+                        {k.name} — Wali Kelas: {k.waliKelas}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={presensiSearchQuery}
-                  onChange={(e) => setPresensiSearchQuery(e.target.value)}
-                  placeholder="Cari nama / NISN..."
-                  className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 sm:w-56"
-                />
-                {presensiSearchQuery && (
-                  <button
-                    onClick={() => setPresensiSearchQuery('')}
-                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label="Hapus pencarian"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={handleMarkAllHadir}
-                disabled={!canEditCurrent}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Check className="w-4 h-4" />
-                <span>Tandai Semua Hadir</span>
-              </button>
+            <div className="relative w-full md:w-auto">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={presensiSearchQuery}
+                onChange={(e) => setPresensiSearchQuery(e.target.value)}
+                placeholder="Cari nama / NISN..."
+                className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full md:w-56"
+              />
+              {presensiSearchQuery && (
+                <button
+                  onClick={() => setPresensiSearchQuery('')}
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  aria-label="Hapus pencarian"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Student Roster Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4">No</th>
-                  <th className="py-3 px-4">Siswa</th>
-                  <th className="py-3 px-4">NISN</th>
-                  <th className="py-3 px-4 text-center">Status Presensi</th>
-                  <th className="py-3 px-4">Keterangan / Catatan</th>
-                  <th className="py-3 px-4 text-right">Waktu Input</th>
-                  <th className="py-3 px-4 text-left">Diinput oleh</th>
-                  <th className="py-3 px-4 text-center">Bukti (Foto & Lokasi)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {filteredSiswa.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
-                      {presensiSearchQuery ? `Tidak ada siswa yang cocok dengan "${presensiSearchQuery}".` : 'Tidak ada data siswa untuk kelas yang dipilih.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSiswa.map((siswa, idx) => {
-                    const record = classPresensi.find(p => p.siswaId === siswa.id);
-                    const currentStatus = record?.status || 'Hadir';
+          {/* Student Roster: Kartu di mobile, Tabel ringkas di desktop */}
+          {filteredSiswa.length === 0 ? (
+            <div className="text-center py-10">
+              <Users className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+              <p className="text-sm text-slate-400">
+                {presensiSearchQuery ? `Tidak ada siswa yang cocok dengan "${presensiSearchQuery}".` : 'Tidak ada data siswa untuk kelas yang dipilih.'}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* ===== MOBILE: KARTU PER SISWA ===== */}
+              <div className="md:hidden space-y-3">
+                {filteredSiswa.map((siswa, idx) => {
+                  const record = classPresensi.find(p => p.siswaId === siswa.id);
+                  return (
+                    <button
+                      key={siswa.id}
+                      type="button"
+                      onClick={() => openDetail(siswa)}
+                      className="w-full text-left bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 rounded-2xl p-4 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="text-xs font-semibold text-slate-400 mt-1 w-5 shrink-0">{idx + 1}</span>
+                        <img src={siswa.foto} alt={siswa.name} className="w-11 h-11 rounded-full object-cover border border-slate-200 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 text-sm truncate">{siswa.name}</div>
+                          <div className="text-[11px] text-slate-400">
+                            {siswa.gender === 'L' ? 'Laki-Laki' : 'Perempuan'} • <span className="font-mono">{siswa.nisn}</span>
+                          </div>
+                        </div>
+                        {record ? (
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border shrink-0 ${statusBadgeClass(record.status)}`}>
+                            {record.status}
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 shrink-0">
+                            Belum
+                          </span>
+                        )}
+                      </div>
 
-                    return (
-                      <tr key={siswa.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-4 text-xs font-semibold text-slate-400">{idx + 1}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <img src={siswa.foto} alt={siswa.name} className="w-9 h-9 rounded-full object-cover border border-slate-200" />
-                            <div>
-                              <div className="font-bold text-slate-900 text-sm">{siswa.name}</div>
-                              <div className="text-[11px] text-slate-400">Gender: {siswa.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}</div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <span className="text-[11px] text-slate-400 font-mono">⏱ {record?.waktuInput || '-'}</span>
+                        <span className="text-[11px] text-slate-400 truncate">
+                          • Diinput oleh: {record?.inputBy ? record.inputBy.name : (record ? 'dimuat dari seed' : '-')}
+                        </span>
+                        <span className="ml-auto flex items-center gap-2">
+                          {record?.fotoUrl && <Camera className="w-4 h-4 text-emerald-500" />}
+                          {record?.lokasi && <MapPin className="w-4 h-4 text-sky-500" />}
+                          {!isReadOnly && <Edit3 className="w-4 h-4 text-slate-400" />}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* ===== DESKTOP: TABEL RINGKAS ===== */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600 text-xs uppercase font-bold tracking-wider border-b border-slate-200">
+                      <th className="py-3 px-4">No</th>
+                      <th className="py-3 px-4">Siswa</th>
+                      <th className="py-3 px-4 text-center">Status Presensi</th>
+                      <th className="py-3 px-4">Keterangan / Catatan</th>
+                      <th className="py-3 px-4 text-right">Waktu Input</th>
+                      <th className="py-3 px-4 text-left">Diinput oleh</th>
+                      <th className="py-3 px-4 text-center">Bukti (Foto & Lokasi)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm">
+                    {filteredSiswa.map((siswa, idx) => {
+                      const record = classPresensi.find(p => p.siswaId === siswa.id);
+
+                      return (
+                        <tr key={siswa.id} onClick={() => openDetail(siswa)}
+                          className="hover:bg-emerald-50/40 transition-colors cursor-pointer">
+                          <td className="py-3 px-4 text-xs font-semibold text-slate-400">{idx + 1}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <img src={siswa.foto} alt={siswa.name} className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-bold text-slate-900 text-sm truncate">{siswa.name}</div>
+                                <div className="text-[11px] text-slate-400">
+                                  {siswa.gender === 'L' ? 'Laki-Laki' : 'Perempuan'} • <span className="font-mono">{siswa.nisn}</span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-xs font-mono font-semibold text-slate-600">{siswa.nisn}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {(['Hadir', 'Sakit', 'Izin', 'Alpa'] as PresensiStatus[]).map(st => {
-                              const isSelected = currentStatus === st;
-                              let activeClass = '';
-                              if (st === 'Hadir') activeClass = isSelected ? 'bg-emerald-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-emerald-100';
-                              if (st === 'Sakit') activeClass = isSelected ? 'bg-amber-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-amber-100';
-                              if (st === 'Izin') activeClass = isSelected ? 'bg-blue-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-blue-100';
-                              if (st === 'Alpa') activeClass = isSelected ? 'bg-rose-600 text-white font-bold shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-rose-100';
-
-                              return (
-                                <button
-                                  key={st}
-                                  disabled={!canEditCurrent}
-                                  onClick={() => handleUpdateStatus(siswa, st)}
-                                  className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${activeClass}`}
-                                >
-                                  {st}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <input 
-                            type="text"
-                            defaultValue={record?.keterangan || ''}
-                            disabled={!canEditCurrent}
-                            placeholder="Catatan..."
-                            onBlur={(e) => handleUpdateStatus(siswa, currentStatus, e.target.value)}
-                            className="w-full text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:bg-white focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                        <td className="py-3 px-4 text-right text-xs font-mono text-slate-500">
-                          {record?.waktuInput || '-'}
-                        </td>
-                        <td className="py-3 px-4 text-left text-xs text-slate-500">
-                          {record?.inputBy
-                            ? <span>{record.inputBy.name} <span className="text-slate-400">({record.inputBy.role})</span></span>
-                            : (record ? <span className="text-slate-400">dimuat dari seed</span> : '-')}
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center gap-2">
-                            {record?.fotoUrl && (
-                              <button
-                                type="button"
-                                onClick={() => openDetail(siswa)}
-                                title="Lihat foto presensi"
-                                className="group relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100"
-                              >
-                                <img src={`${record.fotoUrl}?thumb=1`} alt="Foto presensi" className="w-full h-full object-cover group-hover:opacity-80" />
-                              </button>
-                            )}
-                            {record?.lokasi && (
-                              <span className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center" title={`Lokasi: ${record.lokasi.lat.toFixed(5)}, ${record.lokasi.lng.toFixed(5)}`}>
-                                <MapPin className="w-4 h-4" />
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {record ? (
+                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${statusBadgeClass(record.status)}`}>
+                                {record.status}
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                                Belum
                               </span>
                             )}
-                            {!isReadOnly && (
-                              <button
-                                type="button"
-                                onClick={() => openDetail(siswa)}
-                                title="Detail / foto / lokasi"
-                                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-emerald-100 hover:text-emerald-700 text-slate-600 flex items-center justify-center transition-colors"
-                              >
-                                <Camera className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-slate-600 max-w-[180px]">
+                            <span className="line-clamp-2">{record?.keterangan || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-xs font-mono text-slate-500">
+                            {record?.waktuInput || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-left text-xs text-slate-500">
+                            {record?.inputBy
+                              ? <span>{record.inputBy.name} <span className="text-slate-400">({record.inputBy.role})</span></span>
+                              : (record ? <span className="text-slate-400">dimuat dari seed</span> : '-')}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-center gap-2">
+                              {record?.fotoUrl && (
+                                <span className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0" title="Lihat foto presensi">
+                                  <img src={`${record.fotoUrl}?thumb=1`} alt="Foto presensi" className="w-full h-full object-cover" />
+                                </span>
+                              )}
+                              {record?.lokasi && (
+                                <span className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0" title={`Lokasi: ${record.lokasi.lat.toFixed(5)}, ${record.lokasi.lng.toFixed(5)}`}>
+                                  <MapPin className="w-4 h-4" />
+                                </span>
+                              )}
+                              {!record?.fotoUrl && !record?.lokasi && (
+                                <span className="text-xs text-slate-300">-</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
         </div>
       )}
