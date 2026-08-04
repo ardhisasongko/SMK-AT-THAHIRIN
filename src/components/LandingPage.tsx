@@ -27,7 +27,8 @@ import {
   Bell,
   User as UserIcon,
   LogIn,
-  Layers
+  Layers,
+  FileText
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -81,11 +82,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
 
               <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
                 <button
-                  id="hero-cta-absensi"
-                  onClick={() => setActiveTab('absensi')}
+                  id="hero-cta-cbt"
+                  onClick={() => setActiveTab('cbt')}
                   className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg shadow-emerald-600/30 hover:scale-[1.02] transition-all cursor-pointer text-sm"
                 >
-                  <UserCheck className="w-4 h-4" />
+                  <FileText className="w-4 h-4" />
+                  <span>Ujian CBT Online</span>
+                </button>
+
+                <button
+                  id="hero-cta-absensi"
+                  onClick={() => setActiveTab('absensi')}
+                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                >
+                  <UserCheck className="w-4 h-4 text-emerald-400" />
                   <span>Presensi QR Code</span>
                 </button>
 
@@ -200,11 +210,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
             {/* Quick Action Button Pills */}
             <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
               <button
-                id="quick-shortcut-absensi"
-                onClick={() => setActiveTab('absensi')}
+                id="quick-shortcut-cbt"
+                onClick={() => setActiveTab('cbt')}
                 className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-xs cursor-pointer hover:scale-105"
               >
-                <UserCheck className="w-3.5 h-3.5" />
+                <FileText className="w-3.5 h-3.5" />
+                <span>Ujian CBT</span>
+              </button>
+
+              <button
+                id="quick-shortcut-absensi"
+                onClick={() => setActiveTab('absensi')}
+                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Absensi QR</span>
               </button>
 

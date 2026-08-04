@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
+import { BottomDock } from './components/BottomDock';
 import { Footer } from './components/Footer';
 import { LandingPage } from './components/LandingPage';
 import { LoginForm } from './components/LoginForm';
@@ -9,6 +10,7 @@ import { ModulAjarSection } from './components/ModulAjarSection';
 import { ForumSection } from './components/ForumSection';
 import { NotifikasiSection } from './components/NotifikasiSection';
 import { ProfilSection } from './components/ProfilSection';
+import { CbtSection } from './components/CbtSection';
 import { 
   INITIAL_USERS, 
   INITIAL_KELAS, 
@@ -16,9 +18,11 @@ import {
   INITIAL_PRESENSI, 
   INITIAL_MODUL_AJAR,
   INITIAL_FORUM_TOPICS,
-  INITIAL_NOTIFICATIONS
+  INITIAL_NOTIFICATIONS,
+  INITIAL_CBT_EXAMS,
+  INITIAL_CBT_SUBMISSIONS
 } from './data/initialData';
-import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem } from './types';
+import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, CbtExam, CbtSubmission } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('landing');
@@ -32,6 +36,8 @@ export default function App() {
   const [modulList, setModulList] = useState<ModulAjar[]>(INITIAL_MODUL_AJAR);
   const [topics, setTopics] = useState<ForumTopic[]>(INITIAL_FORUM_TOPICS);
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [cbtExams, setCbtExams] = useState<CbtExam[]>(INITIAL_CBT_EXAMS);
+  const [cbtSubmissions, setCbtSubmissions] = useState<CbtSubmission[]>(INITIAL_CBT_SUBMISSIONS);
 
   // Calculate unread notifications count for current user
   const unreadCount = currentUser 
@@ -80,10 +86,21 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1">
+      <main className="flex-1 pb-20">
         {activeTab === 'landing' && (
           <LandingPage 
             setActiveTab={setActiveTab}
+            onOpenLogin={() => setShowLoginModal(true)}
+          />
+        )}
+
+        {activeTab === 'cbt' && (
+          <CbtSection 
+            currentUser={currentUser}
+            cbtExams={cbtExams}
+            setCbtExams={setCbtExams}
+            cbtSubmissions={cbtSubmissions}
+            setCbtSubmissions={setCbtSubmissions}
             onOpenLogin={() => setShowLoginModal(true)}
           />
         )}
@@ -151,6 +168,14 @@ export default function App() {
 
       {/* Footer */}
       <Footer setActiveTab={setActiveTab} />
+
+      {/* Floating Bottom App Dock Navigation */}
+      <BottomDock 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        unreadCount={unreadCount}
+      />
 
       {/* Login Modal */}
       {showLoginModal && (

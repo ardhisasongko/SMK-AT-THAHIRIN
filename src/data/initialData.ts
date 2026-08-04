@@ -1,4 +1,4 @@
-import { Jurusan, Kelas, Siswa, PresensiRecord, ModulAjar, Berita, User, ForumTopic, NotificationItem } from '../types';
+import { Jurusan, Kelas, Siswa, PresensiRecord, ModulAjar, Berita, User, ForumTopic, NotificationItem, CbtExam, CbtSubmission } from '../types';
 
 export const SCHOOL_INFO = {
   name: 'SMKS PLUS AT THAHIRIN',
@@ -321,3 +321,149 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     isEmailSent: true
   }
 ];
+
+export const INITIAL_CBT_EXAMS: CbtExam[] = [
+  {
+    id: 'cbt-1',
+    title: 'Penilaian Tengah Semester (PTS) - Kearsipan Digital',
+    subject: 'Otomatisasi Tata Kelola Kearsipan Digital',
+    classTarget: 'X AP 1',
+    durationMinutes: 30,
+    token: 'AP2026',
+    teacherName: 'Bpk. Ahmad Fauzi, S.Pd.',
+    startDate: '2026-08-01',
+    endDate: '2026-08-10',
+    status: 'active',
+    questions: [
+      {
+        id: 'q1',
+        question: 'Dalam sistem kearsipan elektronik, proses pengubahan dokumen fisik berupa surat kertas menjadi format file digital menggunakan alat scanner dinamakan ...',
+        options: [
+          { key: 'A', text: 'Indexing (Pengindeksan)' },
+          { key: 'B', text: 'Digitizing / Scanning (Pemindaian)' },
+          { key: 'C', text: 'Encrypting (Enkripsi Data)' },
+          { key: 'D', text: 'Archiving (Pengarsipan Manual)' },
+          { key: 'E', text: 'Duplicating (Penggandaan File)' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Pemindaian (Scanning / Digitizing) adalah alur utama mengonversi fisik dokumen menjadi bit data digital dalam bentuk file PDF atau JPEG.'
+      },
+      {
+        id: 'q2',
+        question: 'Format penamaan file arsip digital yang disepakati sesuai standar Administrasi Perkantoran SMKS PLUS AT THAHIRIN adalah ...',
+        options: [
+          { key: 'A', text: 'Surat1.pdf' },
+          { key: 'B', text: '[KODE_ARSIP]_[TANGGAL]_[NAMA_INSTANSI].pdf' },
+          { key: 'C', text: 'Tugas_Kearsipan_Siswa.docx' },
+          { key: 'D', text: 'Scan_Dokumen_Terbaru.jpg' },
+          { key: 'E', text: 'ARSIP_BEBAS.pdf' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Format baku memuat Kode Klasifikasi, Tanggal Dokumen, dan Nama Instansi pengirim/penerima untuk memudahkan pencarian (temu balik).'
+      },
+      {
+        id: 'q3',
+        question: 'Sistem penyimpanan berkas berdasarkan abjad nama individu, perusahaan, atau organisasi dinamakan sistem kearsipan ...',
+        options: [
+          { key: 'A', text: 'Sistem Geografis' },
+          { key: 'B', text: 'Sistem Kronologis (Tanggal)' },
+          { key: 'C', text: 'Sistem Alfabetis (Abjad)' },
+          { key: 'D', text: 'Sistem Subjek (Pokok Masalah)' },
+          { key: 'E', text: 'Sistem Nomor (Desimal)' }
+        ],
+        correctAnswer: 'C',
+        explanation: 'Sistem Alfabetis mengurutkan arsip dari A sampai Z berdasarkan nama pengirim atau instansi.'
+      },
+      {
+        id: 'q4',
+        question: 'Manakah di bawah ini yang merupakan keunggulan utama pengelolaan e-Arsip dibanding arsip konvensional fisik?',
+        options: [
+          { key: 'A', text: 'Membutuhkan gudang penyimpanan kertas yang luas' },
+          { key: 'B', text: 'Kecepatan temu balik dokumen (retrieval time) hitungan detik' },
+          { key: 'C', text: 'Rentan terhadap rayap dan kelembapan udara' },
+          { key: 'D', text: 'Sulit dibagikan antar divisi secara bersamaan' },
+          { key: 'E', text: 'Memerlukan biaya penggandaan Kertas tinggi' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Kecepatan temu balik dokumen digital sangat tinggi karena didukung oleh fitur pencarian kata kunci dan indeks terstruktur.'
+      },
+      {
+        id: 'q5',
+        question: 'Tahap menentukan tanda pengenal surat atau kata tangkap (caption) untuk menyimpan dokumen disebut ...',
+        options: [
+          { key: 'A', text: 'Mengindeks' },
+          { key: 'B', text: 'Menyortir' },
+          { key: 'C', text: 'Mengkaji' },
+          { key: 'D', text: 'Memverifikasi' },
+          { key: 'E', text: 'Menyimpan' }
+        ],
+        correctAnswer: 'A',
+        explanation: 'Mengindeks adalah menentukan judul/kata kunci penataan arsip sebelum dimasukkan ke dalam folder klasifikasi.'
+      }
+    ]
+  },
+  {
+    id: 'cbt-2',
+    title: 'Kuis Harian - Korespondensi Bisnis & Aplikasi Perkantoran',
+    subject: 'Teknologi Perkantoran & Korespondensi Bisnis',
+    classTarget: 'Semua Kelas AP',
+    durationMinutes: 15,
+    token: 'KORESP26',
+    teacherName: 'Ibu Dra. Hj. Sri Wahyuni, M.Pd.',
+    startDate: '2026-08-02',
+    endDate: '2026-08-15',
+    status: 'active',
+    questions: [
+      {
+        id: 'q21',
+        question: 'Surat resmi yang dikirimkan oleh sebuah perusahaan kepada instansi atau mitra usaha lain disebut ...',
+        options: [
+          { key: 'A', text: 'Surat Pribadi' },
+          { key: 'B', text: 'Surat Dinas / Bisnis' },
+          { key: 'C', text: 'Surat Kaleng' },
+          { key: 'D', text: 'Surat Rahasia Pribadi' },
+          { key: 'E', text: 'Surat Pembaca' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Surat dinas/bisnis digunakan untuk kepentingan korespondensi antar instansi atau perusahaan.'
+      },
+      {
+        id: 'q22',
+        question: 'Bagian surat yang berisi alamat tujuan pengiriman dan nama penerima disebut ...',
+        options: [
+          { key: 'A', text: 'Kop Surat' },
+          { key: 'B', text: 'Tanggal Surat' },
+          { key: 'C', text: 'Alamat Dalam (Inside Address)' },
+          { key: 'D', text: 'Salam Pembuka' },
+          { key: 'E', text: 'Lampiran' }
+        ],
+        correctAnswer: 'C',
+        explanation: 'Alamat dalam mencantumkan penerima spesifik beserta jabatan dan nama instansinya.'
+      }
+    ]
+  }
+];
+
+export const INITIAL_CBT_SUBMISSIONS: CbtSubmission[] = [
+  {
+    id: 'sub-1',
+    examId: 'cbt-1',
+    siswaId: 's1',
+    siswaName: 'Muhammad Rizky Pratama',
+    nisn: '0068123491',
+    answers: {
+      'q1': 'B',
+      'q2': 'B',
+      'q3': 'C',
+      'q4': 'B',
+      'q5': 'A'
+    },
+    doubtful: {},
+    score: 100,
+    correctCount: 5,
+    wrongCount: 0,
+    submittedAt: '2026-08-03 09:12',
+    timeSpentSeconds: 420
+  }
+];
+

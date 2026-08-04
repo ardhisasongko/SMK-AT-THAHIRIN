@@ -190,3 +190,46 @@ export interface NotificationItem {
   senderRole?: string;
   isEmailSent?: boolean;
 }
+
+// CBT (Computer Based Test) Types
+export interface CbtOption {
+  key: 'A' | 'B' | 'C' | 'D' | 'E';
+  text: string;
+}
+
+export interface CbtQuestion {
+  id: string;
+  question: string;
+  options: CbtOption[];
+  correctAnswer: 'A' | 'B' | 'C' | 'D' | 'E';
+  explanation?: string;
+}
+
+export interface CbtExam {
+  id: string;
+  title: string;
+  subject: string;
+  classTarget: string; // e.g. "X AP 1" or "Semua Kelas AP"
+  durationMinutes: number;
+  token: string;
+  teacherName: string;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'upcoming' | 'completed';
+  questions: CbtQuestion[];
+}
+
+export interface CbtSubmission {
+  id: string;
+  examId: string;
+  siswaId: string;
+  siswaName: string;
+  nisn: string;
+  answers: { [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' };
+  doubtful?: { [questionId: string]: boolean };
+  score: number;
+  correctCount: number;
+  wrongCount: number;
+  submittedAt: string;
+  timeSpentSeconds: number;
+}
