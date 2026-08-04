@@ -32,18 +32,34 @@ export function compressImage(file: File, maxDim = 800, quality = 0.6): Promise<
   });
 }
 
-/** Upload blob foto ke R2; mengembalikan URL internal, atau null bila gagal. */
-export async function uploadPhoto(blob: Blob): Promise<string | null> {
+/** Upload blob foto; mengembalikan respons sukses, atau null bila gagal. */
+async function postBlob(body: Blob, query = ''): Promise<{ success: boolean; id?: string; url?: string } | null> {
   try {
-    const res = await fetch('/api/upload', {
+    const res = await fetch(`/api/upload${query}`, {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': blob.type || 'image/jpeg' }),
-      body: blob,
+      headers: authHeaders({ 'Content-Type': body.type || 'image/jpeg' }),
+      body,
     });
-    const json = await res.json() as { success?: boolean; url?: string };
-    if (!res.ok || !json.success) return null;
-    return json.url as string;
+    const json = await res.json() as { success?: boolean; id?: string; url?: string };
+    if (!res.ok || json.success !== true) return null;
+    return { success: true, id: json.id, url: json.url };
   } catch {
     return null;
   }
+}
+
+/**
+ * Kompres & upload foto presensi: kirim versi FULL (untuk arsip Drive) dan
+ * THUMBNAIL kecil (permanen di D1 agar UI tetap cepat untuk seluruh riwayat).
+ * Mengembalikan URL internal (fotoUrl), atau null bila gagal.
+ */
+export async function uploadPhoto(file: File): Promise<string | null> {
+  const fullBlob = await compressImage(file, 800, 0.6);
+  const thumbBlob = await compressImage(file, 160, 0.5);
+
+  const full = await postBlob(fullBlob);
+  if (!full || !full.id) return null;
+
+  await postBlob(thumbBlob, `?id=${full.id}`); // best-effort; thumb tidak kritis
+  return full.url || null;
 }

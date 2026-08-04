@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PresensiRecord, PresensiStatus, PresensiLokasi, Kelas, Siswa, User } from '../types';
 import { validateNISN } from '../utils/validation';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
-import { compressImage, uploadPhoto } from '../utils/photo';
+import { uploadPhoto } from '../utils/photo';
 import { 
   UserCheck, 
   QrCode, 
@@ -213,7 +213,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     setDetailStatus(existing?.status || 'Hadir');
     setDetailNote(existing?.keterangan || '');
     setDetailFotoFile(null);
-    setDetailFotoPreview(existing?.fotoUrl || '');
+    setDetailFotoPreview(existing?.fotoUrl ? `${existing.fotoUrl}?link=1` : '');
     setDetailLokasi(existing?.lokasi || null);
     setLocStatus('idle');
     setLocMsg('');
@@ -255,8 +255,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     let newFotoUrl: string | undefined;
     if (detailFotoFile) {
       try {
-        const blob = await compressImage(detailFotoFile);
-        const url = await uploadPhoto(blob);
+        const url = await uploadPhoto(detailFotoFile);
         if (!url) throw new Error('Upload foto gagal.');
         newFotoUrl = url;
       } catch (err) {
@@ -677,7 +676,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                                 title="Lihat foto presensi"
                                 className="group relative w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100"
                               >
-                                <img src={record.fotoUrl} alt="Foto presensi" className="w-full h-full object-cover group-hover:opacity-80" />
+                                <img src={`${record.fotoUrl}?thumb=1`} alt="Foto presensi" className="w-full h-full object-cover group-hover:opacity-80" />
                               </button>
                             )}
                             {record?.lokasi && (

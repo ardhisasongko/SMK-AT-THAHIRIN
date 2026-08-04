@@ -1,5 +1,8 @@
-// Menyajikan foto presensi dari D1 (base64). Butuh login (token Bearer).
-// GET /api/photo/:id
+// Menyajikan foto presensi dari D1. Butuh login (token Bearer).
+//   GET /api/photo/:id          -> foto FULL (base64 sementara, hanya ada <=24 jam)
+//   GET /api/photo/:id?thumb=1  -> thumbnail kecil (permanen di D1, cepat untuk UI)
+//   GET /api/photo/:id?link=1   -> redirect ke foto full di Google Drive (bila sudah diarsip),
+//                                  atau fallback balas bytes full bila belum diarsipkan.
 
 import { type AuthUser } from '../../_lib/auth';
 
@@ -18,7 +21,7 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, params, data }) => {
+export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, params, request, data }) => {
   if (!data.user) {
     return new Response(JSON.stringify({ success: false, error: 'Silakan login terlebih dahulu.' }), {
       status: 401,
@@ -31,17 +34,31 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
     return new Response('id tidak ditemukan.', { status: 400 });
   }
 
+  const url = new URL(request.url);
+  const wantThumb = url.searchParams.get('thumb') === '1';
+  const wantLink = url.searchParams.get('link') === '1';
+
   const row = await env.DB
-    .prepare('SELECT data, mime FROM photos WHERE id = ?')
+    .prepare('SELECT data, thumb, mime, drive_link FROM photos WHERE id = ?')
     .bind(String(id))
-    .first<{ data: string; mime: string }>();
+    .first<{ data: string | null; thumb: string | null; mime: string; drive_link: string | null }>();
 
   if (!row) {
     return new Response('Foto tidak ditemukan.', { status: 404 });
   }
 
+  if (wantLink && row.drive_link) {
+    // Arsitek: foto full sudah di Google Drive
+    return Response.redirect(row.drive_link, 302);
+  }
+
+  const payload = wantThumb ? row.thumb : (wantLink ? row.data : row.data);
+  if (!payload) {
+    return new Response('Foto belum tersedia.', { status: 404 });
+  }
+
   const headers = new Headers();
   headers.set('Content-Type', row.mime || 'image/jpeg');
   headers.set('Cache-Control', 'private, max-age=86400');
-  return new Response(base64ToBytes(row.data), { headers });
+  return new Response(base64ToBytes(payload), { headers });
 };
