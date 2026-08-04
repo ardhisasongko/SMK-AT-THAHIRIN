@@ -38,10 +38,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const prompt = `Buatkan Modul Ajar Kurikulum Merdeka lengkap dan terstruktur profesional untuk SMKS PLUS AT THAHIRIN.
 Detail Input:
 - Mata Pelajaran: ${mataPelajaran}
-- Jurusan / Keahlian: ${jurusan || "Administrasi Perkantoran"}
+- Jurusan / Keahlian: ${jurusan || "Manajemen Perkantoran dan Layanan Bisnis (MPLB)"}
 - Fase / Kelas: ${faseKelas}
 - Alokasi Waktu: ${alokasiWaktu || "2 x 45 menit (1 Pertemuan)"}
-- Elemen / Capaian Pembelajaran (CP): ${elemenCP || "Disesuaikan dengan standar SMK Kurikulum Merdeka Administrasi Perkantoran"}
+- Elemen / Capaian Pembelajaran (CP): ${elemenCP || "Disesuaikan dengan standar SMK Kurikulum Merdeka Manajemen Perkantoran dan Layanan Bisnis"}
 - Tujuan Pembelajaran (TP): ${tujuanPembelajaran || "Peserta didik mampu memahami dan mengaplikasikan kompetensi secara saintifik dan praktis"}
 - Model Pembelajaran: ${modelPembelajaran || "Project Based Learning (PjBL)"}
 - Dimensi Profil Pelajar Pancasila: ${profilPancasila || "Bernalar Kritis, Mandiri, Gotong Royong, Kreatif"}
@@ -60,7 +60,7 @@ Susunlah dokumen Modul Ajar SMKS PLUS AT THAHIRIN ini dengan format JSON rapi de
   },
   "profilPelajarPancasila": ["...", "..."],
   "saranaPrasarana": ["...", "..."],
-  "targetPesertaDidik": "Siswa Reguler / Tipikal SMK Administrasi Perkantoran",
+  "targetPesertaDidik": "Siswa Reguler / Tipikal SMK Manajemen Perkantoran dan Layanan Bisnis",
   "modelPembelajaran": "...",
   "komponenInti": {
     "tujuanPembelajaran": ["...", "..."],

@@ -118,7 +118,7 @@ export function CbtSection({
                 Computer Based Test (CBT) Kuis & Ujian Digital
               </h1>
               <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-                Sistem pengerjaan ujian berbasis komputer terintegrasi untuk mata pelajaran Administrasi Perkantoran dengan pengawasan token, timer otomatis, dan evaluasi nilai instan.
+                Sistem pengerjaan ujian berbasis komputer terintegrasi untuk mata pelajaran Manajemen Perkantoran dan Layanan Bisnis dengan pengawasan token, timer otomatis, dan evaluasi nilai instan.
               </p>
             </div>
 

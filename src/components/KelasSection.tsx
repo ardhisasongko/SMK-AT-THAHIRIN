@@ -46,7 +46,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
 
   // Form New Class state
   const [newClassName, setNewClassName] = useState('');
-  const [newJurusanCode, setNewJurusanCode] = useState('AP');
+  const [newJurusanCode, setNewJurusanCode] = useState('MPLB');
   const [newTingkat, setNewTingkat] = useState<'X' | 'XI' | 'XII'>('X');
   const [newRuang, setNewRuang] = useState('Gedung A - R.105');
   const [newWaliKelas, setNewWaliKelas] = useState('');
@@ -531,12 +531,12 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
             
             <form onSubmit={handleAddClassSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nama Kelas (contoh: X AP 2)</label>
+                <label className="block font-bold text-slate-700 mb-1">Nama Kelas (contoh: X MPLB 2)</label>
                 <input 
                   type="text" 
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
-                  placeholder="X AP 2" 
+                  placeholder="X MPLB 2" 
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -548,7 +548,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                   onChange={(e) => setNewJurusanCode(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="AP">AP — Administrasi Perkantoran</option>
+                  <option value="MPLB">MPLB — Manajemen Perkantoran dan Layanan Bisnis</option>
                 </select>
               </div>
 

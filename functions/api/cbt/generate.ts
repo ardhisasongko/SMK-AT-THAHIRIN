@@ -15,7 +15,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return errorResponse("Mata pelajaran wajib diisi.", 400);
     }
 
-    const prompt = `Buatkan ${count} soal ujian untuk mata pelajaran "${subject}" untuk tingkat SMK Administrasi Perkantoran dengan VARIASI TIPE SOAL:
+    const prompt = `Buatkan ${count} soal ujian untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB) dengan VARIASI TIPE SOAL:
 - 60% soal pilihan ganda (type: "pg", 5 opsi A-E)
 - 20% soal benar/salah (type: "truefalse", 2 opsi A="Benar", B="Salah")
 - 20% soal essay (type: "essay", options: [], correctAnswer: "A", expectedAnswer: "kata,kunci,jawaban")
@@ -40,7 +40,7 @@ Format JSON murni tanpa markdown/backticks:
 
     const parsed = await callGeminiJson<any[]>(env.GEMINI_API_KEY, prompt, {
       systemInstruction:
-        "Anda adalah guru SMK Administrasi Perkantoran. Hasilkan soal ujian berkualitas dengan kunci jawaban yang benar. Output hanya JSON array.",
+        "Anda adalah guru SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB). Hasilkan soal ujian berkualitas dengan kunci jawaban yang benar. Output hanya JSON array.",
       temperature: 0.7,
     });
 

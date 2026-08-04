@@ -77,7 +77,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
               </h1>
 
               <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                Selamat Datang di <strong>{SCHOOL_INFO.name}</strong>. Sekolah Menengah Kejuruan swasta terakreditasi B yang memadukan Kurikulum Merdeka industri, penguasaan teknologi digital Administrasi Perkantoran, dan penguatan karakter.
+                Selamat Datang di <strong>{SCHOOL_INFO.name}</strong>. Sekolah Menengah Kejuruan swasta terakreditasi B yang memadukan Kurikulum Merdeka industri, penguasaan teknologi digital Manajemen Perkantoran dan Layanan Bisnis, dan penguatan karakter.
               </p>
 
               <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
@@ -233,7 +233,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
               >
                 <Users className="w-3.5 h-3.5 text-blue-400" />
-                <span>Jadwal Kelas AP</span>
+                <span>Jadwal Kelas MPLB</span>
               </button>
 
               <button
@@ -355,7 +355,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
               Program Keahlian {SCHOOL_INFO.name}
             </h2>
             <p className="text-slate-600 text-base">
-              Dirancang khusus untuk mencetak tenaga profesional Administrasi Perkantoran digital yang kompeten, responsif, dan siap kerja di industri modern.
+              Dirancang khusus untuk mencetak tenaga profesional Manajemen Perkantoran dan Layanan Bisnis (MPLB) yang kompeten, responsif, dan siap kerja di industri modern.
             </p>
           </div>
 

@@ -12,9 +12,9 @@ interface CbtCreateExamModalProps {
 export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateExamModalProps) {
   const [newTitle, setNewTitle] = useState('');
   const [newSubject, setNewSubject] = useState('Otomatisasi Kearsipan Digital');
-  const [newClassTarget, setNewClassTarget] = useState('Semua Kelas AP');
+  const [newClassTarget, setNewClassTarget] = useState('Semua Kelas MPLB');
   const [newDuration, setNewDuration] = useState<number>(30);
-  const [newToken, setNewToken] = useState('AP' + Math.floor(1000 + Math.random() * 9000));
+  const [newToken, setNewToken] = useState('MPLB' + Math.floor(1000 + Math.random() * 9000));
   const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>([]);
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
 
@@ -167,11 +167,11 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
                 onChange={(e) => setNewClassTarget(e.target.value)}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
               >
-                <option value="Semua Kelas AP">Semua Kelas AP</option>
-                <option value="X AP 1">X AP 1</option>
-                <option value="X AP 2">X AP 2</option>
-                <option value="XI AP 1">XI AP 1</option>
-                <option value="XII AP 1">XII AP 1</option>
+                <option value="Semua Kelas MPLB">Semua Kelas MPLB</option>
+                <option value="X MPLB 1">X MPLB 1</option>
+                <option value="X MPLB 2">X MPLB 2</option>
+                <option value="XI MPLB 1">XI MPLB 1</option>
+                <option value="XII MPLB 1">XII MPLB 1</option>
               </select>
             </div>
           </div>

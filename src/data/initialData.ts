@@ -2,7 +2,7 @@ import { Jurusan, Kelas, Siswa, PresensiRecord, ModulAjar, Berita, User, ForumTo
 
 export const SCHOOL_INFO = {
   name: 'SMKS PLUS AT THAHIRIN',
-  tagline: 'Unggul, Berkarakter & Ahli Administrasi Perkantoran Digital',
+  tagline: 'Unggul, Berkarakter & Ahli Manajemen Perkantoran dan Layanan Bisnis',
   npsn: '20232426',
   akreditasi: 'B (Baik)',
   alamat: 'JL. SIRNAGALIH NO.09 RT 06/RW 02, Desa Cipayung Girang, Kec. Megamendung, Kab. Bogor, Jawa Barat 16770',
@@ -11,7 +11,7 @@ export const SCHOOL_INFO = {
   email: 'info@smksplusatthahirin.sch.id',
   website: 'https://smksplusatthahirin.sch.id',
   kepalaSekolah: 'Ir. Surantro',
-  sambutan: 'Selamat datang di SMKS PLUS AT THAHIRIN Megamendung. Sebagai lembaga pendidikan kejuruan swasta terakreditasi B yang berfokus penuh pada keahlian Administrasi Perkantoran, kami berkomitmen membentuk lulusan yang mahir dalam tata kelola administrasi digital, kearsipan elektronik, komunikasi bisnis, serta berakhlak mulia dan siap kerja di era industri modern.',
+  sambutan: 'Selamat datang di SMKS PLUS AT THAHIRIN Megamendung. Sebagai lembaga pendidikan kejuruan swasta terakreditasi B yang berfokus penuh pada keahlian Manajemen Perkantoran dan Layanan Bisnis (MPLB), kami berkomitmen membentuk lulusan yang mahir dalam tata kelola administrasi digital, kearsipan elektronik, komunikasi bisnis, serta berakhlak mulia dan siap kerja di era industri modern.',
   stats: {
     siswa: 380,
     guru: 26,
@@ -38,7 +38,7 @@ export const INITIAL_USERS: User[] = [
     role: 'guru',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     nipNisn: '19890215 201502 1 003',
-    jabatan: 'Guru Produktif Administrasi Perkantoran & Wali Kelas X AP 1'
+    jabatan: 'Guru Produktif Manajemen Perkantoran dan Layanan Bisnis & Wali Kelas X MPLB 1'
   },
   {
     id: 'u3',
@@ -48,19 +48,19 @@ export const INITIAL_USERS: User[] = [
     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
     nipNisn: '0068123491',
     classId: 'k1',
-    jabatan: 'Ketua Kelas X AP 1'
+    jabatan: 'Ketua Kelas X MPLB 1'
   }
 ];
 
 export const JURUSAN_LIST: Jurusan[] = [
   {
     id: 'j1',
-    code: 'AP',
-    name: 'Administrasi Perkantoran',
+    code: 'MPLB',
+    name: 'Manajemen Perkantoran dan Layanan Bisnis',
     iconName: 'Briefcase',
-    description: 'Konsentrasi keahlian tata kelola administrasi perkantoran digital, otomatisasi perkantoran, manajemen kearsipan elektronik, korespondensi bisnis, serta pelayanan publik modern terintegrasi teknologi.',
+    description: 'Konsentrasi keahlian Kurikulum Merdeka yang mencakup tata kelola administrasi dan manajemen perkantoran digital, otomatisasi perkantoran, manajemen kearsipan elektronik, korespondensi bisnis, serta layanan bisnis dan pelayanan publik modern yang terintegrasi teknologi.',
     kepalaJurusan: 'Dra. Hj. Sri Wahyuni, M.Pd.',
-    prospekKerja: ['Administrator Perkantoran Digital', 'Sekretaris Eksekutif', 'Staf Kearsipan Elektronik', 'Customer Relation & Public Relations', 'Staf Tata Usaha & Keuangan'],
+    prospekKerja: ['Staf Administrasi & Administrasi Digital', 'Sekretaris / Asisten Manajemen', 'Customer Service / Front Office / Public Relations', 'Staf Kearsipan Digital', 'Staf Keuangan & SDM (Entry Level)', 'Wirausaha Layanan Bisnis'],
     fasilitas: ['Lab Simulator Kantor Modern', 'Komputer Administrasi & Software Kearsipan', 'Perangkat Telekonferensi HD', 'Mesin Otomatisasi Perkantoran & Scanner Digital'],
     color: 'from-emerald-600 to-teal-700'
   }
@@ -69,14 +69,14 @@ export const JURUSAN_LIST: Jurusan[] = [
 export const INITIAL_KELAS: Kelas[] = [
   {
     id: 'k1',
-    name: 'X AP 1',
-    jurusanCode: 'AP',
+    name: 'X MPLB 1',
+    jurusanCode: 'MPLB',
     tingkat: 'X',
     ruang: 'Gedung A - R.101',
     waliKelas: 'Bpk. Ahmad Fauzi, S.Pd.',
     jumlahSiswa: 32,
     jadwal: [
-      { hari: 'Senin', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab AP 1' },
+      { hari: 'Senin', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab MPLB 1' },
       { hari: 'Senin', jamKe: '4 - 6', jamRentan: '09.30 - 11.45', mataPelajaran: 'Pendidikan Agama Islam', guru: 'Drs. Usman Hidayat', ruangan: 'R.101' },
       { hari: 'Selasa', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Teknologi Perkantoran & Aplikasi Perkantoran', guru: 'Dra. Hj. Sri Wahyuni, M.Pd.', ruangan: 'Lab Komputer' },
       { hari: 'Selasa', jamKe: '5 - 7', jamRentan: '10.15 - 12.30', mataPelajaran: 'Bahasa Indonesia & Korespondensi Bisnis', guru: 'Nurbaiti, M.Pd.', ruangan: 'R.101' },
@@ -87,21 +87,21 @@ export const INITIAL_KELAS: Kelas[] = [
   },
   {
     id: 'k2',
-    name: 'XI AP 2',
-    jurusanCode: 'AP',
+    name: 'XI MPLB 1',
+    jurusanCode: 'MPLB',
     tingkat: 'XI',
     ruang: 'Gedung B - R.201',
     waliKelas: 'Ibu Dra. Hj. Sri Wahyuni, M.Pd.',
     jumlahSiswa: 30,
     jadwal: [
-      { hari: 'Senin', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Otomatisasi Tata Kelola Kepegawaian', guru: 'Sri Wahyuni, M.Pd.', ruangan: 'Lab AP 2' },
-      { hari: 'Selasa', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Manajemen Kearsipan Elektronik', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab AP 1' }
+      { hari: 'Senin', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Otomatisasi Tata Kelola Kepegawaian', guru: 'Sri Wahyuni, M.Pd.', ruangan: 'Lab MPLB 2' },
+      { hari: 'Selasa', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Manajemen Kearsipan Elektronik', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab MPLB 1' }
     ]
   },
   {
     id: 'k3',
-    name: 'XII AP 1',
-    jurusanCode: 'AP',
+    name: 'XII MPLB 1',
+    jurusanCode: 'MPLB',
     tingkat: 'XII',
     ruang: 'Gedung C - R.301',
     waliKelas: 'Bpk. Ir. Surantro',
@@ -140,7 +140,7 @@ export const INITIAL_MODUL_AJAR: ModulAjar[] = [
     id: 'm1',
     judul: 'Modul Ajar Digitalisasi & Otomatisasi Kearsipan Perkantoran',
     mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
-    jurusan: 'Administrasi Perkantoran',
+    jurusan: 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
     faseKelas: 'Fase F (Kelas XI)',
     alokasiWaktu: '4 x 45 Menit (2 Pertemuan)',
     tanggalDibuat: '2026-07-28',
@@ -150,7 +150,7 @@ export const INITIAL_MODUL_AJAR: ModulAjar[] = [
       identitas: {
         sekolah: 'SMKS PLUS AT THAHIRIN',
         mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
-        jurusan: 'Administrasi Perkantoran',
+        jurusan: 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
         faseKelas: 'Fase F (Kelas XI)',
         alokasiWaktu: '4 x 45 Menit (2 Pertemuan)',
         tahunAjaran: '2026/2027'
@@ -161,11 +161,11 @@ export const INITIAL_MODUL_AJAR: ModulAjar[] = [
         'Mandiri: Melakukan pemindaian, pengindeksan, dan penyimpanan dokumen digital'
       ],
       saranaPrasarana: [
-        'Laboratorium Administrasi Perkantoran',
+        'Laboratorium Manajemen Perkantoran dan Layanan Bisnis',
         'Komputer, Scanner Komersial & Cloud Drive',
         'LCD Projector & Modul Kearsipan Digital'
       ],
-      targetPesertaDidik: 'Peserta didik konsentrasi keahlian Administrasi Perkantoran',
+      targetPesertaDidik: 'Peserta didik konsentrasi keahlian Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
       modelPembelajaran: 'Project Based Learning (PjBL) terintegrasi Industri Perkantoran',
       komponenInti: {
         tujuanPembelajaran: [
@@ -206,7 +206,7 @@ export const INITIAL_MODUL_AJAR: ModulAjar[] = [
       },
       lampiran: {
         lembarKerjaSiswa: 'Lakukan pemindaian 5 surat dinas masuk, tentukan indeks subjeknya, dan simpan pada direktori drive sesuai kode klasifikasi.',
-        bahanBacaanGuruSiswa: 'Buku Ajar Administrasi Perkantoran & Panduan E-Arsip Kementerian.',
+        bahanBacaanGuruSiswa: 'Buku Ajar Manajemen Perkantoran dan Layanan Bisnis & Panduan E-Arsip Kementerian.',
         glosarium: [
           'E-Arsip: Sistem manajemen kearsipan elektronik berbasis sistem informasi.',
           'Indeks: Tanda pengenal berkas untuk memudahkan pementaan dan pencarian kembali.',
@@ -220,11 +220,11 @@ export const INITIAL_MODUL_AJAR: ModulAjar[] = [
 export const BERITA_LIST: Berita[] = [
   {
     id: 'b1',
-    judul: 'Siswa Administrasi Perkantoran SMKS PLUS AT THAHIRIN Meraih Juara 1 LKS Kejuruan Perkantoran',
+    judul: 'Siswa Manajemen Perkantoran SMKS PLUS AT THAHIRIN Meraih Juara 1 LKS Kejuruan Perkantoran',
     tanggal: '01 Agustus 2026',
     kategori: 'Prestasi',
-    ringkasan: 'Selamat kepada ananda Muhammad Rizky Pratama dari X AP 1 yang berhasil meraih gelar juara pada bidang perlombaan Otomatisasi Perkantoran.',
-    konten: 'Prestasi membanggakan diukir oleh civitas akademika SMKS PLUS AT THAHIRIN Megamendung Bogor. Dalam ajang Lomba Kompetensi Siswa (LKS) Kejuruan bidang Administrasi Perkantoran / Otomatisasi Perkantoran, perwakilan sekolah berhasil meraih juara pertama di bawah bimbingan Bpk. Ir. Surantro dan tim pengajar.',
+    ringkasan: 'Selamat kepada ananda Muhammad Rizky Pratama dari X MPLB 1 yang berhasil meraih gelar juara pada bidang perlombaan Otomatisasi Perkantoran.',
+    konten: 'Prestasi membanggakan diukir oleh civitas akademika SMKS PLUS AT THAHIRIN Megamendung Bogor. Dalam ajang Lomba Kompetensi Siswa (LKS) Kejuruan bidang Manajemen Perkantoran dan Layanan Bisnis / Otomatisasi Perkantoran, perwakilan sekolah berhasil meraih juara pertama di bawah bimbingan Bpk. Ir. Surantro dan tim pengajar.',
     gambar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
     penulis: 'Humas SMKS PLUS AT THAHIRIN'
   },
@@ -233,8 +233,8 @@ export const BERITA_LIST: Berita[] = [
     judul: 'Penandatanganan MoU Kerjasama Industri Perkantoran & Magang Kerja dengan Perusahaan Terkemuka',
     tanggal: '25 Juli 2026',
     kategori: 'Mitra Industri',
-    ringkasan: 'Memperkuat link and match jurusan Administrasi Perkantoran dengan dunia usaha dan industri.',
-    konten: 'Kepala SMKS PLUS AT THAHIRIN, Bpk. Ir. Surantro, secara resmi menandatangani nota kesepahaman (MoU) dengan berbagai instansi dan perusahaan swasta untuk program Praktik Kerja Lapangan (PKL) serta rekrutmen lulusan Administrasi Perkantoran.',
+    ringkasan: 'Memperkuat link and match jurusan Manajemen Perkantoran dan Layanan Bisnis dengan dunia usaha dan industri.',
+    konten: 'Kepala SMKS PLUS AT THAHIRIN, Bpk. Ir. Surantro, secara resmi menandatangani nota kesepahaman (MoU) dengan berbagai instansi dan perusahaan swasta untuk program Praktik Kerja Lapangan (PKL) serta rekrutmen lulusan Manajemen Perkantoran dan Layanan Bisnis.',
     gambar: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?w=800&auto=format&fit=crop&q=80',
     penulis: 'Tim Bursa Kerja Khusus (BKK)'
   },
@@ -243,7 +243,7 @@ export const BERITA_LIST: Berita[] = [
     judul: 'Peluncuran Sistem Absensi QR Code & Generator Modul Ajar AI Kurikulum Merdeka',
     tanggal: '15 Juli 2026',
     kategori: 'Pengumuman',
-    ringkasan: 'Digitalisasi layanan sekolah terpadu bagi seluruh guru dan siswa Administrasi Perkantoran.',
+    ringkasan: 'Digitalisasi layanan sekolah terpadu bagi seluruh guru dan siswa Manajemen Perkantoran dan Layanan Bisnis.',
     konten: 'Memasuki Tahun Ajaran 2026/2027, SMKS PLUS AT THAHIRIN meluncurkan portal web terpadu yang memuat presensi QR Code, jadwal kelas, serta pembuatan Modul Ajar AI Kurikulum Merdeka berbasis Gemini.',
     gambar: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&auto=format&fit=crop&q=80',
     penulis: 'Tim IT SMKS PLUS AT THAHIRIN'
@@ -261,8 +261,8 @@ export const INITIAL_FORUM_TOPICS: ForumTopic[] = [
     authorRole: 'guru',
     authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     createdAt: '2026-08-02 09:30',
-    content: 'Halo siswa-siswi kelas X & XI Administrasi Perkantoran! Untuk tugas kearsipan digital pekan ini, pastikan penamaan berkas hasil scan mengikuti format [KODE_ARSIP]_[TANGGAL]_[NAMA_INSTANSI].pdf. Panduan lengkap dapat diunduh pada lampiran berikut.',
-    tags: ['Kearsipan', 'AdminPerkantoran', 'TugasAP', 'DigitalArsip'],
+    content: 'Halo siswa-siswi kelas X & XI Manajemen Perkantoran dan Layanan Bisnis! Untuk tugas kearsipan digital pekan ini, pastikan penamaan berkas hasil scan mengikuti format [KODE_ARSIP]_[TANGGAL]_[NAMA_INSTANSI].pdf. Panduan lengkap dapat diunduh pada lampiran berikut.',
+    tags: ['Kearsipan', 'MPLB', 'TugasMPLB', 'DigitalArsip'],
     likes: 12,
     likedBy: ['u1', 'u3'],
     views: 145,
@@ -297,7 +297,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'n1',
     title: 'Pengarahan Kepala Sekolah Ir. Surantro',
-    message: 'Bapak/Ibu Guru Administrasi Perkantoran dimohon menghadiri rapat dinas sekolah mengenai persiapan akreditasi dan Kurikulum Merdeka.',
+    message: 'Bapak/Ibu Guru Manajemen Perkantoran dan Layanan Bisnis dimohon menghadiri rapat dinas sekolah mengenai persiapan akreditasi dan Kurikulum Merdeka.',
     targetRole: 'guru',
     category: 'Pengumuman',
     createdAt: '2026-08-03 08:00',
@@ -327,9 +327,9 @@ export const INITIAL_CBT_EXAMS: CbtExam[] = [
     id: 'cbt-1',
     title: 'Penilaian Tengah Semester (PTS) - Kearsipan Digital',
     subject: 'Otomatisasi Tata Kelola Kearsipan Digital',
-    classTarget: 'X AP 1',
+    classTarget: 'X MPLB 1',
     durationMinutes: 30,
-    token: 'AP2026',
+    token: 'MPLB2026',
     teacherName: 'Bpk. Ahmad Fauzi, S.Pd.',
     startDate: '2026-08-01',
     endDate: '2026-08-10',
@@ -350,7 +350,7 @@ export const INITIAL_CBT_EXAMS: CbtExam[] = [
       },
       {
         id: 'q2',
-        question: 'Format penamaan file arsip digital yang disepakati sesuai standar Administrasi Perkantoran SMKS PLUS AT THAHIRIN adalah ...',
+        question: 'Format penamaan file arsip digital yang disepakati sesuai standar Manajemen Perkantoran dan Layanan Bisnis SMKS PLUS AT THAHIRIN adalah ...',
         options: [
           { key: 'A', text: 'Surat1.pdf' },
           { key: 'B', text: '[KODE_ARSIP]_[TANGGAL]_[NAMA_INSTANSI].pdf' },
@@ -406,7 +406,7 @@ export const INITIAL_CBT_EXAMS: CbtExam[] = [
     id: 'cbt-2',
     title: 'Kuis Harian - Korespondensi Bisnis & Aplikasi Perkantoran',
     subject: 'Teknologi Perkantoran & Korespondensi Bisnis',
-    classTarget: 'Semua Kelas AP',
+    classTarget: 'Semua Kelas MPLB',
     durationMinutes: 15,
     token: 'KORESP26',
     teacherName: 'Ibu Dra. Hj. Sri Wahyuni, M.Pd.',

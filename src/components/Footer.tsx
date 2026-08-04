@@ -93,7 +93,7 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
             </h4>
             <ul className="space-y-2 text-sm text-slate-400">
               <li className="flex items-center gap-2">
-                <span className="text-emerald-400 font-bold">AP</span> — Administrasi Perkantoran Digital
+                <span className="text-emerald-400 font-bold">MPLB</span> — Manajemen Perkantoran dan Layanan Bisnis
               </li>
             </ul>
           </div>

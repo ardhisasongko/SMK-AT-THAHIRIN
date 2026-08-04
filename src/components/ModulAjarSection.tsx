@@ -38,14 +38,14 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
 
   // Form inputs for AI Modul Generator
   const [mataPelajaran, setMataPelajaran] = useState('Otomatisasi Tata Kelola Kearsipan Digital');
-  const [jurusan, setJurusan] = useState('Administrasi Perkantoran (AP)');
+  const [jurusan, setJurusan] = useState('Manajemen Perkantoran dan Layanan Bisnis (MPLB)');
   const [faseKelas, setFaseKelas] = useState('Fase F (Kelas XI)');
   const [alokasiWaktu, setAlokasiWaktu] = useState('4 x 45 Menit (2 Pertemuan)');
   const [elemenCP, setElemenCP] = useState('Pengelolaan Dokumen, Digitalisasi Arsip & Pengindeksan Berkas Perkantoran');
   const [tujuanPembelajaran, setTujuanPembelajaran] = useState('Peserta didik mampu memahami konsep pengelolaan dokumen, melakukan pemindaian (scanning), serta membuat struktur kearsipan digital berbasis cloud');
   const [modelPembelajaran, setModelPembelajaran] = useState('Project Based Learning (PjBL)');
   const [profilPancasila, setProfilPancasila] = useState('Bernalar Kritis, Kreatif, Mandiri');
-  const [saranaPrasarana, setSaranaPrasarana] = useState('Lab Administrasi Perkantoran, Komputer, Scanner Komersial, Cloud Storage');
+  const [saranaPrasarana, setSaranaPrasarana] = useState('Lab Manajemen Perkantoran, Komputer, Scanner Digital, Cloud Storage');
 
   // AI Loading & Error State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -193,7 +193,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                     disabled={isGenerating}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="Administrasi Perkantoran (AP)">Administrasi Perkantoran (AP)</option>
+                    <option value="Manajemen Perkantoran dan Layanan Bisnis (MPLB)">Manajemen Perkantoran dan Layanan Bisnis (MPLB)</option>
                   </select>
                 </div>
 

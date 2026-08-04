@@ -7,7 +7,7 @@ const exam: CbtExam = {
   id: 'c1',
   title: 'Ujian Kearsipan',
   subject: 'Kearsipan Digital',
-  classTarget: 'X AP 1',
+  classTarget: 'X MPLB 1',
   durationMinutes: 30,
   token: 'AP1234',
   teacherName: 'Bpk. Guru',

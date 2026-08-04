@@ -12,7 +12,7 @@ const modulList: ModulAjar[] = [
     id: 'm1',
     judul: 'Modul Kearsipan Digital',
     mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
-    jurusan: 'Administrasi Perkantoran',
+    jurusan: 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
     faseKelas: 'Fase F (Kelas XI)',
     alokasiWaktu: '4 x 45 Menit',
     tanggalDibuat: '01-01-2026',
@@ -22,7 +22,7 @@ const modulList: ModulAjar[] = [
       identitas: {
         sekolah: 'SMKS PLUS AT THAHIRIN',
         mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
-        jurusan: 'Administrasi Perkantoran',
+        jurusan: 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
         faseKelas: 'Fase F (Kelas XI)',
         alokasiWaktu: '4 x 45 Menit',
         tahunAjaran: '2026/2027',

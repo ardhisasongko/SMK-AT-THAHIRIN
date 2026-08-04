@@ -230,7 +230,7 @@ export interface CbtExam {
   id: string;
   title: string;
   subject: string;
-  classTarget: string; // e.g. "X AP 1" or "Semua Kelas AP"
+  classTarget: string; // e.g. "X MPLB 1" or "Semua Kelas MPLB"
   durationMinutes: number;
   token: string;
   teacherName: string;

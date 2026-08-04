@@ -5,14 +5,14 @@ import type { Kelas, Siswa, User } from '../src/types';
 
 const kelasList: Kelas[] = [
   {
-    id: 'x-ap-1', name: 'X AP 1', jurusanCode: 'AP', tingkat: 'X', ruang: 'Gedung A - R.101',
+    id: 'x-mplb-1', name: 'X MPLB 1', jurusanCode: 'MPLB', tingkat: 'X', ruang: 'Gedung A - R.101',
     waliKelas: 'Bpk. Guru', jumlahSiswa: 2, jadwal: [],
   },
 ];
 
 const siswaList: Siswa[] = [
-  { id: 's1', nisn: '0068123491', name: 'Rizky', classId: 'x-ap-1', gender: 'L', foto: '/img/rizky.jpg' },
-  { id: 's2', nisn: '0068123492', name: 'Adinda', classId: 'x-ap-1', gender: 'P', foto: '/img/adinda.jpg' },
+  { id: 's1', nisn: '0068123491', name: 'Rizky', classId: 'x-mplb-1', gender: 'L', foto: '/img/rizky.jpg' },
+  { id: 's2', nisn: '0068123492', name: 'Adinda', classId: 'x-mplb-1', gender: 'P', foto: '/img/adinda.jpg' },
 ];
 
 const guruUser: User = {
@@ -35,7 +35,7 @@ describe('KelasSection', () => {
   it('menampilkan judul modul dan daftar kelas', () => {
     renderKelas(guruUser);
     expect(screen.getByText('Pengelolaan Kelas & Jadwal Pelajaran')).toBeInTheDocument();
-    expect(screen.getByText('X AP 1')).toBeInTheDocument();
+    expect(screen.getByText('X MPLB 1')).toBeInTheDocument();
     expect(screen.getByText('Tambah Kelas Baru')).toBeInTheDocument();
   });
 
