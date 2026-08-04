@@ -121,8 +121,7 @@ async function validateAndPatchPresensi(
   let changedCount = 0;
 
   for (const record of incoming) {
-    const key = `${record.tanggal}|${record.siswaId}`;
-    const prev = currentMap.get(key);
+    const key = `${record.tanggal}|${record.siswaId}`;    const prev = currentMap.get(key);
 
     // Deteksi perubahan (status / keterangan / waktuInput / foto / lokasi / completeness)
     const isChanged = !prev
@@ -182,6 +181,17 @@ async function validateAndPatchPresensi(
     }
 
     result.push(record);
+  }
+
+  // Cegah kehilangan data (last-write-wins tanpa deteksi konflik): rekaman yang
+  // SUDAH ada di server tapi tidak dikirim client (mis. tab/device lain membawa
+  // data usang) tetap dipertahankan — client hanya menambah/mengubah, tidak
+  // menghapus (tidak ada fitur hapus presensi).
+  const incomingKeys = new Set(result.map(r => `${r.tanggal}|${r.siswaId}`));
+  for (const cur of currentArr || []) {
+    if (!incomingKeys.has(`${cur.tanggal}|${cur.siswaId}`)) {
+      result.push(cur);
+    }
   }
 
   return { ok: true, status: 200, result, changedCount };

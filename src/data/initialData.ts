@@ -73,7 +73,7 @@ export const INITIAL_KELAS: Kelas[] = [
     jurusanCode: 'MPLB',
     tingkat: 'X',
     ruang: 'Gedung A - R.101',
-    waliKelas: 'Bpk. Ahmad Fauzi, S.Pd.',
+    waliKelas: 'Ibu Nurul Faizah Ulfah',
     jumlahSiswa: 32,
     jadwal: [
       { hari: 'Senin', jamKe: '1 - 3', jamRentan: '07.00 - 09.15', mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital', guru: 'Ahmad Fauzi, S.Pd.', ruangan: 'Lab MPLB 1' },
@@ -91,7 +91,7 @@ export const INITIAL_KELAS: Kelas[] = [
     jurusanCode: 'MPLB',
     tingkat: 'XI',
     ruang: 'Gedung B - R.201',
-    waliKelas: 'Ibu Dra. Hj. Sri Wahyuni, M.Pd.',
+    waliKelas: 'Bpk Fahri Sujana',
     jumlahSiswa: 30,
     jadwal: [
       { hari: 'Senin', jamKe: '1 - 4', jamRentan: '07.00 - 10.00', mataPelajaran: 'Otomatisasi Tata Kelola Kepegawaian', guru: 'Sri Wahyuni, M.Pd.', ruangan: 'Lab MPLB 2' },
@@ -104,7 +104,7 @@ export const INITIAL_KELAS: Kelas[] = [
     jurusanCode: 'MPLB',
     tingkat: 'XII',
     ruang: 'Gedung C - R.301',
-    waliKelas: 'Bpk. Ir. Surantro',
+    waliKelas: 'Bpk Rudiyatno',
     jumlahSiswa: 28,
     jadwal: [
       { hari: 'Senin', jamKe: '1 - 6', jamRentan: '07.00 - 11.45', mataPelajaran: 'Praktik Simulasi Perkantoran & Public Relations', guru: 'Ir. Surantro', ruangan: 'Lab Simulator Perkantoran' }

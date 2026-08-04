@@ -28,6 +28,13 @@ import {
 } from 'lucide-react';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar } from '../types';
 
+const normalizeName = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/^(ibu|bpk|bapak|bapa|bu|pak|pa)\.?\s+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 interface ProfilSectionProps {
   currentUser: User | null;
   kelasList: Kelas[];
@@ -98,7 +105,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   const hadirPercent = ((hadirCount / totalPresensiCount) * 100).toFixed(1);
 
   // Derive Teacher Data if user is Guru
-  const teacherClasses = kelasList.filter(k => k.waliKelas.includes(currentUser.name) || k.jadwal.some(j => j.guru.includes(currentUser.name)));
+  const teacherClasses = kelasList.filter(k => normalizeName(k.waliKelas).includes(normalizeName(currentUser.name)) || k.jadwal.some(j => normalizeName(j.guru).includes(normalizeName(currentUser.name))));
   const teacherModuls = modulList.filter(m => m.pembuat.includes(currentUser.name) || m.pembuat.includes('Ahmad Fauzi'));
 
   // Save profile changes handler

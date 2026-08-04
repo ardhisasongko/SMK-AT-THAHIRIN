@@ -33,6 +33,10 @@ const adminUser: User = {
   id: 'a1', name: 'Admin', email: 'admin@test.com', role: 'admin', avatar: '',
 };
 
+const guruUser: User = {
+  id: 'g1', name: 'Pak Guru', email: 'guru@test.com', role: 'guru', avatar: '',
+};
+
 const today = new Date().toISOString().split('T')[0];
 const presensiList: PresensiRecord[] = [
   {
@@ -115,5 +119,23 @@ describe('AbsensiSection — view Admin tetap lengkap', () => {
     renderAbsensi(adminUser);
     expect(screen.getByText('Scan QR / NISN')).toBeInTheDocument();
     expect(screen.getByText('Rekap & Laporan')).toBeInTheDocument();
+  });
+});
+
+describe('AbsensiSection — view Guru dapat menginput absensi', () => {
+  it('guru tidak lagi read-only (tidak ada banner mode baca)', () => {
+    renderAbsensi(guruUser);
+    expect(screen.queryByText(/hanya dapat melihat presensi/)).not.toBeInTheDocument();
+  });
+
+  it('guru melihat tab Scan QR / NISN', () => {
+    renderAbsensi(guruUser);
+    expect(screen.getByText('Scan QR / NISN')).toBeInTheDocument();
+  });
+
+  it('guru melihat dropdown pilih kelas (dapat memilih semua kelas)', () => {
+    renderAbsensi(guruUser);
+    expect(screen.getByText('Pilih Kelas:')).toBeInTheDocument();
+    expect(screen.getByText(/X RPL 1 — Wali Kelas:/)).toBeInTheDocument();
   });
 });

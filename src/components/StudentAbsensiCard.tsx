@@ -90,6 +90,18 @@ export const StudentAbsensiCard: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Tampilkan peringatan bila penyimpanan presensi ditolak server
+  useEffect(() => {
+    const onError = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { key?: string; status?: number } | undefined;
+      if (detail?.key === 'presensi_v1') {
+        setMsg({ type: 'error', text: 'Penyimpanan presensi gagal di server. Periksa koneksi lalu coba lagi.' });
+      }
+    };
+    window.addEventListener('persist:error', onError);
+    return () => window.removeEventListener('persist:error', onError);
+  }, []);
+
   const canEditNow = isBeforeCutoff();
   const hasRecord = !!myRecordToday;
 

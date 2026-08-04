@@ -57,10 +57,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const canEditClass = (classId: string): boolean => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
-    if (currentUser.role === 'guru') {
-      const k = kelasList.find(x => x.id === classId);
-      return !!(k && k.waliKelas.trim() === (currentUser.name || '').trim());
-    }
+    if (currentUser.role === 'guru') return true;
     if (currentUser.role === 'ketua_kelas') {
       return currentUser.ketuaStatus === 'approved' && currentUser.classId === classId;
     }
@@ -73,7 +70,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     currentUser?.role === 'admin'
       ? fullClassIds
       : currentUser?.role === 'guru'
-        ? kelasList.filter(k => k.waliKelas.trim() === (currentUser.name || '').trim()).map(k => k.id)
+        ? fullClassIds
         : (currentUser?.role === 'ketua_kelas' && currentUser.ketuaStatus === 'approved' && currentUser.classId)
           ? [currentUser.classId]
           : [];
@@ -447,7 +444,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
       <>
       
       {/* Header Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs">
+      <div className="flex flex-col gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-xs">
         <div>
           <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full mb-2">
             <UserCheck className="w-3.5 h-3.5" />
@@ -462,7 +459,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
 
         {/* Tab Buttons */}
-        <div className="print-hidden flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <div className="print-hidden flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
           <button
             onClick={() => setActiveTabMode('harian')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${

@@ -63,7 +63,9 @@ export function usePersistedCollection<T>(
   // Sync ref agar setter selalu punya nilai terbaru
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Setter: update state + tulis ke D1 (fire-and-forget)
+  // Setter: update state + tulis ke D1 (fire-and-forget). Bila server menolak
+  // (403/500), nilai server TIDAK berubah — log error + beri sinyal agar UI
+  // bisa menampilkan peringatan, supaya tidak terkesan berhasil padahal tidak.
   const setPersisted = useCallback(
     (action: SetStateAction<T>) => {
       setData(prev => {
@@ -75,7 +77,14 @@ export function usePersistedCollection<T>(
           method: 'PUT',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(next),
-        }).catch(err => console.warn(`[persist:${key}] gagal simpan:`, err));
+        })
+          .then(res => {
+            if (!res.ok) {
+              console.error(`[persist:${key}] Gagal simpan (HTTP ${res.status}):`, res.statusText);
+              window.dispatchEvent(new CustomEvent('persist:error', { detail: { key, status: res.status } }));
+            }
+          })
+          .catch(err => console.error(`[persist:${key}] Gagal simpan:`, err));
         return next;
       });
     },
