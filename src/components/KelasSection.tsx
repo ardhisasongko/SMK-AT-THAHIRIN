@@ -58,6 +58,17 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   const [siswaFormError, setSiswaFormError] = useState('');
   const [kelasFormError, setKelasFormError] = useState('');
 
+  // Edit Siswa (perbaiki NISN placeholder, NIK, TTL, dll.)
+  const [editingSiswa, setEditingSiswa] = useState<Siswa | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editNisn, setEditNisn] = useState('');
+  const [editNik, setEditNik] = useState('');
+  const [editTtl, setEditTtl] = useState('');
+  const [editGender, setEditGender] = useState<'L' | 'P'>('L');
+  const [editHp, setEditHp] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   // ===== Kelola Ketua Kelas (admin) =====
   const isAdmin = currentUser?.role === 'admin';
   const [ketuaList, setKetuaList] = useState<Array<{ id: string; name: string; classId: string; ketuaStatus: string; approvedAt?: string }>>([]);
@@ -217,6 +228,64 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
     setNewSiswaName('');
     setNewSiswaNisn('');
     setSiswaFormError('');
+  };
+
+  // FIXED: Edit siswa (perbaiki NISN/NIK/TTL). NISN juga disinkronkan ke akun login.
+  const openEditSiswa = (siswa: Siswa) => {
+    setEditingSiswa(siswa);
+    setEditName(siswa.name);
+    setEditNisn(siswa.nisn);
+    setEditNik(siswa.nik || '');
+    setEditTtl(siswa.tanggalLahir || '');
+    setEditGender(siswa.gender);
+    setEditHp(siswa.noHpOrangTua || '');
+    setEditError('');
+  };
+
+  const handleEditSiswaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSiswa) return;
+    setEditError('');
+    setEditSaving(true);
+    try {
+      const name = editName.trim();
+      const nisn = editNisn.trim();
+      const nameValidation = validateName(name);
+      if (!nameValidation.valid) { setEditError(nameValidation.message); return; }
+      if (!validateNISN(nisn).valid && !/^12345678\d{2}$/.test(nisn)) {
+        setEditError(validateNISN(nisn).message);
+        return;
+      }
+      const isDuplicate = siswaList.some(s => s.id !== editingSiswa.id && s.nisn === nisn);
+      if (isDuplicate) { setEditError(`NISN ${nisn} sudah terdaftar di siswa lain!`); return; }
+
+      const nisnChanged = nisn !== editingSiswa.nisn;
+      const updated: Siswa = {
+        ...editingSiswa,
+        name,
+        nisn,
+        nik: editNik.trim() || undefined,
+        tanggalLahir: editTtl.trim() || undefined,
+        gender: editGender,
+        noHpOrangTua: editHp.trim() || undefined,
+      };
+      setSiswaList(prev => prev.map(s => s.id === editingSiswa.id ? updated : s));
+
+      if (nisnChanged) {
+        const res = await fetch('/api/users/nisn', {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ oldNisn: editingSiswa.nisn, newNisn: nisn, name }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({})) as { error?: string };
+          setEditError(`Data roster tersimpan, tapi akun login belum disinkron: ${j?.error || 'gagal'}`);
+        }
+      }
+      setEditingSiswa(null);
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   return (
@@ -470,6 +539,15 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                         <div className="text-[10px] text-slate-400">NIK: {siswa.nik || '-'} • TTL: {siswa.tanggalLahir || '-'}</div>
                         <div className="text-[10px] text-slate-400">Kontak OrangTua: {siswa.noHpOrangTua || '-'}</div>
                       </div>
+                      <button
+                        onClick={() => openEditSiswa(siswa)}
+                        title="Edit data siswa"
+                        className="shrink-0 p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -647,6 +725,112 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer transition-colors"
                 >
                   Simpan Siswa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT SISWA */}
+      {editingSiswa && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 className="font-bold text-lg text-slate-900">Edit Data Siswa</h3>
+
+            {editError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                <span className="text-rose-500">⚠</span>
+                <span>{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEditSiswaSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Lengkap Siswa</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Ahmad Bagus Pratama"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">NISN (10 digit)</label>
+                <input
+                  type="text"
+                  value={editNisn}
+                  onChange={(e) => setEditNisn(e.target.value)}
+                  placeholder="0068123999"
+                  maxLength={10}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Perubahan NISN otomatis disinkronkan ke akun login siswa.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">NIK</label>
+                  <input
+                    type="text"
+                    value={editNik}
+                    onChange={(e) => setEditNik(e.target.value)}
+                    placeholder="3201264111080001"
+                    maxLength={16}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tanggal Lahir</label>
+                  <input
+                    type="date"
+                    value={editTtl}
+                    onChange={(e) => setEditTtl(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Jenis Kelamin</label>
+                  <select
+                    value={editGender}
+                    onChange={(e: any) => setEditGender(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="L">Laki-Laki</option>
+                    <option value="P">Perempuan</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Kontak Orang Tua</label>
+                  <input
+                    type="text"
+                    value={editHp}
+                    onChange={(e) => setEditHp(e.target.value)}
+                    placeholder="081234567890"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setEditingSiswa(null); setEditError(''); }}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl font-bold cursor-pointer transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>
             </form>

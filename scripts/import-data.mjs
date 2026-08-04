@@ -59,6 +59,9 @@ const IDN_MONTHS = {
   januari: 1, feb: 2, februari: 2, mar: 3, maret: 3, april: 4, mei: 5, juni: 6,
   juli: 7, agustus: 8, agt: 8, september: 9, okt: 10, oktober: 10, november: 11,
   nopember: 11, november: 11, november: 11, desember: 12, des: 12,
+  // alias bahasa lain yang kadang muncul di sumber data
+  january: 1, february: 2, march: 3, may: 5, june: 6, july: 7, august: 8,
+  october: 10, december: 12, mai: 5,
 };
 
 function normalizeDate(v) {
@@ -71,21 +74,23 @@ function normalizeDate(v) {
   }
   const s = String(v).trim();
   if (!s) return null;
-  let m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
+  // "Bogor, 01 November 2008" -> ambil bagian tanggal setelah koma
+  const datePart = s.includes(',') ? s.slice(s.lastIndexOf(',') + 1).trim() : s;
+  let m = datePart.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
   if (m) {
     const day = +m[1], mon = +m[2], yr = +m[3];
     if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) return `${yr}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
-  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  m = datePart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (m) return `${m[1]}-${String(+m[2]).padStart(2, '0')}-${String(+m[3]).padStart(2, '0')}`;
   // Teks Indonesia: "12 Mei 2008", "5 Maret 2008"
-  m = s.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  m = datePart.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
   if (m) {
     const mon = IDN_MONTHS[String(m[2]).toLowerCase()];
     if (mon) return `${m[3]}-${String(mon).padStart(2, '0')}-${String(+m[1]).padStart(2, '0')}`;
   }
   // "12-May-08" (format Excel default bila regional non-Indonesia)
-  m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  m = datePart.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
   if (m) {
     const shortMonths = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
     const mon = shortMonths[String(m[2]).toLowerCase()];
@@ -125,15 +130,42 @@ function detectColumns(headers) {
 }
 
 // ---- Baca sheet ---------------------------------------------------------
+// Struktur file riil: baris judul/TA/"KELAS : X", lalu baris header kolom.
+// Baris header dicari otomatis (baris yang mengandung NAMA + NISN/NIK).
 function readSheet(ws) {
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
-  if (!rows.length) return { headers: [], map: {}, rows: [] };
-  const headers = Object.keys(rows[0]);
+  const allRows = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true, header: 1 });
+  if (!allRows.length) return { map: {}, rows: [], tingkat: null };
+
+  // Cari baris "KELAS : X/XI/XII" pada 6 baris awal
+  let tingkat = null;
+  for (let i = 0; i < Math.min(allRows.length, 6); i++) {
+    const cell = String(allRows[i]?.[0] ?? allRows[i]?.[1] ?? '');
+    const m = cell.match(/KELAS\s*:\s*(X|XI|XII)\b/i);
+    if (m) { tingkat = m[1].toUpperCase(); break; }
+  }
+
+  // Cari baris header (mengandung "nama" dan salah satu dari "nisn"/"nik")
+  let headerIdx = -1;
+  let headers = [];
+  for (let i = 0; i < allRows.length; i++) {
+    const row = allRows[i].map((c) => toPlainString(c));
+    const hasNama = row.some((h) => norm(h).includes('nama'));
+    const hasIdCol = row.some((h) => norm(h).includes('nisn')) || row.some((h) => norm(h) === 'nik');
+    if (hasNama && hasIdCol) { headerIdx = i; headers = row; break; }
+  }
+  if (headerIdx < 0) return { map: {}, rows: [], tingkat };
+
   const map = detectColumns(headers);
-  return { headers, map, rows };
+  const rows = allRows
+    .slice(headerIdx + 1)
+    .filter((r) => r.some((c) => toPlainString(c) !== ''));
+  return { map, rows, tingkat };
 }
 
-function mapSheetToTingkat(sheetName) {
+function mapSheetToTingkat(sheetName, detectedTingkat) {
+  if (detectedTingkat) return detectedTingkat;
+  const byName = { '10': 'X', '11': 'XI', '12': 'XII' };
+  if (byName[String(sheetName).trim()]) return byName[String(sheetName).trim()];
   const n = norm(sheetName);
   if (n.includes('xii')) return 'XII';
   if (n.includes('xi')) return 'XI';
@@ -142,7 +174,7 @@ function mapSheetToTingkat(sheetName) {
 }
 
 function pick(row, map, key) {
-  return map[key] != null ? row[Object.keys(row)[map[key]]] : undefined;
+  return map[key] != null ? row[map[key]] : undefined;
 }
 
 // ---- Main -----------------------------------------------------------------
@@ -164,9 +196,12 @@ function main() {
   const seenNisn = new Set();
   const seenNik = new Set();
   let countByTingkat = { X: 0, XI: 0, XII: 0 };
+  const padNisn = process.argv.includes('--pad-nisn');
+  const placeholderNisn = process.argv.includes('--placeholder-nisn');
+  let placeholderCounter = 0;
 
   for (const sheetName of wb.SheetNames) {
-    const { headers, map, rows } = readSheet(wb.Sheets[sheetName]);
+    const { map, rows, tingkat } = readSheet(wb.Sheets[sheetName]);
     if (!rows.length) continue;
 
     const isGuruSheet = map.nik != null && map.nisn == null;
@@ -178,10 +213,10 @@ function main() {
         const gender = mapGender(pick(row, map, 'gender'));
         const ttl = normalizeDate(pick(row, map, 'ttl'));
         if (!name || !nik) {
-          warnings.push(`[Guru:${sheetName}] baris ${i + 2} dilewati (nama/NIK kosong)`);
+          warnings.push(`[Guru:${sheetName}] baris ${i + 1} dilewati (nama/NIK kosong)`);
           return;
         }
-        if (nik.length !== 16) warnings.push(`[Guru:${sheetName}] baris ${i + 2}: NIK "${nik}" tidak 16 digit`);
+        if (nik.length !== 16) warnings.push(`[Guru:${sheetName}] baris ${i + 1}: NIK "${nik}" tidak 16 digit`);
         if (seenNik.has(nik)) warnings.push(`[Guru:${sheetName}] NIK duplikat "${nik}" (${name})`);
         seenNik.add(nik);
         guruRows.push({ name, nik, gender, ttl });
@@ -189,28 +224,43 @@ function main() {
       continue;
     }
 
-    const tingkat = mapSheetToTingkat(sheetName);
-    if (!tingkat) {
-      warnings.push(`[Siswa:${sheetName}] nama sheet tidak dikenali (X/XI/XII) — dilewati`);
+    const kelasTingkat = mapSheetToTingkat(sheetName, tingkat);
+    if (!kelasTingkat) {
+      warnings.push(`[Siswa:${sheetName}] kelas tidak dikenali (X/XI/XII) — dilewati`);
       continue;
     }
-    const kelas = KELAS_BY_TINGKAT[tingkat];
+    const kelas = KELAS_BY_TINGKAT[kelasTingkat];
 
     rows.forEach((row, i) => {
       const name = toPlainString(pick(row, map, 'name'));
-      const nisn = toPlainString(pick(row, map, 'nisn')).replace(/\D/g, '');
+      let nisn = toPlainString(pick(row, map, 'nisn')).replace(/\D/g, '');
+      const nik = toPlainString(pick(row, map, 'nik')).replace(/\D/g, '');
       const gender = mapGender(pick(row, map, 'gender'));
       const ttl = normalizeDate(pick(row, map, 'ttl'));
-      if (!name || !nisn) {
-        warnings.push(`[${kelas.name}] baris ${i + 2} dilewati (nama/NISN kosong)`);
+      if (!name) {
+        warnings.push(`[${kelas.name}] baris ${i + 1}: tanpa nama — dilewati`);
         return;
       }
-      if (nisn.length !== 10) warnings.push(`[${kelas.name}] baris ${i + 2}: NISN "${nisn}" tidak 10 digit`);
+      if (!nisn) {
+        if (!placeholderNisn) {
+          warnings.push(`[${kelas.name}] baris ${i + 1}: ${name} tanpa NISN — dilewati`);
+          return;
+        }
+        placeholderCounter++;
+        nisn = `12345678${String(placeholderCounter).padStart(2, '0')}`;
+        warnings.push(`[${kelas.name}] baris ${i + 1}: ${name} tanpa NISN → placeholder "${nisn}" (dapat disunting admin)`);
+      } else if (padNisn && nisn.length < 10 && /^\d+$/.test(nisn)) {
+        const padded = nisn.padStart(10, '0');
+        warnings.push(`[${kelas.name}] baris ${i + 1}: NISN "${nisn}" (${name}) dipad nol di depan → "${padded}"`);
+        nisn = padded;
+      }
+      if (nisn.length !== 10) warnings.push(`[${kelas.name}] baris ${i + 1}: NISN "${nisn}" tidak 10 digit`);
+      if (nik && nik.length !== 16) warnings.push(`[${kelas.name}] baris ${i + 1}: NIK "${nik}" tidak 16 digit`);
       if (seenNisn.has(nisn)) warnings.push(`[${kelas.name}] NISN duplikat "${nisn}" (${name})`);
       seenNisn.add(nisn);
-      if (!gender) warnings.push(`[${kelas.name}] baris ${i + 2}: JK "${pick(row, map, 'gender')}" tidak dikenal (${name})`);
+      if (!gender) warnings.push(`[${kelas.name}] baris ${i + 1}: JK "${pick(row, map, 'gender')}" tidak dikenal (${name})`);
 
-      countByTingkat[tingkat]++;
+      countByTingkat[kelasTingkat]++;
       siswaOut.push({
         id: `s-${nisn}`,
         nisn,
@@ -218,6 +268,7 @@ function main() {
         classId: kelas.id,
         gender: gender || 'L',
         foto: DEFAULT_FOTO,
+        nik: nik || undefined,
         tanggalLahir: ttl || undefined,
         noHpOrangTua: '',
       });
@@ -239,7 +290,7 @@ function main() {
   };
 
   for (const s of siswaOut) {
-    akunSql += upsert(`u-s${s.nisn}`, s.name, `s${s.nisn}@${EMAIL_DOMAIN}`, s.nisn, 'siswa', s.classId, s.nisn, null, s.tanggalLahir);
+    akunSql += upsert(`u-s${s.nisn}`, s.name, `s${s.nisn}@${EMAIL_DOMAIN}`, s.nisn, 'siswa', s.classId, s.nisn, s.nik, s.tanggalLahir);
   }
   for (const g of guruRows) {
     akunSql += upsert(`u-g${g.nik}`, g.name, `g${g.nik}@${EMAIL_DOMAIN}`, g.nik, 'guru', null, g.nik, g.nik, g.ttl);
