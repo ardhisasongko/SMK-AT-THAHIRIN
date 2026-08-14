@@ -9,7 +9,7 @@ interface Env extends AuthEnv {}
 export const onRequestPatch: PagesFunction<Env> = async ({ env, request }) => {
   const user = await getUserFromRequest(env, request);
   if (!user) return errorResponse('Tidak terautentikasi.', 401);
-  if (user.role !== 'admin') return errorResponse('Hanya admin yang dapat mengubah NISN.', 403);
+  if (user.role !== 'admin' && user.role !== 'super_admin') return errorResponse('Hanya admin yang dapat mengubah NISN.', 403);
 
   let body: { oldNisn?: string; newNisn?: string; name?: string };
   try {

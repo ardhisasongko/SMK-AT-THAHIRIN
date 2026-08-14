@@ -1,7 +1,7 @@
 import { Jurusan, Kelas, Siswa, PresensiRecord, ModulAjar, Berita, User, ForumTopic, NotificationItem, CbtExam, CbtSubmission } from '../types';
 
 export const SCHOOL_INFO = {
-  name: 'SMKS PLUS AT THAHIRIN',
+  name: 'SMK PLUS AT THAHIRIN',
   tagline: 'Unggul, Berkarakter & Ahli Manajemen Perkantoran dan Layanan Bisnis',
   npsn: '20232426',
   akreditasi: 'B (Baik)',
@@ -10,7 +10,7 @@ export const SCHOOL_INFO = {
   whatsapp: '+62 812-3456-7890',
   email: 'info@smksplusatthahirin.sch.id',
   website: 'https://smksplusatthahirin.sch.id',
-  kepalaSekolah: 'Ir. Surantro',
+  kepalaSekolah: 'Ir. Suranto',
   sambutan: 'Selamat datang di SMKS PLUS AT THAHIRIN Megamendung. Sebagai lembaga pendidikan kejuruan swasta terakreditasi B yang berfokus penuh pada keahlian Manajemen Perkantoran dan Layanan Bisnis (MPLB), kami berkomitmen membentuk lulusan yang mahir dalam tata kelola administrasi digital, kearsipan elektronik, komunikasi bisnis, serta berakhlak mulia dan siap kerja di era industri modern.',
   stats: {
     siswa: 380,
@@ -24,12 +24,12 @@ export const SCHOOL_INFO = {
 export const INITIAL_USERS: User[] = [
   {
     id: 'u1',
-    name: 'Ir. Surantro',
+    name: 'Ir. Suranto',
     email: 'admin@smksplusatthahirin.sch.id',
     role: 'admin',
     avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
     nipNisn: '19700512 199803 1 002',
-    jabatan: 'Kepala Sekolah SMKS PLUS AT THAHIRIN'
+    jabatan: 'Kepala Sekolah SMK PLUS AT THAHIRIN'
   },
   {
     id: 'u2',
@@ -466,4 +466,3 @@ export const INITIAL_CBT_SUBMISSIONS: CbtSubmission[] = [
     timeSpentSeconds: 420
   }
 ];
-

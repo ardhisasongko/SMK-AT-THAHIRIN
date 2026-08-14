@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PresensiRecord, PresensiStatus, PresensiLokasi, Siswa, User } from '../types';
 import { uploadPhoto } from '../utils/photo';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
+import { dateWIB, timeWIB } from '../utils/date';
 import {
   CheckCircle2,
   XCircle,
@@ -27,6 +28,7 @@ import {
 interface Props {
   presensiList: PresensiRecord[];
   setPresensiList: React.Dispatch<React.SetStateAction<PresensiRecord[]>>;
+  savePresensi?: (action: React.SetStateAction<PresensiRecord[]>) => Promise<PresensiRecord[]>;
   siswaList: Siswa[];
   currentUser: User;
 }
@@ -47,10 +49,11 @@ function formatTime(iso: string): string {
 export const StudentAbsensiCard: React.FC<Props> = ({
   presensiList,
   setPresensiList,
+  savePresensi,
   siswaList,
   currentUser
 }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = dateWIB();
   const myNisn = currentUser.nipNisn || '';
 
   // Data siswa saya dari daftar siswa
@@ -63,7 +66,7 @@ export const StudentAbsensiCard: React.FC<Props> = ({
   );
 
   // Riwayat 14 hari terakhir
-  const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
+  const twoWeeksAgo = dateWIB(Date.now() - 14 * 86400000);
   const myHistory = presensiList
     .filter(p => p.nisn === myNisn && p.tanggal >= twoWeeksAgo && p.tanggal <= today)
     .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
@@ -90,12 +93,12 @@ export const StudentAbsensiCard: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Tampilkan peringatan bila penyimpanan presensi ditolak server
+  // Tampilkan peringatan untuk penyimpanan lama yang masih memakai setter umum.
   useEffect(() => {
     const onError = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { key?: string; status?: number } | undefined;
+      const detail = (e as CustomEvent).detail as { key?: string; message?: string } | undefined;
       if (detail?.key === 'presensi_v1') {
-        setMsg({ type: 'error', text: 'Penyimpanan presensi gagal di server. Periksa koneksi lalu coba lagi.' });
+        setMsg({ type: 'error', text: detail.message || 'Penyimpanan presensi gagal di server.' });
       }
     };
     window.addEventListener('persist:error', onError);
@@ -138,7 +141,10 @@ export const StudentAbsensiCard: React.FC<Props> = ({
   };
 
   const handleSave = async () => {
-    if (!mySiswa) return;
+    if (!mySiswa) {
+      setMsg({ type: 'error', text: 'Data siswa tidak cocok dengan akun. Hubungi administrator.' });
+      return;
+    }
     setSaving(true);
     setMsg(null);
 
@@ -158,10 +164,14 @@ export const StudentAbsensiCard: React.FC<Props> = ({
       newFotoUrl = myRecordToday.fotoUrl;
     }
 
-    const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0];
+    if (!isBeforeCutoff()) {
+      setSaving(false);
+      setMsg({ type: 'error', text: 'Batas waktu input/edit jam 08:00 WIB sudah lewat.' });
+      return;
+    }
 
-    setPresensiList(prev => {
+    const timeStr = timeWIB();
+    const createNext = (prev: PresensiRecord[]) => {
       const existingIndex = prev.findIndex(p => p.tanggal === today && p.nisn === myNisn);
       if (existingIndex >= 0) {
         const updated = [...prev];
@@ -189,15 +199,26 @@ export const StudentAbsensiCard: React.FC<Props> = ({
           lokasi: lokasi || undefined
         }, ...prev];
       }
-    });
+    };
 
-    setSaving(false);
-    setIsEditing(false);
-    setMsg({ type: 'success', text: 'Presensi berhasil disimpan!' });
+    try {
+      if (savePresensi) {
+        await savePresensi(createNext);
+      } else {
+        setPresensiList(createNext);
+      }
+      setIsEditing(false);
+      setMsg({ type: 'success', text: 'Presensi berhasil disimpan di server.' });
+    } catch (err) {
+      setMsg({ type: 'error', text: err instanceof Error ? err.message : 'Presensi gagal disimpan.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const statusColor = (s: PresensiStatus) => {
     if (s === 'Hadir') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (s === 'Terlambat') return 'bg-orange-100 text-orange-700 border-orange-200';
     if (s === 'Sakit') return 'bg-amber-100 text-amber-700 border-amber-200';
     if (s === 'Izin') return 'bg-blue-100 text-blue-700 border-blue-200';
     return 'bg-rose-100 text-rose-700 border-rose-200';
@@ -296,10 +317,11 @@ export const StudentAbsensiCard: React.FC<Props> = ({
               <div>
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 block">Status</label>
                 <div className="flex flex-wrap gap-2">
-                  {(['Hadir', 'Sakit', 'Izin'] as PresensiStatus[]).map(st => {
+                  {(['Hadir', 'Terlambat', 'Sakit', 'Izin'] as PresensiStatus[]).map(st => {
                     const isSelected = status === st;
                     const map: Record<PresensiStatus, string> = {
                       Hadir: isSelected ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400',
+                      Terlambat: isSelected ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:border-orange-400',
                       Sakit: isSelected ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400',
                       Izin: isSelected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400',
                       Alpa: 'bg-white text-slate-300 border-slate-100 cursor-not-allowed'
@@ -414,8 +436,8 @@ export const StudentAbsensiCard: React.FC<Props> = ({
         )}
       </div>
 
-      {/* KEHADIRAN KELAS HARI INI */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+      {/* Ketua kelas boleh memantau kelasnya; siswa biasa hanya melihat datanya sendiri. */}
+      {currentUser.role === 'ketua_kelas' && <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-5 h-5 text-slate-500" />
           <h3 className="font-bold text-slate-900">Kehadiran Kelas Hari Ini</h3>
@@ -444,7 +466,7 @@ export const StudentAbsensiCard: React.FC<Props> = ({
             })}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 };

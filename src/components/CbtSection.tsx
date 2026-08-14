@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FileText,
   Clock,
@@ -21,24 +21,20 @@ import { CbtResultsTable } from './cbt/CbtResultsTable';
 import { CbtResultReviewModal } from './cbt/CbtResultReviewModal';
 import { CbtTokenModal } from './cbt/CbtTokenModal';
 import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
+import { cbtApi } from '../utils/cbt-api';
 
 interface CbtSectionProps {
   currentUser: UserType | null;
-  cbtExams: CbtExam[];
-  setCbtExams: React.Dispatch<React.SetStateAction<CbtExam[]>>;
-  cbtSubmissions: CbtSubmission[];
-  setCbtSubmissions: React.Dispatch<React.SetStateAction<CbtSubmission[]>>;
   onOpenLogin: () => void;
 }
 
 export function CbtSection({
   currentUser,
-  cbtExams,
-  setCbtExams,
-  cbtSubmissions,
-  setCbtSubmissions,
   onOpenLogin
 }: CbtSectionProps) {
+  const [cbtExams, setCbtExams] = useState<CbtExam[]>([]);
+  const [cbtSubmissions, setCbtSubmissions] = useState<CbtSubmission[]>([]);
+  const [loadError, setLoadError] = useState('');
   const [activeExam, setActiveExam] = useState<CbtExam | null>(null);
   const [isTestMode, setIsTestMode] = useState<boolean>(false);
   const [selectedExamForToken, setSelectedExamForToken] = useState<CbtExam | null>(null);
@@ -52,6 +48,18 @@ export function CbtSection({
 
   const [completedResult, setCompletedResult] = useState<CbtSubmission | null>(null);
   const [showReviewModal, setShowReviewModal] = useState<CbtSubmission | null>(null);
+  const [attemptId, setAttemptId] = useState('');
+  const [attemptExpiresAt, setAttemptExpiresAt] = useState('');
+  const isStaff = Boolean(currentUser && ['guru', 'admin', 'super_admin'].includes(currentUser.role));
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let cancelled = false;
+    Promise.all([cbtApi.exams(), cbtApi.results()])
+      .then(([exams, results]) => { if (!cancelled) { setCbtExams(exams); setCbtSubmissions(results); } })
+      .catch(error => { if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Gagal memuat CBT.'); });
+    return () => { cancelled = true; };
+  }, [currentUser?.id]);
 
   const handleStartExam = (exam: CbtExam) => {
     if (!currentUser) {
@@ -61,17 +69,26 @@ export function CbtSection({
     setSelectedExamForToken(exam);
   };
 
-  const handleTokenVerified = () => {
+  const handleTokenVerified = async (token: string) => {
     if (!selectedExamForToken) return;
-    setActiveExam(selectedExamForToken);
+    const attempt = await cbtApi.startAttempt(selectedExamForToken.id, token);
+    setActiveExam(attempt.exam);
+    setAttemptId(attempt.attemptId);
+    setAttemptExpiresAt(attempt.expiresAt);
     setIsTestMode(true);
     setSelectedExamForToken(null);
   };
 
-  const handleFinishSubmission = (submission: CbtSubmission) => {
-    setCbtSubmissions(prev => [submission, ...prev]);
-    setCompletedResult(submission);
-    setIsTestMode(false);
+  const handleFinishSubmission = async (submission: CbtSubmission) => {
+    try {
+      const saved = await cbtApi.submitAttempt(attemptId, submission);
+      setCbtSubmissions(prev => [saved, ...prev.filter(item => item.id !== saved.id)]);
+      setCompletedResult(saved);
+      setIsTestMode(false);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Jawaban gagal dikirim.');
+      throw error;
+    }
   };
 
   const closeReview = () => {
@@ -79,9 +96,24 @@ export function CbtSection({
     setShowReviewModal(null);
   };
 
-  const handleSaveExam = (exam: CbtExam) => {
-    setCbtExams(prev => [exam, ...prev]);
-    setShowCreateExamModal(false);
+  const handleSaveExam = async (exam: CbtExam) => {
+    try {
+      const saved = await cbtApi.createExam(exam);
+      setCbtExams(prev => [saved, ...prev]);
+      setShowCreateExamModal(false);
+      alert(`Ujian dibuat. Token pengawas: ${saved.token}`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Ujian gagal dibuat.');
+    }
+  };
+
+  const handleRotateToken = async (exam: CbtExam) => {
+    try {
+      const result = await cbtApi.rotateToken(exam.id);
+      alert(`Token baru untuk ${exam.title}: ${result.token}`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Token gagal dirotasi.');
+    }
   };
 
   // Full-screen test runner
@@ -91,6 +123,7 @@ export function CbtSection({
         exam={activeExam}
         currentUser={currentUser}
         onFinish={handleFinishSubmission}
+        expiresAt={attemptExpiresAt}
       />
     );
   }
@@ -103,6 +136,7 @@ export function CbtSection({
   return (
     <div id="cbt-section" className="py-8 bg-slate-50 min-h-[85vh]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {loadError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loadError}</div>}
 
         {/* SECTION HEADER */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
@@ -124,7 +158,7 @@ export function CbtSection({
 
             {/* Action Buttons for Guru/Admin */}
             <div className="flex flex-wrap items-center gap-3">
-              {(currentUser?.role === 'admin' || currentUser?.role === 'guru') && (
+              {(currentUser?.role === 'super_admin' || currentUser?.role === 'admin' || currentUser?.role === 'guru') && (
                 <>
                   <button
                     id="btn-open-results"
@@ -210,7 +244,7 @@ export function CbtSection({
                       </div>
                       <div className="flex items-center gap-1.5">
                         <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>Jumlah: <strong>{exam.questions.length} Soal</strong></span>
+                         <span>Jumlah: <strong>{exam.questionCount ?? exam.questions.length} Soal</strong></span>
                       </div>
                       <div className="flex items-center gap-1.5 col-span-2">
                         <User className="w-4 h-4 text-slate-400 shrink-0" />
@@ -236,20 +270,25 @@ export function CbtSection({
                       </div>
                     ) : (
                       <div className="flex items-center justify-between w-full">
-                        <div className="text-xs text-slate-500 flex items-center gap-1 font-mono">
+                        <div className="text-xs text-slate-500 flex items-center gap-1">
                           <Key className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Token: <strong className="text-slate-800">{exam.token}</strong></span>
+                          <span>Token diberikan oleh pengawas</span>
                         </div>
 
-                        <button
+                        {!isStaff && <button
                           id={`start-exam-${exam.id}`}
                           onClick={() => handleStartExam(exam)}
                           className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.02]"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
                           <span>Kerjakan Ujian</span>
-                        </button>
+                        </button>}
                       </div>
+                    )}
+                    {isStaff && (
+                      <button type="button" onClick={() => handleRotateToken(exam)} className="ml-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100">
+                        Rotasi Token
+                      </button>
                     )}
                   </div>
                 </div>

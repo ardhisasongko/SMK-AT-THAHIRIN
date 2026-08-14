@@ -67,7 +67,8 @@ export async function loginRequest(
       user?: {
         id: string; name: string; email: string; role: string;
         nipNisn?: string | null; classId?: string | null;
-        jabatan?: string | null; ketuaStatus?: string;
+         jabatan?: string | null; ketuaStatus?: string; status?: string;
+         mustChangePassword?: boolean;
       };
     };
     if (!res.ok || !json.success) {
@@ -83,6 +84,8 @@ export async function loginRequest(
       classId: json.user!.classId || undefined,
       jabatan: json.user!.jabatan || undefined,
       ketuaStatus: (json.user!.ketuaStatus || 'none') as AuthSession['user']['ketuaStatus'],
+      status: (json.user!.status || 'active') as AuthSession['user']['status'],
+      mustChangePassword: Boolean(json.user!.mustChangePassword),
     };
     return { ok: true, session: { token: json.token!, user } };
   } catch (e: any) {
@@ -102,15 +105,15 @@ export async function logoutRequest(token: string | null): Promise<void> {
 }
 
 export function getPasswordRequirements(): string {
-  return 'Password minimal 6 karakter';
+  return 'Password minimal 8 karakter';
 }
 
 /**
  * Validate password strength
  */
 export function isPasswordStrong(password: string): { valid: boolean; message: string } {
-  if (password.length < 6) {
-    return { valid: false, message: 'Password minimal 6 karakter' };
+  if (password.length < 8) {
+    return { valid: false, message: 'Password minimal 8 karakter' };
   }
   return { valid: true, message: 'Password valid' };
 }

@@ -30,7 +30,7 @@ interface SiswaRow {
 }
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
-  if (!data.user || data.user.role !== 'admin') {
+  if (!data.user || !['super_admin', 'admin'].includes(data.user.role)) {
     return jsonResponse({ success: false, error: 'Akses khusus admin.' }, 403);
   }
   const { results } = await env.DB.prepare(
@@ -53,7 +53,7 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
 };
 
 export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, request, data }) => {
-  if (!data.user || data.user.role !== 'admin') {
+  if (!data.user || !['super_admin', 'admin'].includes(data.user.role)) {
     return jsonResponse({ success: false, error: 'Akses khusus admin.' }, 403);
   }
 
@@ -78,7 +78,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
 
   const nisn = siswa.nisn;
   const email = `${nisn}@siswa.smksplusatthahirin.sch.id`;
-  const passwordHash = await hashPassword(nisn); // password awal = NISN
+  const temporaryPassword = crypto.randomUUID();
+  const passwordHash = await hashPassword(temporaryPassword);
   const now = new Date().toISOString();
 
   const existing = await env.DB.prepare('SELECT id FROM users WHERE nip_nisn = ?').bind(nisn).first();
@@ -94,8 +95,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
 
   const newId = `u-${crypto.randomUUID()}`;
   await env.DB.prepare(
-    `INSERT INTO users (id, name, email, nip_nisn, role, class_id, password_hash, jabatan, ketua_status, approved_by, approved_at, created_at)
-     VALUES (?, ?, ?, ?, 'ketua_kelas', ?, ?, ?, 'approved', ?, ?, ?)`
+    `INSERT INTO users (id, name, email, nip_nisn, role, class_id, password_hash, jabatan, ketua_status, approved_by, approved_at, created_at, must_change_password)
+     VALUES (?, ?, ?, ?, 'ketua_kelas', ?, ?, ?, 'approved', ?, ?, ?, 1)`
   ).bind(
     newId,
     siswa.name,
@@ -109,11 +110,11 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     now
   ).run();
 
-  return jsonResponse({ success: true, data: { id: newId, name: siswa.name } });
+  return jsonResponse({ success: true, data: { id: newId, name: siswa.name, temporaryPassword } });
 };
 
 export const onRequestDelete: PagesFunction<Env, any, AuthData> = async ({ env, request, data }) => {
-  if (!data.user || data.user.role !== 'admin') {
+  if (!data.user || !['super_admin', 'admin'].includes(data.user.role)) {
     return jsonResponse({ success: false, error: 'Akses khusus admin.' }, 403);
   }
 

@@ -1,12 +1,19 @@
 // Generate Modul Ajar Kurikulum Merdeka dengan AI (pengganti endpoint Express).
 import { callGeminiJson } from "../../_lib/gemini";
 import { jsonResponse, errorResponse } from "../../_lib/response";
+import type { AuthUser } from "../../_lib/auth";
+import { consumeRateLimit } from "../../_lib/rate-limit";
 
 interface Env {
   GEMINI_API_KEY?: string;
+  DB: D1Database;
 }
+type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
-export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, request, data }) => {
+  if (!data.user) return errorResponse("Silakan login terlebih dahulu.", 401);
+  if (!['guru', 'admin', 'super_admin'].includes(data.user.role)) return errorResponse("Anda tidak berwenang membuat modul.", 403);
+  if (!(await consumeRateLimit(env.DB, `ai-modul:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan modul hari ini habis.", 429);
   try {
     const body = (await request.json()) as {
       mataPelajaran?: string;
@@ -31,7 +38,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       saranaPrasarana,
     } = body;
 
-    if (!mataPelajaran || !faseKelas) {
+    if (typeof mataPelajaran !== 'string' || !mataPelajaran.trim() || mataPelajaran.length > 200 || typeof faseKelas !== 'string' || !faseKelas.trim() || faseKelas.length > 100) {
       return errorResponse("Mata pelajaran dan Fase/Kelas wajib diisi.", 400);
     }
 
@@ -93,6 +100,6 @@ Susunlah dokumen Modul Ajar SMKS PLUS AT THAHIRIN ini dengan format JSON rapi de
     return jsonResponse({ success: true, data });
   } catch (error: any) {
     console.error("Error generating Modul Ajar:", error);
-    return errorResponse(error.message || "Gagal membuat modul ajar dengan AI.");
+    return errorResponse("Gagal membuat modul ajar dengan AI.");
   }
 };

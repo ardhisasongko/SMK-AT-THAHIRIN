@@ -18,6 +18,7 @@ import {
   Info
 } from 'lucide-react';
 import { NotificationItem, NotificationCategory, NotificationTargetRole, User } from '../types';
+import { notificationApi } from '../utils/community-api';
 
 interface NotifikasiSectionProps {
   notifications: NotificationItem[];
@@ -68,8 +69,9 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   };
 
   // Mark single notification as read
-  const handleMarkAsRead = (id: string) => {
+  const handleMarkAsRead = async (id: string) => {
     if (!currentUser) return;
+    try { await notificationApi.read(id); } catch { return; }
     setNotifications(notifications.map(n => {
       if (n.id === id) {
         const isAlreadyRead = n.isReadBy.includes(currentUser.id);
@@ -82,8 +84,9 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   };
 
   // Mark all notifications as read for current user
-  const handleMarkAllAsRead = () => {
+  const handleMarkAllAsRead = async () => {
     if (!currentUser) return;
+    try { await notificationApi.readAll(); } catch { return; }
     setNotifications(notifications.map(n => ({
       ...n,
       isReadBy: n.isReadBy.includes(currentUser.id) ? n.isReadBy : [...n.isReadBy, currentUser.id]
@@ -91,7 +94,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   };
 
   // Create Broadcast Notification
-  const handleSendBroadcast = (e: React.FormEvent) => {
+  const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
     if (!broadcastTitle.trim() || !broadcastMessage.trim()) return;
@@ -110,7 +113,13 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
       isEmailSent: simulateEmail
     };
 
-    setNotifications([newNotif, ...notifications]);
+    try {
+      const saved = await notificationApi.create(newNotif);
+      setNotifications([saved, ...notifications]);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Notifikasi gagal dikirim.');
+      return;
+    }
 
     if (simulateEmail) {
       const recipientCount = broadcastTargetRole === 'siswa' ? 32 : broadcastTargetRole === 'guru' ? 68 : 1250;
@@ -131,7 +140,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   // Filtered Notifications
   const filteredNotifications = notifications.filter(n => {
     // Role relevance: Show if target is 'semua' OR matches current user's role OR if current user is admin viewing all
-    if (currentUser && currentUser.role !== 'admin') {
+    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
       const isForMyRole = n.targetRole === 'semua' || n.targetRole === currentUser.role;
       if (!isForMyRole) return false;
     }
@@ -180,7 +189,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru') && (
+            {currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || currentUser.role === 'guru') && (
               <button
                 id="open-broadcast-modal-btn"
                 onClick={() => setShowBroadcastModal(true)}
@@ -323,37 +332,37 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
                 key={notif.id}
                 id={`notif-card-${notif.id}`}
                 onClick={() => handleMarkAsRead(notif.id)}
-                className={`bg-white rounded-xl border p-5 shadow-2xs transition-all hover:shadow-md cursor-pointer space-y-3 relative ${
+                className={`relative space-y-3 overflow-hidden rounded-xl border bg-white p-4 shadow-2xs transition-all hover:shadow-md cursor-pointer sm:p-5 ${
                   !isRead 
                     ? 'border-indigo-200 bg-indigo-50/20' 
                     : 'border-slate-200 opacity-90'
                 }`}
               >
                 {/* Header Row */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
                     <div className="p-2 rounded-xl bg-slate-100 border border-slate-200 shrink-0">
                       {getCategoryIcon(notif.category)}
                     </div>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-extrabold text-slate-900">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-2">
+                        <span className="break-words text-xs font-extrabold text-slate-900">
                           {notif.title}
                         </span>
                         {!isRead && (
                           <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" title="Belum dibaca"></span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                        <span>Dari: <strong>{notif.senderName || 'Sistem Sekolah'}</strong></span>
-                        <span>•</span>
-                        <span>{notif.createdAt}</span>
+                      <div className="mt-1 grid gap-0.5 text-[11px] text-slate-500 sm:flex sm:items-center sm:gap-2">
+                        <span className="break-words">Dari: <strong>{notif.senderName || 'Sistem Sekolah'}</strong></span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="whitespace-nowrap">{notif.createdAt}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs sm:justify-end">
                     <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded-full text-[10px] uppercase border border-slate-200">
                       {notif.category}
                     </span>
@@ -369,12 +378,12 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
                 </div>
 
                 {/* Message Content */}
-                <p className="text-xs text-slate-700 leading-relaxed pl-12">
+                <p className="break-words text-xs leading-relaxed text-slate-700 sm:pl-12">
                   {notif.message}
                 </p>
 
                 {/* Footer Action Bar */}
-                <div className="flex items-center justify-between pl-12 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs sm:pl-12">
                   <div className="flex items-center gap-3 text-[11px] text-slate-500">
                     {notif.isEmailSent && (
                       <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">

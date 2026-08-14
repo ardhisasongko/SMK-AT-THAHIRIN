@@ -6,6 +6,7 @@ import { validateNISN } from '../utils/validation';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
 import { uploadPhoto } from '../utils/photo';
 import { StudentAbsensiCard } from './StudentAbsensiCard';
+import { dateWIB } from '../utils/date';
 import { 
   UserCheck, 
   QrCode, 
@@ -37,6 +38,9 @@ import {
 interface AbsensiSectionProps {
   presensiList: PresensiRecord[];
   setPresensiList: React.Dispatch<React.SetStateAction<PresensiRecord[]>>;
+  savePresensi?: (action: React.SetStateAction<PresensiRecord[]>) => Promise<PresensiRecord[]>;
+  refreshPresensi?: () => Promise<PresensiRecord[]>;
+  presensiReady?: boolean;
   kelasList: Kelas[];
   siswaList: Siswa[];
   currentUser: User | null;
@@ -45,18 +49,21 @@ interface AbsensiSectionProps {
 export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   presensiList,
   setPresensiList,
+  savePresensi,
+  refreshPresensi,
+  presensiReady,
   kelasList,
   siswaList,
   currentUser
 }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(dateWIB());
   const [selectedClassId, setSelectedClassId] = useState<string>(kelasList[0]?.id || 'k1');
   const [activeTabMode, setActiveTabMode] = useState<'harian' | 'qr-scanner' | 'rekap' | 'log'>('harian');
 
   // ===== RBAC: hak akses berdasarkan role =====
   const canEditClass = (classId: string): boolean => {
     if (!currentUser) return false;
-    if (currentUser.role === 'admin') return true;
+    if (currentUser.role === 'admin' || currentUser.role === 'super_admin') return true;
     if (currentUser.role === 'guru') return true;
     if (currentUser.role === 'ketua_kelas') {
       return currentUser.ketuaStatus === 'approved' && currentUser.classId === classId;
@@ -67,7 +74,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   // Daftar kelas yang boleh diedit user (untuk selektor & default)
   const fullClassIds = kelasList.map(k => k.id);
   const editableClassIds: string[] =
-    currentUser?.role === 'admin'
+    currentUser?.role === 'admin' || currentUser?.role === 'super_admin'
       ? fullClassIds
       : currentUser?.role === 'guru'
         ? fullClassIds
@@ -97,7 +104,15 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
   // Date range filter untuk rekap
   const [rekapStartDate, setRekapStartDate] = useState<string>('2026-08-01');
-  const [rekapEndDate, setRekapEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [rekapEndDate, setRekapEndDate] = useState<string>(dateWIB());
+
+  useEffect(() => {
+    if (!refreshPresensi) return;
+    const refresh = () => { void refreshPresensi().catch(() => undefined); };
+    if (presensiReady) refresh();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, [presensiReady, refreshPresensi]);
   const [rekapClassFilter, setRekapClassFilter] = useState<string>('all');
 
   // Pagination untuk tabel rekap
@@ -108,7 +123,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const [logData, setLogData] = useState<any[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const fetchLog = async () => {
-    if (currentUser?.role !== 'admin') return;
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'super_admin') return;
     setLogLoading(true);
     try {
       const res = await fetch('/api/data/presensi_log', {
@@ -140,10 +155,11 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   // Stats calculation
   const totalSiswaSelectedClass = classSiswa.length;
   const countHadir = classPresensi.filter(p => p.status === 'Hadir').length;
+  const countTerlambat = classPresensi.filter(p => p.status === 'Terlambat').length;
   const countSakit = classPresensi.filter(p => p.status === 'Sakit').length;
   const countIzin = classPresensi.filter(p => p.status === 'Izin').length;
   const countAlpa = classPresensi.filter(p => p.status === 'Alpa').length;
-  const totalInputed = countHadir + countSakit + countIzin + countAlpa;
+  const totalInputed = countHadir + countTerlambat + countSakit + countIzin + countAlpa;
 
   // Handler to update or create presensi record (termasuk foto & lokasi)
   const updatePresensi = (
@@ -157,7 +173,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     const timeStr = now.toTimeString().split(' ')[0];
 
     // Date validation: prevent adding presensi for future dates
-    const today = now.toISOString().split('T')[0];
+    const today = dateWIB(now);
     if (selectedDate > today) {
       setScanMessage({
         type: 'error',
@@ -258,7 +274,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const handleDetailSave = async () => {
     if (!detailSiswa) return;
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = dateWIB(now);
     if (selectedDate > today) {
       setDetailMsg({ type: 'error', text: `✗ Tanggal ${selectedDate} belum tiba.` });
       return;
@@ -368,7 +384,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
   // Auto-fetch log saat tab log aktif
   useEffect(() => {
-    if (activeTabMode === 'log' && currentUser?.role === 'admin') {
+    if (activeTabMode === 'log' && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin')) {
       fetchLog();
     }
   }, [activeTabMode, currentUser?.role]);
@@ -421,6 +437,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   // Status badge untuk tampilan ringkas (tabel & kartu)
   const statusBadgeClass = (s: PresensiStatus): string => {
     if (s === 'Hadir') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (s === 'Terlambat') return 'bg-orange-100 text-orange-700 border-orange-200';
     if (s === 'Sakit') return 'bg-amber-100 text-amber-700 border-amber-200';
     if (s === 'Izin') return 'bg-blue-100 text-blue-700 border-blue-200';
     return 'bg-rose-100 text-rose-700 border-rose-200';
@@ -432,9 +449,10 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
       {/* SISWA: UI sederhana (kartu + riwayat + kelas) */}
       {currentUser?.role === 'siswa' && currentUser && (
         <StudentAbsensiCard
-          presensiList={presensiList}
-          setPresensiList={setPresensiList}
-          siswaList={siswaList}
+         presensiList={presensiList}
+         setPresensiList={setPresensiList}
+         savePresensi={savePresensi}
+         siswaList={siswaList}
           currentUser={currentUser}
         />
       )}
@@ -500,7 +518,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
           </button>
           )}
 
-          {currentUser?.role === 'admin' && (
+          {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
             <button
               onClick={() => setActiveTabMode('log')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -1007,7 +1025,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
       )}
 
       {/* MODE 4: LOG PERUBAHAN (admin only) */}
-      {activeTabMode === 'log' && currentUser?.role === 'admin' && (
+      {activeTabMode === 'log' && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -1091,10 +1109,11 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               <div>
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 block">Status</label>
                 <div className="flex flex-wrap gap-2">
-                  {(['Hadir', 'Sakit', 'Izin', 'Alpa'] as PresensiStatus[]).map(st => {
+                  {(['Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpa'] as PresensiStatus[]).map(st => {
                     const isSelected = detailStatus === st;
                     const map: Record<PresensiStatus, string> = {
                       Hadir: isSelected ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400',
+                      Terlambat: isSelected ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:border-orange-400',
                       Sakit: isSelected ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400',
                       Izin: isSelected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400',
                       Alpa: isSelected ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-200 hover:border-rose-400'

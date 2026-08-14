@@ -55,7 +55,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
     <div id="landing-page" className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       
       {/* HERO SECTION */}
-      <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white overflow-hidden py-16 lg:py-24">
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 py-10 text-white sm:py-16 lg:py-24">
         {/* Background Decorative Grid */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30"></div>
         
@@ -63,83 +63,56 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none"></div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
             
             {/* Left Column Text & Action */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1.5 rounded-full text-emerald-400 text-xs font-semibold backdrop-blur-md">
-                <Sparkles className="w-4 h-4 text-emerald-400" />
-                <span>Penerimaan Siswa Baru & Portal Digital Terpadu</span>
+            <div className="space-y-5 text-center lg:col-span-7 lg:text-left">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 backdrop-blur-md sm:px-3.5 sm:text-xs">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-emerald-400 sm:h-4 sm:w-4" />
+                <span>Portal Pendidikan Digital Terpadu</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-                Membangun Generasi Vokasi <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200">Unggul & siap Kerja</span>
+              <h1 className="mx-auto max-w-3xl text-[2rem] font-extrabold leading-[1.12] tracking-tight text-white sm:text-5xl lg:mx-0 lg:text-6xl">
+                Membangun Generasi Vokasi <span className="bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">Unggul & Siap Kerja</span>
               </h1>
 
-              <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                Selamat Datang di <strong>{SCHOOL_INFO.name}</strong>. Sekolah Menengah Kejuruan swasta terakreditasi B yang memadukan Kurikulum Merdeka industri, penguasaan teknologi digital Manajemen Perkantoran dan Layanan Bisnis, dan penguatan karakter.
+              <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-300 sm:text-lg sm:leading-relaxed lg:mx-0">
+                Selamat datang di <strong>{SCHOOL_INFO.name}</strong>, sekolah kejuruan terakreditasi B yang memadukan pembelajaran industri, teknologi digital, dan penguatan karakter.
               </p>
 
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+              <div className="flex items-center justify-center gap-2.5 pt-1 lg:justify-start">
                 <button
                   id="hero-cta-cbt"
                   onClick={() => setActiveTab('cbt')}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl shadow-lg shadow-emerald-600/30 hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] hover:bg-emerald-500 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>Ujian CBT Online</span>
+                  <span>Ujian CBT</span>
                 </button>
 
                 <button
                   id="hero-cta-absensi"
                   onClick={() => setActiveTab('absensi')}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
+                  className="flex items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:scale-[1.02] hover:bg-slate-700 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
                 >
                   <UserCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Presensi QR Code</span>
-                </button>
-
-                <button
-                  id="hero-cta-kelas"
-                  onClick={() => setActiveTab('kelas')}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
-                >
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  <span>Pengelolaan Kelas</span>
-                </button>
-
-                <button
-                  id="hero-cta-modul"
-                  onClick={() => setActiveTab('modul-ajar')}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Modul Ajar AI</span>
-                </button>
-
-                <button
-                  id="hero-cta-forum"
-                  onClick={() => setActiveTab('forum')}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-5 py-3 rounded-xl border border-slate-700 shadow-md hover:scale-[1.02] transition-all cursor-pointer text-sm"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Forum Diskusi</span>
+                  <span>Absensi</span>
                 </button>
               </div>
 
               {/* Feature Tags */}
-              <div className="pt-6 border-t border-slate-800 grid grid-cols-3 gap-4 text-center lg:text-left">
+              <div className="grid grid-cols-3 gap-2 border-t border-slate-700/70 pt-5 text-center sm:gap-4 lg:text-left">
                 <div>
-                  <div className="text-2xl font-extrabold text-white">{SCHOOL_INFO.stats.persenKerja}</div>
-                  <div className="text-xs text-slate-400">Terserap Industri & Kuliah</div>
+                  <div className="text-xl font-extrabold text-white sm:text-2xl">{SCHOOL_INFO.stats.persenKerja}</div>
+                  <div className="mt-1 text-[10px] leading-4 text-slate-400 sm:text-xs">Terserap Industri & Kuliah</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-extrabold text-white">{SCHOOL_INFO.stats.mitraIndustri}+</div>
-                  <div className="text-xs text-slate-400">Perusahaan Mitra IDUKA</div>
+                  <div className="text-xl font-extrabold text-white sm:text-2xl">{SCHOOL_INFO.stats.mitraIndustri}+</div>
+                  <div className="mt-1 text-[10px] leading-4 text-slate-400 sm:text-xs">Mitra Industri</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-extrabold text-emerald-400">Akreditasi {SCHOOL_INFO.akreditasi}</div>
-                  <div className="text-xs text-slate-400">Unggul & Terpercaya</div>
+                  <div className="text-xl font-extrabold text-emerald-400 sm:text-2xl">{SCHOOL_INFO.akreditasi}</div>
+                  <div className="mt-1 text-[10px] leading-4 text-slate-400 sm:text-xs">Akreditasi Sekolah</div>
                 </div>
               </div>
             </div>
@@ -151,7 +124,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                   <img 
                     src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80" 
                     alt="Siswa SMKS PLUS AT THAHIRIN Praktikum" 
-                    className="w-full h-80 lg:h-96 object-cover"
+                    className="h-64 w-full object-cover sm:h-80 lg:h-96"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
                   
@@ -186,95 +159,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
         </div>
       </section>
 
-      {/* QUICK ACCESS SHORTCUTS TOOLBAR */}
-      <section className="bg-slate-900 border-b border-slate-800 text-slate-200 py-5 px-4 shadow-md">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-slate-800/90 p-4 rounded-2xl border border-slate-700/80 backdrop-blur-md">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 font-bold">
-                <Sparkles className="w-5 h-5 animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Akses Cepat Portal Sekolah
-                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    Pintasan Fitur
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Navigasi langsung ke layanan utama SMKS PLUS AT THAHIRIN Megamendung
-                </p>
-              </div>
-            </div>
 
-            {/* Quick Action Button Pills */}
-            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-start lg:justify-end">
-              <button
-                id="quick-shortcut-cbt"
-                onClick={() => setActiveTab('cbt')}
-                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all shadow-xs cursor-pointer hover:scale-105"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Ujian CBT</span>
-              </button>
-
-              <button
-                id="quick-shortcut-absensi"
-                onClick={() => setActiveTab('absensi')}
-                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Absensi QR</span>
-              </button>
-
-              <button
-                id="quick-shortcut-kelas"
-                onClick={() => setActiveTab('kelas')}
-                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
-              >
-                <Users className="w-3.5 h-3.5 text-blue-400" />
-                <span>Jadwal Kelas MPLB</span>
-              </button>
-
-              <button
-                id="quick-shortcut-modul"
-                onClick={() => setActiveTab('modul-ajar')}
-                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Modul AI</span>
-              </button>
-
-              <button
-                id="quick-shortcut-forum"
-                onClick={() => setActiveTab('forum')}
-                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                <span>Forum Diskusi</span>
-              </button>
-
-              <button
-                id="quick-shortcut-notifikasi"
-                onClick={() => setActiveTab('notifikasi')}
-                className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-bold px-3.5 py-2 rounded-xl transition-all border border-slate-600 cursor-pointer hover:scale-105"
-              >
-                <Bell className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Notifikasi</span>
-              </button>
-
-              <button
-                id="quick-shortcut-login"
-                onClick={onOpenLogin}
-                className="flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3.5 py-2 rounded-xl border border-emerald-500/30 transition-all cursor-pointer hover:scale-105"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Masuk Portal</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* STATS STRIP */}
       <section className="bg-emerald-700 text-white py-8 border-y border-emerald-600 shadow-inner">
@@ -301,41 +186,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* SAMBUTAN KEPALA SEKOLAH */}
-      <section className="py-16 bg-white border-b border-slate-200">
+      <section className="border-b border-slate-200 bg-white py-10 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-slate-50 rounded-3xl p-8 lg:p-12 border border-slate-200/80 shadow-xs grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="grid grid-cols-1 items-center gap-6 rounded-3xl border border-slate-200/80 bg-slate-50 p-5 shadow-xs sm:gap-8 sm:p-8 lg:grid-cols-12 lg:p-12">
             
             <div className="lg:col-span-4 text-center">
               <div className="relative inline-block">
-                <img 
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80" 
+                <img
+                  src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80"
                   alt={SCHOOL_INFO.kepalaSekolah}
-                  className="w-48 h-48 lg:w-56 lg:h-56 rounded-full object-cover mx-auto border-4 border-emerald-600 shadow-xl"
+                  className="mx-auto h-36 w-36 rounded-full border-4 border-emerald-600 object-cover shadow-xl sm:h-48 sm:w-48 lg:h-56 lg:w-56"
                 />
                 <div className="absolute bottom-2 right-2 bg-emerald-600 text-white p-2 rounded-full shadow-md">
                   <Quote className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-900 mt-4">{SCHOOL_INFO.kepalaSekolah}</h3>
-              <p className="text-xs font-semibold text-emerald-700">Kepala Sekolah {SCHOOL_INFO.name}</p>
+              <h3 className="mt-3 text-base font-bold text-slate-900 sm:mt-4 sm:text-lg">{SCHOOL_INFO.kepalaSekolah}</h3>
+              <p className="text-xs font-semibold text-emerald-700">Kepala Sekolah</p>
             </div>
 
-            <div className="lg:col-span-8 space-y-4 text-slate-700">
+            <div className="space-y-4 text-slate-700 lg:col-span-8">
               <div className="inline-block bg-emerald-100 text-emerald-800 font-bold text-xs px-3 py-1 rounded-full">
                 Sambutan Kepala Sekolah
               </div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-snug">
+              <h2 className="text-xl font-extrabold leading-snug text-slate-900 sm:text-3xl">
                 "Menyiapkan SDM Kejuruan Berkarakter, Berdaya Saing, dan Siap Menjawab Tantangan Industri Masa Depan"
               </h2>
-              <p className="text-base leading-relaxed text-slate-600">
+              <p className="text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">
                 {SCHOOL_INFO.sambutan}
               </p>
-              <div className="pt-2 flex items-center gap-4 text-xs font-bold text-slate-500">
-                <span>✓ Kurikulum Berbasis Industri</span>
-                <span>•</span>
-                <span>✓ Sertifikasi BNSP</span>
-                <span>•</span>
-                <span>✓ Pembentukan Karakter Mulia</span>
+              <div className="grid gap-2 pt-2 text-xs font-bold text-slate-600 sm:grid-cols-3 sm:gap-3">
+                <span className="rounded-lg bg-white px-3 py-2 border border-slate-200">✓ Kurikulum Berbasis Industri</span>
+                <span className="rounded-lg bg-white px-3 py-2 border border-slate-200">✓ Sertifikasi BNSP</span>
+                <span className="rounded-lg bg-white px-3 py-2 border border-slate-200">✓ Pembentukan Karakter Mulia</span>
               </div>
             </div>
 
@@ -344,22 +227,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* JURUSAN / PROGRAM KEAHLIAN SECTION */}
-      <section className="py-20 bg-slate-50">
+      <section className="bg-slate-50 py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+          <div className="mx-auto mb-9 max-w-3xl space-y-3 text-center sm:mb-14">
             <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100 px-3 py-1 rounded-full">
               Pilihan Keahlian Unggulan
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
               Program Keahlian {SCHOOL_INFO.name}
             </h2>
-            <p className="text-slate-600 text-base">
+            <p className="text-sm leading-6 text-slate-600 sm:text-base">
               Dirancang khusus untuk mencetak tenaga profesional Manajemen Perkantoran dan Layanan Bisnis (MPLB) yang kompeten, responsif, dan siap kerja di industri modern.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
             {JURUSAN_LIST.map((jur) => {
               const IconComp = getJurusanIcon(jur.iconName);
               return (
@@ -367,7 +250,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                   key={jur.id} 
                   className="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group hover:-translate-y-1"
                 >
-                  <div className="p-6 space-y-4">
+                  <div className="space-y-4 p-5 sm:p-6">
                     <div className="flex items-center justify-between">
                       <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${jur.color} text-white flex items-center justify-center shadow-md`}>
                         <IconComp className="w-6 h-6" />
@@ -389,7 +272,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                       <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Prospek Karir Utama:</div>
                       <div className="flex flex-wrap gap-1.5">
                         {jur.prospekKerja.slice(0, 3).map((pk, idx) => (
-                          <span key={idx} className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-md font-medium">
+                          <span key={idx} className="w-full rounded-md bg-slate-100 px-2 py-1 text-xs font-medium leading-4 text-slate-700 sm:w-auto">
                             • {pk}
                           </span>
                         ))}
@@ -397,13 +280,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-xs text-slate-500 font-medium">
+                  <div className="flex flex-col items-start gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-xs font-medium leading-4 text-slate-500">
                       Kaprog: <strong>{jur.kepalaJurusan}</strong>
                     </span>
                     <button
                       onClick={() => setSelectedJurusan(jur)}
-                      className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
+                      className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer"
                     >
                       <span>Detail Jurusan</span>
                       <ChevronRight className="w-4 h-4" />
@@ -418,30 +301,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* QUICK ACCESS PORTAL BANNER */}
-      <section className="py-12 bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 text-white">
+      <section className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 py-10 text-white sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/10 p-8 rounded-3xl border border-white/15 backdrop-blur-md">
+          <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur-md sm:p-8 md:flex-row">
             <div className="space-y-2 text-center md:text-left">
               <span className="bg-emerald-500/30 text-emerald-200 text-xs font-bold px-3 py-1 rounded-full">
                 Fitur Utama Aplikasi
               </span>
-              <h3 className="text-2xl font-extrabold">Sistem Informasi Absensi & Pembuatan Modul Ajar AI</h3>
+              <h3 className="text-xl font-extrabold sm:text-2xl">Sistem Informasi Absensi & Pembuatan Modul Ajar AI</h3>
               <p className="text-sm text-slate-200 max-w-xl">
                 Kelola presensi harian siswa dengan scanner QR dan hasilkan Modul Ajar Kurikulum Merdeka otomatis menggunakan teknologi AI Gemini.
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2">
               <button
                 onClick={() => setActiveTab('absensi')}
-                className="bg-white text-emerald-800 hover:bg-emerald-50 font-bold px-5 py-3 rounded-xl shadow-md cursor-pointer text-sm flex items-center gap-2"
+                className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-emerald-800 shadow-md hover:bg-emerald-50 cursor-pointer"
               >
                 <UserCheck className="w-4 h-4 text-emerald-700" />
                 <span>Pengelolaan Absensi</span>
               </button>
               <button
                 onClick={() => setActiveTab('modul-ajar')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3 rounded-xl shadow-md cursor-pointer text-sm flex items-center gap-2 border border-emerald-400/30"
+                className="flex items-center justify-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-500 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>Modul Ajar AI</span>
@@ -452,22 +335,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* BERITA & PENGUMUMAN */}
-      <section className="py-20 bg-white border-b border-slate-200">
+      <section className="border-b border-slate-200 bg-white py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
+          <div className="mb-9 flex flex-col justify-between gap-4 sm:mb-12 sm:flex-row sm:items-end">
             <div>
               <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest bg-emerald-100 px-3 py-1 rounded-full">
                 Kabar {SCHOOL_INFO.name}
               </span>
-              <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-2">
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
                 Berita, Prestasi & Pengumuman Terbaru
               </h2>
             </div>
             <span className="text-xs text-slate-500 font-medium">Diperbarui secara berkala</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
             {BERITA_LIST.map((berita) => (
               <div 
                 key={berita.id} 
@@ -485,15 +368,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                     </span>
                   </div>
 
-                  <div className="p-6 space-y-3">
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{berita.tanggal}</span>
-                      <span>•</span>
-                      <span>{berita.penulis}</span>
+                  <div className="space-y-3 p-5 sm:p-6">
+                    <div className="grid gap-1.5 text-xs text-slate-500">
+                      <span className="flex items-center gap-2 whitespace-nowrap">
+                        <Calendar className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        {berita.tanggal}
+                      </span>
+                      <span className="pl-5 leading-4">{berita.penulis}</span>
                     </div>
 
-                    <h3 className="font-bold text-lg text-slate-900 group-hover:text-emerald-700 transition-colors leading-snug">
+                    <h3 className="text-lg font-bold leading-snug text-slate-900 transition-colors group-hover:text-emerald-700">
                       {berita.judul}
                     </h3>
 
@@ -503,7 +387,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                   </div>
                 </div>
 
-                <div className="p-6 pt-0">
+                <div className="p-5 pt-0 sm:p-6 sm:pt-0">
                   <button
                     onClick={() => setSelectedBerita(berita)}
                     className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 cursor-pointer"

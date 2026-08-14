@@ -19,6 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ForumTopic, ForumAttachment, User, ForumReply } from '../types';
+import { forumApi } from '../utils/community-api';
 
 interface ForumSectionProps {
   topics: ForumTopic[];
@@ -104,7 +105,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
   };
 
   // Create Topic Handler
-  const handleCreateTopic = (e: React.FormEvent) => {
+  const handleCreateTopic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
       onOpenLogin();
@@ -138,11 +139,13 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
       isResolved: false
     };
 
-    setTopics([createdTopic, ...topics]);
-
-    // Trigger notification if callback exists
-    if (onNewTopicNotification) {
-      onNewTopicNotification(newTitle, newCategoryName);
+    try {
+      const saved = await forumApi.create(createdTopic);
+      setTopics([saved, ...topics]);
+      onNewTopicNotification?.(saved.title, saved.categoryName);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Topik gagal dibuat.');
+      return;
     }
 
     // Reset Form
@@ -153,7 +156,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
   };
 
   // Submit Reply Handler
-  const handleAddReply = (topicId: string) => {
+  const handleAddReply = async (topicId: string) => {
     if (!currentUser) {
       onOpenLogin();
       return;
@@ -173,11 +176,18 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
       likedBy: []
     };
 
+    let savedReply: ForumReply;
+    try {
+      savedReply = await forumApi.reply(topicId, newReply);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Balasan gagal dikirim.');
+      return;
+    }
     setTopics(topics.map(t => {
       if (t.id === topicId) {
         return {
           ...t,
-          replies: [...t.replies, newReply]
+          replies: [...t.replies, savedReply]
         };
       }
       return t;
@@ -188,12 +198,16 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
   };
 
   // Like Topic Toggle
-  const handleToggleLike = (topicId: string) => {
+  const handleToggleLike = async (topicId: string) => {
     if (!currentUser) {
       onOpenLogin();
       return;
     }
 
+    const topic = topics.find(item => item.id === topicId);
+    if (!topic) return;
+    const willLike = !(topic.likedBy || []).includes(currentUser.id);
+    try { await forumApi.like(topicId, willLike); } catch (error) { alert(error instanceof Error ? error.message : 'Like gagal disimpan.'); return; }
     setTopics(topics.map(t => {
       if (t.id === topicId) {
         const likedBy = t.likedBy || [];
@@ -212,12 +226,14 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
   };
 
   // Toggle Pin / Resolve (Admin/Guru)
-  const handleTogglePin = (topicId: string) => {
-    setTopics(topics.map(t => t.id === topicId ? { ...t, isPinned: !t.isPinned } : t));
+  const handleTogglePin = async (topicId: string) => {
+    const topic = topics.find(item => item.id === topicId); if (!topic) return;
+    try { await forumApi.moderate(topicId, { isPinned: !topic.isPinned }); setTopics(topics.map(t => t.id === topicId ? { ...t, isPinned: !t.isPinned } : t)); } catch (error) { alert(error instanceof Error ? error.message : 'Moderasi gagal.'); }
   };
 
-  const handleToggleResolve = (topicId: string) => {
-    setTopics(topics.map(t => t.id === topicId ? { ...t, isResolved: !t.isResolved } : t));
+  const handleToggleResolve = async (topicId: string) => {
+    const topic = topics.find(item => item.id === topicId); if (!topic) return;
+    try { await forumApi.moderate(topicId, { isResolved: !topic.isResolved }); setTopics(topics.map(t => t.id === topicId ? { ...t, isResolved: !t.isResolved } : t)); } catch (error) { alert(error instanceof Error ? error.message : 'Moderasi gagal.'); }
   };
 
   // Filter Topics
@@ -828,7 +844,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
               </div>
 
               {/* Action Toggles for Teachers/Admin */}
-              {currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru') && (
+              {currentUser && (currentUser.role === 'super_admin' || currentUser.role === 'admin' || currentUser.role === 'guru') && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleTogglePin(activeTopic.id)}

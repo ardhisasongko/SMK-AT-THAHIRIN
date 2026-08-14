@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { getAuthToken, authHeaders } from '../utils/auth';
 
+export interface PersistedCollectionActions<T> {
+  save: (action: SetStateAction<T>) => Promise<T>;
+  refresh: () => Promise<T>;
+}
+
+interface ApiResult<T> {
+  success?: boolean;
+  data?: T | null;
+  error?: string;
+}
+
+async function readResult<T>(res: Response): Promise<ApiResult<T>> {
+  try {
+    return await res.json() as ApiResult<T>;
+  } catch {
+    return {};
+  }
+}
+
 // Hook untuk memuat & menyimpan koleksi data ke Cloudflare D1 via API.
 // GET  /api/data/:key   -> memuat data (null jika belum ada)
 // PUT  /api/data/:key   -> menyimpan seluruh koleksi
@@ -12,12 +31,46 @@ import { getAuthToken, authHeaders } from '../utils/auth';
 export function usePersistedCollection<T>(
   key: string,
   fallback: T
-): [T, Dispatch<SetStateAction<T>>, boolean] {
+): [T, Dispatch<SetStateAction<T>>, boolean, PersistedCollectionActions<T>] {
   const [data, setData] = useState<T>(fallback);
   const [ready, setReady] = useState(false);
   const readyRef = useRef(false);
   const dataRef = useRef(data);
   const token = getAuthToken();
+
+  const refresh = useCallback(async (): Promise<T> => {
+    if (!token) return dataRef.current;
+    const res = await fetch(`/api/data/${key}`, {
+      cache: 'no-store',
+      headers: authHeaders(),
+    });
+    const json = await readResult<T>(res);
+    if (!res.ok || !json.success || json.data === null || json.data === undefined) {
+      throw new Error(json.error || `Gagal memuat data (HTTP ${res.status}).`);
+    }
+    dataRef.current = json.data;
+    setData(json.data);
+    return json.data;
+  }, [key, token]);
+
+  const save = useCallback(async (action: SetStateAction<T>): Promise<T> => {
+    if (!token) throw new Error('Sesi login tidak tersedia. Silakan login kembali.');
+    const next = typeof action === 'function'
+      ? (action as (previous: T) => T)(dataRef.current)
+      : action;
+    const res = await fetch(`/api/data/${key}`, {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(next),
+    });
+    const json = await readResult<T>(res);
+    if (!res.ok || !json.success || json.data === null || json.data === undefined) {
+      throw new Error(json.error || `Penyimpanan gagal (HTTP ${res.status}).`);
+    }
+    dataRef.current = json.data;
+    setData(json.data);
+    return json.data;
+  }, [key, token]);
 
   // Load dari API; refetch saat token berubah (login/logout)
   useEffect(() => {
@@ -25,6 +78,13 @@ export function usePersistedCollection<T>(
     setReady(false);
     readyRef.current = false;
     setData(fallback);
+
+    if (!token) {
+      dataRef.current = fallback;
+      setReady(true);
+      readyRef.current = true;
+      return () => { cancelled = true; };
+    }
 
     (async () => {
       try {
@@ -63,33 +123,34 @@ export function usePersistedCollection<T>(
   // Sync ref agar setter selalu punya nilai terbaru
   useEffect(() => { dataRef.current = data; }, [data]);
 
-  // Setter: update state + tulis ke D1 (fire-and-forget). Bila server menolak
-  // (403/500), nilai server TIDAK berubah — log error + beri sinyal agar UI
-  // bisa menampilkan peringatan, supaya tidak terkesan berhasil padahal tidak.
+  // Setter kompatibel untuk komponen lama. Alur yang perlu konfirmasi server
+  // harus memakai actions.save agar UI tidak menampilkan sukses prematur.
   const setPersisted = useCallback(
     (action: SetStateAction<T>) => {
-      setData(prev => {
-        const next = typeof action === 'function'
-          ? (action as (p: T) => T)(prev)
-          : action;
-        dataRef.current = next;
-        fetch(`/api/data/${key}`, {
-          method: 'PUT',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify(next),
-        })
-          .then(res => {
-            if (!res.ok) {
-              console.error(`[persist:${key}] Gagal simpan (HTTP ${res.status}):`, res.statusText);
-              window.dispatchEvent(new CustomEvent('persist:error', { detail: { key, status: res.status } }));
-            }
-          })
-          .catch(err => console.error(`[persist:${key}] Gagal simpan:`, err));
-        return next;
+      const previous = dataRef.current;
+      const next = typeof action === 'function'
+        ? (action as (value: T) => T)(previous)
+        : action;
+      dataRef.current = next;
+      setData(next);
+      if (!token) return;
+      void save(next).catch(async error => {
+        console.error(`[persist:${key}] Gagal simpan:`, error);
+        try {
+          await refresh();
+        } catch {
+          if (dataRef.current === next) {
+            dataRef.current = previous;
+            setData(previous);
+          }
+        }
+        window.dispatchEvent(new CustomEvent('persist:error', {
+          detail: { key, message: error instanceof Error ? error.message : 'Penyimpanan gagal.' },
+        }));
       });
     },
-    [key]
+    [key, refresh, save, token]
   );
 
-  return [data, setPersisted, ready];
+  return [data, setPersisted, ready, { save, refresh }];
 }

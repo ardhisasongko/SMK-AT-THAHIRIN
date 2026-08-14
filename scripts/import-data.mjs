@@ -16,8 +16,7 @@
  *   node scripts/import-data.mjs <file.xlsx>
  *
  * Aturan akun:
- *   - Siswa: email s<NISN>@smksplusatthahirin.sch.id, login NISN, password awal = NISN
- *   - Guru : email g<NIK>@smksplusatthahirin.sch.id,  login NIK,  password awal = NIK
+ *   - Login memakai NISN/NIK dengan password awal acak yang wajib diganti.
  */
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -178,7 +177,7 @@ function pick(row, map, key) {
 }
 
 // ---- Proses workbook (pure, bisa di-unit-test) ---------------------------
-export function processWorkbook(wb, { padNisn = false, placeholderNisn = false, hash = hashPassword } = {}) {
+export function processWorkbook(wb, { padNisn = false, placeholderNisn = false, hash = hashPassword, passwordFactory = () => randomBytes(12).toString('base64url') } = {}) {
   const siswaOut = [];
   const guruRows = [];
   const warnings = [];
@@ -264,30 +263,33 @@ export function processWorkbook(wb, { padNisn = false, placeholderNisn = false, 
 
   // ---- Bangun SQL akun (siswa + guru) ------------------------------------
   let akunSql = '-- Akun login hasil import Excel (PBKDF2-SHA256). Password awal = NISN/NIK.\n';
-  const upsert = (id, name, email, identifier, role, classId, password, nik, ttl) => {
+  const credentials = [];
+  const upsert = (id, name, email, identifier, role, classId, nik, ttl) => {
+    const password = passwordFactory();
+    credentials.push({ name, identifier, password });
     const passwordHash = hash(password);
-    const cols = ['id', 'name', 'email', 'nip_nisn', 'role', 'class_id', 'password_hash', 'nik', 'tanggal_lahir', 'jabatan', 'ketua_status'];
+    const cols = ['id', 'name', 'email', 'nip_nisn', 'role', 'class_id', 'password_hash', 'nik', 'tanggal_lahir', 'jabatan', 'ketua_status', 'must_change_password'];
     const esc = (s) => String(s).replace(/'/g, "''");
     const vals = [
       `'${esc(id)}'`, `'${esc(name)}'`, `'${esc(email)}'`, `'${esc(identifier)}'`, `'${role}'`,
       classId ? `'${esc(classId)}'` : 'NULL', `'${esc(passwordHash)}'`,
-      nik ? `'${esc(nik)}'` : 'NULL', ttl ? `'${esc(ttl)}'` : 'NULL', 'NULL', `'none'`,
+      nik ? `'${esc(nik)}'` : 'NULL', ttl ? `'${esc(ttl)}'` : 'NULL', 'NULL', `'none'`, '1',
     ];
-    return `INSERT INTO users (${cols.join(', ')})\n  VALUES (${vals.join(', ')})\n  ON CONFLICT(email) DO UPDATE SET\n    name = excluded.name,\n    nip_nisn = excluded.nip_nisn,\n    role = excluded.role,\n    class_id = excluded.class_id,\n    password_hash = excluded.password_hash,\n    nik = excluded.nik,\n    tanggal_lahir = excluded.tanggal_lahir,\n    ketua_status = 'none';\n`;
+    return `INSERT INTO users (${cols.join(', ')})\n  VALUES (${vals.join(', ')})\n  ON CONFLICT(email) DO UPDATE SET\n    name = excluded.name,\n    nip_nisn = excluded.nip_nisn,\n    role = excluded.role,\n    class_id = excluded.class_id,\n    password_hash = excluded.password_hash,\n    nik = excluded.nik,\n    tanggal_lahir = excluded.tanggal_lahir,\n    ketua_status = 'none',\n    must_change_password = 1;\n`;
   };
 
   for (const s of siswaOut) {
-    akunSql += upsert(`u-s${s.nisn}`, s.name, `s${s.nisn}@${EMAIL_DOMAIN}`, s.nisn, 'siswa', s.classId, s.nisn, s.nik, s.tanggalLahir);
+    akunSql += upsert(`u-s${s.nisn}`, s.name, `s${s.nisn}@${EMAIL_DOMAIN}`, s.nisn, 'siswa', s.classId, s.nik, s.tanggalLahir);
   }
   for (const g of guruRows) {
-    akunSql += upsert(`u-g${g.nik}`, g.name, `g${g.nik}@${EMAIL_DOMAIN}`, g.nik, 'guru', null, g.nik, g.nik, g.ttl);
+    akunSql += upsert(`u-g${g.nik}`, g.name, `g${g.nik}@${EMAIL_DOMAIN}`, g.nik, 'guru', null, g.nik, g.ttl);
   }
 
   // ---- SQL koleksi siswa_v1 ------------------------------------------------
   const siswaJson = JSON.stringify(siswaOut);
   const siswaSql = `INSERT INTO app_data (key, value, updated_at)\n  VALUES ('siswa_v1', '${siswaJson.replace(/'/g, "''")}', unixepoch())\n  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;\n`;
 
-  return { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql };
+  return { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql, credentials };
 }
 
 // ---- Main (CLI) --------------------------------------------------------------
@@ -303,7 +305,7 @@ function main() {
   }
 
   const wb = XLSX.readFile(file, { cellDates: true });
-  const { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql } = processWorkbook(wb, {
+  const { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql, credentials } = processWorkbook(wb, {
     padNisn: process.argv.includes('--pad-nisn'),
     placeholderNisn: process.argv.includes('--placeholder-nisn'),
   });
@@ -334,6 +336,7 @@ function main() {
   writeFileSync(join(OUT_DIR, 'siswa.json'), JSON.stringify(siswaOut, null, 2));
   writeFileSync(join(OUT_DIR, 'akun.sql'), akunSql);
   writeFileSync(join(OUT_DIR, 'siswa.sql'), siswaSql);
+  writeFileSync(join(OUT_DIR, 'kredensial-akun.txt'), credentials.map(item => `${item.name}\t${item.identifier}\t${item.password}`).join('\n') + '\n', { mode: 0o600 });
   if (kelasSql) writeFileSync(join(OUT_DIR, 'kelas.sql'), kelasSql);
 
   // ---- Ringkasan -------------------------------------------------------------
@@ -351,7 +354,7 @@ function main() {
   } else {
     console.log('\nTidak ada peringatan.');
   }
-  console.log('\nOutput: imported/siswa.json, imported/akun.sql, imported/siswa.sql' + (kelasSql ? ', imported/kelas.sql' : ''));
+  console.log('\nOutput: imported/siswa.json, imported/akun.sql, imported/siswa.sql, imported/kredensial-akun.txt' + (kelasSql ? ', imported/kelas.sql' : ''));
   console.log('\nLangkah berikutnya:');
   console.log('  source .env.cloudflare');
   console.log('  npx wrangler d1 migrations apply smk-at-tahirin-db --remote');

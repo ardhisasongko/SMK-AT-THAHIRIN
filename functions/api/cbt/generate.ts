@@ -1,18 +1,25 @@
 // Generate soal CBT via AI (pengganti pemanggilan Gemini langsung dari browser).
 import { callGeminiJson } from "../../_lib/gemini";
 import { jsonResponse, errorResponse } from "../../_lib/response";
+import type { AuthUser } from "../../_lib/auth";
+import { consumeRateLimit } from "../../_lib/rate-limit";
 
 interface Env {
   GEMINI_API_KEY?: string;
+  DB: D1Database;
 }
+type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
-export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
+export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, request, data }) => {
+  if (!data.user) return errorResponse("Silakan login terlebih dahulu.", 401);
+  if (!['guru', 'admin', 'super_admin'].includes(data.user.role)) return errorResponse("Anda tidak berwenang membuat soal.", 403);
+  if (!(await consumeRateLimit(env.DB, `ai-cbt:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan soal hari ini habis.", 429);
   try {
     const body = (await request.json()) as { subject?: string; count?: number };
     const { subject, count = 5 } = body;
 
-    if (!subject) {
-      return errorResponse("Mata pelajaran wajib diisi.", 400);
+    if (typeof subject !== 'string' || !subject.trim() || subject.length > 200 || !Number.isInteger(count) || count < 1 || count > 50) {
+      return errorResponse("Mata pelajaran wajib diisi dan jumlah soal harus 1-50.", 400);
     }
 
     const prompt = `Buatkan ${count} soal ujian untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB) dengan VARIASI TIPE SOAL:
@@ -60,6 +67,6 @@ Format JSON murni tanpa markdown/backticks:
     return jsonResponse({ success: true, data: normalized });
   } catch (error: any) {
     console.error("Error generating CBT questions:", error);
-    return errorResponse(error.message || "Gagal membuat soal CBT dengan AI.");
+    return errorResponse("Gagal membuat soal CBT dengan AI.");
   }
 };

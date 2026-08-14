@@ -1,4 +1,4 @@
-export type UserRole = 'guest' | 'admin' | 'guru' | 'ketua_kelas' | 'siswa';
+export type UserRole = 'guest' | 'super_admin' | 'admin' | 'guru' | 'ketua_kelas' | 'siswa';
 
 export interface User {
   id: string;
@@ -12,6 +12,8 @@ export interface User {
   classId?: string;
   jabatan?: string;
   ketuaStatus?: 'none' | 'pending' | 'approved';
+  status?: 'active' | 'inactive' | 'archived';
+  mustChangePassword?: boolean;
 }
 
 export interface AuthSession {
@@ -75,7 +77,7 @@ export interface Kelas {
   jadwal: ScheduleItem[];
 }
 
-export type PresensiStatus = 'Hadir' | 'Sakit' | 'Izin' | 'Alpa';
+export type PresensiStatus = 'Hadir' | 'Terlambat' | 'Sakit' | 'Izin' | 'Alpa';
 
 export interface PresensiRecord {
   id: string;
@@ -226,7 +228,7 @@ export interface CbtQuestion {
   id: string;
   question: string;
   options: CbtOption[];
-  correctAnswer: 'A' | 'B' | 'C' | 'D' | 'E';
+  correctAnswer?: 'A' | 'B' | 'C' | 'D' | 'E';
   explanation?: string;
 }
 
@@ -242,6 +244,7 @@ export interface CbtExam {
   endDate: string;
   status: 'active' | 'upcoming' | 'completed';
   questions: CbtQuestion[];
+  questionCount?: number;
 }
 
 export interface CbtSubmission {

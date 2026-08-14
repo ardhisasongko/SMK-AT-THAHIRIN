@@ -14,17 +14,21 @@ import { Modal } from '../ui/Modal';
 interface CbtTestRunnerProps {
   exam: CbtExam;
   currentUser: UserType;
-  onFinish: (submission: CbtSubmission) => void;
+  onFinish: (submission: CbtSubmission) => void | Promise<void>;
+  expiresAt?: string;
 }
 
-export function CbtTestRunner({ exam, currentUser, onFinish }: CbtTestRunnerProps) {
+export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTestRunnerProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<{ [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' }>({});
   const [doubtful, setDoubtful] = useState<{ [questionId: string]: boolean }>({});
-  const [timeLeft, setTimeLeft] = useState<number>(exam.durationMinutes * 60);
+  const [timeLeft, setTimeLeft] = useState<number>(() => expiresAt ? Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)) : exam.durationMinutes * 60);
   const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleConfirmSubmitTest = useCallback(() => {
+  const handleConfirmSubmitTest = useCallback(async () => {
+    if (submitting) return;
+    setSubmitting(true);
     let correct = 0;
     let wrong = 0;
 
@@ -55,8 +59,12 @@ export function CbtTestRunner({ exam, currentUser, onFinish }: CbtTestRunnerProp
       timeSpentSeconds: timeSpent
     };
 
-    onFinish(submission);
-  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish]);
+    try {
+      await onFinish(submission);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting]);
 
   // Timer countdown
   useEffect(() => {
@@ -349,6 +357,7 @@ export function CbtTestRunner({ exam, currentUser, onFinish }: CbtTestRunnerProp
             </button>
             <button
               onClick={handleConfirmSubmitTest}
+              disabled={submitting}
               className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition-all cursor-pointer shadow-md"
             >
               Ya, Selesaikan Ujian

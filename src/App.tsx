@@ -12,21 +12,23 @@ import { ForumSection } from './components/ForumSection';
 import { NotifikasiSection } from './components/NotifikasiSection';
 import { ProfilSection } from './components/ProfilSection';
 import { CbtSection } from './components/CbtSection';
+import { UserManagementSection } from './components/UserManagementSection';
+import { ChangePasswordModal } from './components/ChangePasswordModal';
+import { WhatsAppAdminSection } from './components/WhatsAppAdminSection';
 import { 
   INITIAL_KELAS, 
   INITIAL_SISWA, 
   INITIAL_PRESENSI, 
-  INITIAL_MODUL_AJAR,
-  INITIAL_FORUM_TOPICS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_CBT_EXAMS,
-  INITIAL_CBT_SUBMISSIONS
+  INITIAL_MODUL_AJAR
 } from './data/initialData';
-import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, CbtExam, CbtSubmission, AuthSession } from './types';
+import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, AuthSession } from './types';
 import { usePersistedCollection } from './hooks/usePersistedCollection';
 import { loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest } from './utils/auth';
+import { canAccessTab } from './navItems';
+import { forumApi, notificationApi } from './utils/community-api';
 
 const AVATAR_BY_ROLE: Record<string, string> = {
+  super_admin: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
   admin: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
   guru: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
   ketua_kelas: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
@@ -44,12 +46,10 @@ export default function App() {
   // App persistent states - disimpan ke Cloudflare D1 via API
   const [kelasList, setKelasList] = usePersistedCollection<Kelas[]>('kelas_v1', INITIAL_KELAS);
   const [siswaList, setSiswaList] = usePersistedCollection<Siswa[]>('siswa_v1', INITIAL_SISWA);
-  const [presensiList, setPresensiList] = usePersistedCollection<PresensiRecord[]>('presensi_v1', INITIAL_PRESENSI);
+  const [presensiList, setPresensiList, presensiReady, presensiActions] = usePersistedCollection<PresensiRecord[]>('presensi_v1', INITIAL_PRESENSI);
   const [modulList, setModulList] = usePersistedCollection<ModulAjar[]>('modulAjar_v1', INITIAL_MODUL_AJAR);
-  const [topics, setTopics] = usePersistedCollection<ForumTopic[]>('forumTopics_v1', INITIAL_FORUM_TOPICS);
-  const [notifications, setNotifications] = usePersistedCollection<NotificationItem[]>('notifications_v1', INITIAL_NOTIFICATIONS);
-  const [cbtExams, setCbtExams] = usePersistedCollection<CbtExam[]>('cbtExams_v1', INITIAL_CBT_EXAMS);
-  const [cbtSubmissions, setCbtSubmissions] = usePersistedCollection<CbtSubmission[]>('cbtSubmissions_v1', INITIAL_CBT_SUBMISSIONS);
+  const [topics, setTopics] = useState<ForumTopic[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Auto-save auth session to localStorage whenever it changes
   useEffect(() => {
@@ -60,33 +60,30 @@ export default function App() {
     }
   }, [authSession]);
 
+  useEffect(() => {
+    if (currentUser && !canAccessTab(currentUser, activeTab)) {
+      setActiveTab('profil');
+    }
+  }, [activeTab, currentUser]);
+
   // Calculate unread notifications count for current user
   const unreadCount = currentUser 
-    ? notifications.filter(n => (n.targetRole === 'semua' || n.targetRole === currentUser.role) && !n.isReadBy.includes(currentUser.id)).length
+    ? notifications.filter(n => !n.isReadBy.includes(currentUser.id)).length
     : 0;
 
-  // Handler when a user creates a new topic -> generates a notification automatically
-  const handleNewTopicNotification = (topicTitle: string, categoryName: string) => {
-    if (!currentUser) return;
-    const newNotif: NotificationItem = {
-      id: `n-${Date.now()}`,
-      title: `Diskusi Baru: ${topicTitle.slice(0, 35)}...`,
-      message: `${currentUser.name} mempublikasikan topik diskusi baru di kategori ${categoryName}.`,
-      targetRole: 'semua',
-      category: 'Forum',
-      createdAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
-      isReadBy: [currentUser.id],
-      actionUrl: 'forum',
-      senderName: currentUser.name,
-      senderRole: currentUser.role,
-      isEmailSent: true
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-  };
+  useEffect(() => {
+    if (!currentUser) { setTopics([]); setNotifications([]); return; }
+    let cancelled = false;
+    Promise.all([forumApi.list(), notificationApi.list()]).then(([nextTopics, nextNotifications]) => {
+      if (!cancelled) { setTopics(nextTopics); setNotifications(nextNotifications); }
+    }).catch(error => console.error('Gagal memuat forum/notifikasi:', error));
+    return () => { cancelled = true; };
+  }, [currentUser?.id]);
 
   // Halaman publik (tidak butuh login) vs terproteksi
   const PUBLIC_TABS = ['landing'];
   const isProtectedTab = !PUBLIC_TABS.includes(activeTab);
+  const isAllowedTab = canAccessTab(currentUser, activeTab);
 
   const handleLoginSuccess = (session: AuthSession) => {
     const withAvatar = {
@@ -108,6 +105,14 @@ export default function App() {
     setActiveTab('landing');
   };
 
+  const handlePasswordChanged = () => {
+    if (!authSession) return;
+    const next = { ...authSession, user: { ...authSession.user, mustChangePassword: false } };
+    saveAuthSession(next);
+    setAuthSession(next);
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-900">
       
@@ -122,8 +127,8 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-20">
-        {!currentUser && isProtectedTab ? (
+      <main className={`flex-1 ${currentUser && activeTab !== 'landing' ? 'pb-20' : ''}`}>
+        {(!currentUser && isProtectedTab) || (currentUser && !isAllowedTab) ? (
           <LoginGate 
             onLoginClick={() => setShowLoginModal(true)}
             onGoHome={() => setActiveTab('landing')}
@@ -139,20 +144,19 @@ export default function App() {
 
         {activeTab === 'cbt' && (
           <CbtSection 
-            currentUser={currentUser}
-            cbtExams={cbtExams}
-            setCbtExams={setCbtExams}
-            cbtSubmissions={cbtSubmissions}
-            setCbtSubmissions={setCbtSubmissions}
-            onOpenLogin={() => setShowLoginModal(true)}
+             currentUser={currentUser}
+             onOpenLogin={() => setShowLoginModal(true)}
           />
         )}
 
         {activeTab === 'absensi' && (
           <AbsensiSection 
-            presensiList={presensiList}
-            setPresensiList={setPresensiList}
-            kelasList={kelasList}
+             presensiList={presensiList}
+             setPresensiList={setPresensiList}
+             savePresensi={presensiActions.save}
+             refreshPresensi={presensiActions.refresh}
+             presensiReady={presensiReady}
+             kelasList={kelasList}
             siswaList={siswaList}
             currentUser={currentUser}
           />
@@ -181,8 +185,8 @@ export default function App() {
             topics={topics}
             setTopics={setTopics}
             currentUser={currentUser}
-            onNewTopicNotification={handleNewTopicNotification}
-            onOpenLogin={() => setShowLoginModal(true)}
+            onNewTopicNotification={() => { void notificationApi.list().then(setNotifications); }}
+             onOpenLogin={() => setShowLoginModal(true)}
           />
         )}
 
@@ -207,20 +211,29 @@ export default function App() {
             onOpenLogin={() => setShowLoginModal(true)}
           />
         )}
+
+        {activeTab === 'pengguna' && currentUser && (
+          <UserManagementSection currentUser={currentUser} />
+        )}
+        {activeTab === 'whatsapp' && currentUser && (
+          <WhatsAppAdminSection currentUser={currentUser} />
+        )}
           </>
         )}
       </main>
 
       {/* Footer */}
-      <Footer setActiveTab={setActiveTab} />
+      <Footer setActiveTab={setActiveTab} currentUser={currentUser} />
 
-      {/* Floating Bottom App Dock Navigation */}
-      <BottomDock 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        currentUser={currentUser}
-        unreadCount={unreadCount}
-      />
+      {/* Landing sudah memiliki navigasi dan CTA sendiri. */}
+      {currentUser && activeTab !== 'landing' && (
+        <BottomDock
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          currentUser={currentUser}
+          unreadCount={unreadCount}
+        />
+      )}
 
       {/* Login Modal */}
       {showLoginModal && (
@@ -228,6 +241,10 @@ export default function App() {
           onLoginSuccess={handleLoginSuccess}
           onClose={() => setShowLoginModal(false)}
         />
+      )}
+
+      {authSession?.user.mustChangePassword && (
+        <ChangePasswordModal token={authSession.token} onChanged={handlePasswordChanged} onLogout={handleLogout} />
       )}
 
     </div>

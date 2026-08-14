@@ -70,7 +70,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   const [editSaving, setEditSaving] = useState(false);
 
   // ===== Kelola Ketua Kelas (admin) =====
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
   const [ketuaList, setKetuaList] = useState<Array<{ id: string; name: string; classId: string; ketuaStatus: string; approvedAt?: string }>>([]);
   const [ketuaAssign, setKetuaAssign] = useState<Record<string, string>>({}); // classId -> siswaId
   const [ketuaLoading, setKetuaLoading] = useState(false);
@@ -105,9 +105,10 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
         headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ siswaId, classId }),
       });
-      const json = await res.json() as { success?: boolean; error?: string; data?: { id: string; name: string } };
+      const json = await res.json() as { success?: boolean; error?: string; data?: { id: string; name: string; temporaryPassword?: string } };
       if (res.ok && json.success) {
-        setKetuaMsg({ type: 'success', text: `✅ ${json.data?.name} ditetapkan sebagai Ketua Kelas.` });
+        const passwordInfo = json.data?.temporaryPassword ? ` Password awal: ${json.data.temporaryPassword} (wajib segera diganti).` : '';
+        setKetuaMsg({ type: 'success', text: `✅ ${json.data?.name} ditetapkan sebagai Ketua Kelas.${passwordInfo}` });
         await loadKetuaList();
       } else {
         setKetuaMsg({ type: 'error', text: json.error || 'Gagal menetapkan ketua kelas.' });
@@ -378,7 +379,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
 
       {/* ADMIN: KELOLA KETUA KELAS */}
       {isAdmin && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-4">
+        <div className="space-y-4 rounded-3xl border border-slate-200/90 bg-white p-4 shadow-xs sm:p-6">
           <div className="flex items-center justify-between">
             <div>
               <div className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1 rounded-full mb-2">
@@ -424,7 +425,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex w-full flex-col items-stretch gap-2 md:w-auto md:flex-row md:items-center">
                       {current ? (
                         <button
                           onClick={() => handleRevokeKetua(current.id)}
@@ -439,7 +440,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                           <select
                             value={ketuaAssign[k.id] || ''}
                             onChange={(e) => setKetuaAssign(prev => ({ ...prev, [k.id]: e.target.value }))}
-                            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold cursor-pointer"
+                            className="min-w-0 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold cursor-pointer md:w-64"
                           >
                             <option value="">Pilih siswa...</option>
                             {classSiswa.map(s => (
@@ -449,7 +450,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                           <button
                             onClick={() => handleAppointKetua(k.id)}
                             disabled={ketuaLoading || !ketuaAssign[k.id]}
-                            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700 cursor-pointer disabled:opacity-50"
                           >
                             <Check className="w-3.5 h-3.5" />
                             Tetapkan

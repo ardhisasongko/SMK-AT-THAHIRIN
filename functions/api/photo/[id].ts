@@ -39,12 +39,22 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
   const wantLink = url.searchParams.get('link') === '1';
 
   const row = await env.DB
-    .prepare('SELECT data, thumb, mime, drive_link FROM photos WHERE id = ?')
+    .prepare('SELECT data, thumb, mime, drive_link, created_by FROM photos WHERE id = ?')
     .bind(String(id))
-    .first<{ data: string | null; thumb: string | null; mime: string; drive_link: string | null }>();
+    .first<{ data: string | null; thumb: string | null; mime: string; drive_link: string | null; created_by: string | null }>();
 
   if (!row) {
     return new Response('Foto tidak ditemukan.', { status: 404 });
+  }
+  if (data.user.role === 'siswa' && row.created_by !== data.user.id) {
+    return new Response('Anda tidak berwenang melihat foto ini.', { status: 403 });
+  }
+  if (data.user.role === 'ketua_kelas' && row.created_by !== data.user.id) {
+    const attendanceRow = await env.DB.prepare("SELECT value FROM app_data WHERE key = 'presensi_v1'").first<{ value: string }>();
+    const attendance = attendanceRow ? JSON.parse(attendanceRow.value) as Array<{ classId?: string; fotoUrl?: string }> : [];
+    if (!attendance.some(item => item.classId === data.user!.classId && item.fotoUrl === `/api/photo/${id}`)) {
+      return new Response('Anda tidak berwenang melihat foto ini.', { status: 403 });
+    }
   }
 
   if (wantLink && row.drive_link) {
@@ -60,5 +70,6 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
   const headers = new Headers();
   headers.set('Content-Type', row.mime || 'image/jpeg');
   headers.set('Cache-Control', 'private, max-age=86400');
+  headers.set('X-Content-Type-Options', 'nosniff');
   return new Response(base64ToBytes(payload), { headers });
 };

@@ -6,20 +6,25 @@ import { Modal } from '../ui/Modal';
 interface CbtTokenModalProps {
   exam: CbtExam;
   onClose: () => void;
-  onStart: () => void;
+  onStart: (token: string) => void | Promise<void>;
 }
 
 export function CbtTokenModal({ exam, onClose, onStart }: CbtTokenModalProps) {
   const [inputToken, setInputToken] = useState<string>('');
   const [tokenError, setTokenError] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleVerifyTokenAndStart = (e: React.FormEvent) => {
+  const handleVerifyTokenAndStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputToken.trim().toUpperCase() !== exam.token.toUpperCase()) {
-      setTokenError('Token ujian tidak valid. Silakan tanyakan token kepada pengawas/guru.');
-      return;
+    setSubmitting(true);
+    setTokenError('');
+    try {
+      await onStart(inputToken.trim().toUpperCase());
+    } catch (error) {
+      setTokenError(error instanceof Error ? error.message : 'Token ujian tidak valid.');
+    } finally {
+      setSubmitting(false);
     }
-    onStart();
   };
 
   return (
@@ -46,7 +51,7 @@ export function CbtTokenModal({ exam, onClose, onStart }: CbtTokenModalProps) {
 
         <form onSubmit={handleVerifyTokenAndStart} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">TOKEN UJIAN (Contoh: {exam.token})</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">TOKEN UJIAN</label>
             <input
               type="text"
               value={inputToken}
@@ -62,17 +67,18 @@ export function CbtTokenModal({ exam, onClose, onStart }: CbtTokenModalProps) {
             <p className="font-bold">Ketentuan Ujian:</p>
             <ul className="list-disc list-inside space-y-0.5 text-emerald-800">
               <li>Durasi: <strong>{exam.durationMinutes} Menit</strong></li>
-              <li>Total: <strong>{exam.questions.length} Soal Pilihan Ganda</strong></li>
+              <li>Total: <strong>{exam.questionCount ?? exam.questions.length} Soal Pilihan Ganda</strong></li>
               <li>Timer berjalan saat Anda menekan tombol Mulai.</li>
             </ul>
           </div>
 
           <button
             type="submit"
+            disabled={submitting}
             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>Mulai Ujian Sekarang</span>
+            <span>{submitting ? 'Memverifikasi...' : 'Mulai Ujian Sekarang'}</span>
           </button>
         </form>
     </Modal>

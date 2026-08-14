@@ -12,8 +12,8 @@ database_id = "e436d309-e92a-430d-8c48-c47752b3391b"
 #   "0 13 * * *"  = setiap hari  20:00 WIB  (push foto full -> Google Drive + tabel Harian)
 #   "0 14 * * 0"  = Minggu       21:00 WIB  (tabel Rekap mingguan)
 [triggers]
-crons = ["0 13 * * *", "0 14 * * SUN"]
+crons = ["0 13 * * *", "0 14 * * 0"]
 
 [vars]
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMLIIxe0tnw-tduy3NDSA36eUxAGvw2TGa9NGY8DZsRZXRn4-ci3h_PvXUF7HV6wUTkA/exec"
-SYNC_TOKEN = "SMK_ABSEN_2026"
+APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwM8BSf3UVDZBD1HZhLsTQIer3_ZlIFm7mlUMX6nmPYbvAPuoEMq97serIgHkVzRMa4/exec"
+# Atur terpisah: npx wrangler secret put SYNC_TOKEN

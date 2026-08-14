@@ -15,6 +15,10 @@ export default {
   // Manual trigger untuk pengujian: POST /?job=daily|weekly
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === 'POST') {
+      const authorization = request.headers.get('Authorization');
+      if (!env.SYNC_TOKEN || authorization !== `Bearer ${env.SYNC_TOKEN}`) {
+        return new Response('Unauthorized', { status: 401 });
+      }
       const url = new URL(request.url);
       const job = url.searchParams.get('job');
       if (job === 'daily' || job === 'weekly') {

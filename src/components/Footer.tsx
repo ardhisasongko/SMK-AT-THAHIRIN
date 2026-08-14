@@ -1,12 +1,16 @@
 import React from 'react';
 import { SCHOOL_INFO } from '../data/initialData';
 import { School, MapPin, Phone, Mail, Globe, Facebook, Instagram, Youtube, Award, ExternalLink } from 'lucide-react';
+import { getNavItems } from '../navItems';
+import type { User } from '../types';
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
+  currentUser: User | null;
 }
 
-export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
+export const Footer: React.FC<FooterProps> = ({ setActiveTab, currentUser }) => {
+  const navItems = getNavItems(currentUser);
   return (
     <footer id="main-footer" className="bg-slate-900 text-slate-300 pt-16 pb-8 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,42 +50,13 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
               Navigasi Utama
             </h4>
             <ul className="space-y-2.5 text-sm">
-              <li>
-                <button onClick={() => setActiveTab('landing')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Beranda & Profil</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setActiveTab('absensi')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Portal Presensi & Absensi</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setActiveTab('kelas')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Sistem Pengelolaan Kelas</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setActiveTab('modul-ajar')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Pembuat Modul Ajar AI</span>
-                  <span className="text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded-xs">AI</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setActiveTab('forum')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Forum Diskusi Sekolah</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setActiveTab('notifikasi')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Pusat Notifikasi</span>
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setActiveTab('profil')} className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <span>Profil Pengguna Saya</span>
-                </button>
-              </li>
+              {navItems.map(item => (
+                <li key={item.id}>
+                  <button onClick={() => setActiveTab(item.id)} className="flex items-center gap-1.5 transition-colors hover:text-emerald-400 cursor-pointer">
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 

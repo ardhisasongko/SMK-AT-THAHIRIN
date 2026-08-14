@@ -12,10 +12,12 @@ export interface AuthUser {
   nipNisn: string | null;
   nik: string | null;
   tanggalLahir: string | null;
-  role: 'admin' | 'guru' | 'ketua_kelas' | 'siswa';
+  role: 'super_admin' | 'admin' | 'guru' | 'ketua_kelas' | 'siswa';
   classId: string | null;
   ketuaStatus: string;
   jabatan: string | null;
+  status: 'active' | 'inactive' | 'archived';
+  mustChangePassword: boolean;
 }
 
 export interface AuthEnv {
@@ -108,20 +110,28 @@ function mapUser(row: any): AuthUser | null {
     classId: row.class_id != null ? String(row.class_id) : null,
     ketuaStatus: String(row.ketua_status || 'none'),
     jabatan: row.jabatan != null ? String(row.jabatan) : null,
+    status: (row.status || 'active') as AuthUser['status'],
+    mustChangePassword: Number(row.must_change_password || 0) === 1,
   };
 }
 
 export async function getUserById(env: AuthEnv, userId: string): Promise<AuthUser | null> {
   const row = await env.DB.prepare(
-    `SELECT u.id, u.name, u.email, u.nip_nisn, u.nik, u.tanggal_lahir, u.role, u.class_id, u.ketua_status, u.jabatan
-     FROM users u WHERE u.id = ?`
+    `SELECT u.id, u.name, u.email, u.nip_nisn, u.nik, u.tanggal_lahir, u.role, u.class_id, u.ketua_status, u.jabatan,
+            u.status, u.must_change_password
+     FROM users u WHERE u.id = ? AND u.status = 'active'`
   ).bind(userId).first();
   return mapUser(row);
 }
 
 export async function getUserFromRequest(env: AuthEnv, request: Request): Promise<AuthUser | null> {
   const auth = request.headers.get('Authorization') || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
+  const cookieToken = request.headers.get('Cookie')
+    ?.split(';')
+    .map(value => value.trim())
+    .find(value => value.startsWith('smk_session='))
+    ?.slice('smk_session='.length);
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : cookieToken || null;
   if (!token) return null;
 
   const session = await env.DB.prepare(
@@ -137,7 +147,7 @@ export async function getUserFromRequest(env: AuthEnv, request: Request): Promis
 
 /** Cek apakah user berhak menulis absensi untuk suatu kelas. */
 export function canEditClass(user: AuthUser, classId: string): boolean {
-  if (user.role === 'admin') return true;
+  if (user.role === 'super_admin' || user.role === 'admin') return true;
   if (user.role === 'guru') return true;
   if (user.role === 'ketua_kelas') {
     return user.ketuaStatus === 'approved' && user.classId === classId;
@@ -147,7 +157,7 @@ export function canEditClass(user: AuthUser, classId: string): boolean {
 
 /** Kelas yang boleh diedit user (untuk pembatasan dropdown di client & validasi server). */
 export function editableClassIds(user: AuthUser): string[] | 'all' {
-  if (user.role === 'admin') return 'all';
+  if (user.role === 'super_admin' || user.role === 'admin') return 'all';
   if (user.role === 'guru') return 'all'; // guru dibatasi per waliKelas di validasi via nama
   if (user.role === 'ketua_kelas' && user.ketuaStatus === 'approved' && user.classId) {
     return [user.classId];

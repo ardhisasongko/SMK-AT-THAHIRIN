@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { StudentAbsensiCard } from '../src/components/StudentAbsensiCard';
 import type { PresensiRecord, Siswa, User } from '../src/types';
 
@@ -124,7 +124,7 @@ describe('StudentAbsensiCard', () => {
     expect(screen.getByText(/Batas waktu input sudah lewat/)).toBeInTheDocument();
   });
 
-  it('displays class attendance today', () => {
+  it('displays class attendance today only for class leader', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-04T00:30:00Z'));
 
@@ -141,7 +141,7 @@ describe('StudentAbsensiCard', () => {
         presensiList={records}
         setPresensiList={vi.fn()}
         siswaList={mockSiswa}
-        currentUser={mockUser}
+        currentUser={{ ...mockUser, role: 'ketua_kelas', ketuaStatus: 'approved' }}
       />
     );
 
@@ -188,6 +188,50 @@ describe('StudentAbsensiCard', () => {
     );
 
     fireEvent.click(screen.getByText('Isi Presensi Sekarang'));
+    expect(screen.getByText('Input Presensi', { selector: 'h3' })).toBeInTheDocument();
+  });
+
+  it('shows success only after the server confirms the attendance', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-04T00:30:00Z'));
+    const savePresensi = vi.fn().mockImplementation(async (action) => action([]));
+
+    render(
+      <StudentAbsensiCard
+        presensiList={[]}
+        setPresensiList={vi.fn()}
+        savePresensi={savePresensi}
+        siswaList={mockSiswa}
+        currentUser={mockUser}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Isi Presensi Sekarang'));
+    await act(async () => { fireEvent.click(screen.getByText('Simpan')); });
+
+    expect(savePresensi).toHaveBeenCalledOnce();
+    expect(screen.getByText('Presensi berhasil disimpan di server.')).toBeInTheDocument();
+  });
+
+  it('keeps the form open and shows the server error when saving fails', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-04T00:30:00Z'));
+    const savePresensi = vi.fn().mockRejectedValue(new Error('Sesi login kedaluwarsa.'));
+
+    render(
+      <StudentAbsensiCard
+        presensiList={[]}
+        setPresensiList={vi.fn()}
+        savePresensi={savePresensi}
+        siswaList={mockSiswa}
+        currentUser={mockUser}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Isi Presensi Sekarang'));
+    await act(async () => { fireEvent.click(screen.getByText('Simpan')); });
+
+    expect(screen.getByText('Sesi login kedaluwarsa.')).toBeInTheDocument();
     expect(screen.getByText('Input Presensi', { selector: 'h3' })).toBeInTheDocument();
   });
 

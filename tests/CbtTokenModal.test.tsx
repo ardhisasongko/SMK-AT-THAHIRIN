@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CbtTokenModal } from '../src/components/cbt/CbtTokenModal';
 import type { CbtExam } from '../src/types';
 
@@ -23,23 +23,24 @@ function renderModal(onStart = vi.fn(), onClose = vi.fn()) {
 }
 
 describe('CbtTokenModal', () => {
-  it('menolak token yang salah', () => {
-    const { onStart } = renderModal();
+  it('menampilkan penolakan token dari server', async () => {
+    const onStart = vi.fn().mockRejectedValue(new Error('Token ujian tidak valid.'));
+    renderModal(onStart);
     const input = screen.getByPlaceholderText('Masukkan 6 Digit Token');
     fireEvent.change(input, { target: { value: 'WRONG' } });
     fireEvent.click(screen.getByRole('button', { name: /Mulai Ujian Sekarang/ }));
 
-    expect(onStart).not.toHaveBeenCalled();
-    expect(screen.getByText(/Token ujian tidak valid/)).toBeInTheDocument();
+    expect(onStart).toHaveBeenCalledWith('WRONG');
+    await waitFor(() => expect(screen.getByText(/Token ujian tidak valid/)).toBeInTheDocument());
   });
 
-  it('memulai ujian ketika token benar (case-insensitive)', () => {
+  it('mengirim token yang dinormalisasi ke server', async () => {
     const { onStart } = renderModal();
     const input = screen.getByPlaceholderText('Masukkan 6 Digit Token');
     fireEvent.change(input, { target: { value: 'ap1234' } });
     fireEvent.click(screen.getByRole('button', { name: /Mulai Ujian Sekarang/ }));
 
-    expect(onStart).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onStart).toHaveBeenCalledWith('AP1234'));
     expect(screen.queryByText(/Token ujian tidak valid/)).not.toBeInTheDocument();
   });
 });

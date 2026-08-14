@@ -15,6 +15,13 @@ interface Env {
 
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
+function detectImageMime(bytes: Uint8Array): string | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
+  return null;
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunk = 0x8000;
@@ -32,7 +39,10 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   const url = new URL(request.url);
   const attachId = url.searchParams.get('id');
 
-  const contentType = request.headers.get('Content-Type') || 'image/jpeg';
+  const contentLength = Number(request.headers.get('Content-Length') || 0);
+  if (contentLength > 5 * 1024 * 1024) {
+    return jsonResponse({ success: false, error: 'Ukuran foto melebihi 5MB.' }, 413);
+  }
   const bytes = await request.arrayBuffer();
   const sizeMB = bytes.byteLength / (1024 * 1024);
 
@@ -42,6 +52,10 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   if (sizeMB === 0) {
     return jsonResponse({ success: false, error: 'Tidak ada data foto.' }, 400);
   }
+  const contentType = detectImageMime(new Uint8Array(bytes));
+  if (!contentType) {
+    return jsonResponse({ success: false, error: 'File harus berupa gambar JPEG, PNG, atau WebP yang valid.' }, 415);
+  }
 
   try {
     const base64 = bytesToBase64(new Uint8Array(bytes));
@@ -49,8 +63,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     if (attachId) {
       // Lampirkan thumbnail ke foto yang sudah ada
       const row = await env.DB
-        .prepare('SELECT id FROM photos WHERE id = ?')
-        .bind(attachId)
+        .prepare('SELECT id FROM photos WHERE id = ? AND created_by = ?')
+        .bind(attachId, data.user.id)
         .first<{ id: string }>();
       if (!row) {
         return jsonResponse({ success: false, error: 'Foto tidak ditemukan.' }, 404);

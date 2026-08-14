@@ -90,6 +90,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   }
 
   const role = currentUser.role;
+  const isStudentRole = role === 'siswa' || role === 'ketua_kelas';
 
   // Derive Student Data if user is Siswa
   const studentData = siswaList.find(s => s.name === currentUser.name || s.nisn === currentUser.nipNisn) || siswaList[0];
@@ -134,7 +135,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                 className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg bg-white"
               />
               <span className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${
-                role === 'admin' ? 'bg-purple-500' : role === 'guru' ? 'bg-blue-500' : 'bg-emerald-500'
+                 role === 'super_admin' || role === 'admin' ? 'bg-purple-500' : role === 'guru' ? 'bg-blue-500' : 'bg-emerald-500'
               }`}></span>
             </div>
 
@@ -144,18 +145,18 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                   {currentUser.name}
                 </h1>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${
-                  role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                  role === 'super_admin' || role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
                   role === 'guru' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                   'bg-emerald-100 text-emerald-800 border border-emerald-200'
                 }`}>
-                  {role === 'admin' ? 'Administrator TU' : role === 'guru' ? 'Tenaga Pendidik / Guru' : 'Siswa Active'}
+                  {role === 'super_admin' ? 'Super Administrator' : role === 'admin' ? 'Administrator TU' : role === 'guru' ? 'Tenaga Pendidik / Guru' : role === 'ketua_kelas' ? 'Ketua Kelas' : 'Siswa Aktif'}
                 </span>
               </div>
 
               <div className="text-xs text-slate-500 font-medium flex flex-wrap items-center justify-center sm:justify-start gap-3">
                 <span>NIP/NISN: <strong className="text-slate-700">{currentUser.nipNisn || '0068123491'}</strong></span>
                 <span>•</span>
-                <span>{currentUser.jabatan || (role === 'siswa' ? `Siswa ${studentClass?.name}` : 'Guru Produktif')}</span>
+                <span>{currentUser.jabatan || (isStudentRole ? `Siswa ${studentClass?.name || ''}` : 'Guru Produktif')}</span>
               </div>
             </div>
           </div>
@@ -201,7 +202,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
           </button>
 
           {/* Role: SISWA Specific Tabs */}
-          {role === 'siswa' && (
+          {isStudentRole && (
             <>
               <button
                 id="tab-profile-jadwal-siswa"
@@ -263,7 +264,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
           )}
 
           {/* Role: ADMIN Specific Tabs */}
-          {role === 'admin' && (
+          {(role === 'admin' || role === 'super_admin') && (
             <>
               <button
                 id="tab-profile-semua-pengguna"
@@ -319,14 +320,14 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                 <span className="font-bold text-slate-800">{currentUser.email}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Nomor Induk ({role === 'siswa' ? 'NISN' : 'NIP'})</span>
+                <span className="text-slate-500">Nomor Induk ({isStudentRole ? 'NISN' : 'NIP'})</span>
                 <span className="font-mono font-bold text-slate-800">{currentUser.nipNisn || '19890215 201502 1 003'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
                 <span className="text-slate-500">Jabatan / Role</span>
                 <span className="font-bold text-emerald-700 capitalize">{currentUser.jabatan || currentUser.role}</span>
               </div>
-              {role === 'siswa' && (
+              {isStudentRole && (
                 <div className="flex justify-between py-1 border-b border-slate-50">
                   <span className="text-slate-500">Kelas Aktif</span>
                   <span className="font-bold text-slate-800">{studentClass?.name || 'X RPL 1'}</span>
@@ -378,7 +379,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       )}
 
       {/* 2. SISWA - JADWAL PELAJARAN SAYA */}
-      {role === 'siswa' && activeSubTab === 'jadwal' && (
+      {isStudentRole && activeSubTab === 'jadwal' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
@@ -400,7 +401,16 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 sm:hidden">
+            {(studentClass?.jadwal || []).map((item, idx) => (
+              <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-3"><div><strong className="text-sm text-slate-900">{item.hari}</strong><p className="text-xs text-emerald-700">{item.jamRentan} · Jam {item.jamKe}</p></div><span className="rounded bg-white px-2 py-1 text-[10px] font-mono text-slate-600 border border-slate-200">{item.ruangan}</span></div>
+                <h3 className="mt-3 text-sm font-bold leading-5 text-slate-900">{item.mataPelajaran}</h3>
+                <p className="mt-1 text-xs text-slate-500">{item.guru}</p>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-900 text-white font-bold">
@@ -434,7 +444,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       )}
 
       {/* 3. SISWA - RIWAYAT ABSENSI SAYA */}
-      {role === 'siswa' && activeSubTab === 'absensi' && (
+      {isStudentRole && activeSubTab === 'absensi' && (
         <div className="space-y-6">
           
           {/* Summary Metric Cards */}
@@ -622,7 +632,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       )}
 
       {/* 6. ADMIN - PENGELOLAAN SEMUA PENGGUNA */}
-      {role === 'admin' && activeSubTab === 'semua-pengguna' && (
+      {(role === 'admin' || role === 'super_admin') && activeSubTab === 'semua-pengguna' && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
@@ -690,7 +700,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       )}
 
       {/* 7. ADMIN - AKSES PENGELOLAAN SISTEM */}
-      {role === 'admin' && activeSubTab === 'sistem' && (
+      {(role === 'admin' || role === 'super_admin') && activeSubTab === 'sistem' && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-purple-900 via-slate-900 to-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-2">
             <h2 className="text-lg font-extrabold flex items-center gap-2">

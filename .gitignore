@@ -6,6 +6,8 @@ coverage/
 .DS_Store
 *.log
 .env*
+whatsapp-gateway/.wwebjs_auth/
+whatsapp-gateway/.wwebjs_cache/
 !.env.example
 data/
 imported/
