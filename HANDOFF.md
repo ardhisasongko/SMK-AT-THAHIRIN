@@ -10,7 +10,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
 - Verifikasi terakhir: `npm run verify` lulus, 188/188 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan browser responsif lulus.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
-- Commit terbaru sebelum sesi integrasi: `39d9c62 fix(ui): tampilkan navigasi setelah login`.
+- Commit implementasi integrasi terbaru yang sudah di-push: `b787e62 feat(integrations): perkuat layanan eksternal`.
 - Migrasi D1 remote masih diterapkan sampai `0016_security_hardening.sql`; migrasi `0017_external_integrations.sql` sudah lulus di D1 lokal tetapi belum diterapkan ke remote.
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
@@ -22,6 +22,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `3013ebd fix(auth): sesuaikan PBKDF2 dengan batas Cloudflare`
 - `2ed1c7a fix(ui): rapikan layout mobile dan overflow`
 - `39d9c62 fix(ui): tampilkan navigasi setelah login`
+- `b787e62 feat(integrations): perkuat layanan eksternal`
 
 ## Perubahan Utama Sesi Ini
 
