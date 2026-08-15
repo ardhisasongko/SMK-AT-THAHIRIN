@@ -6,13 +6,22 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
-- Deployment produksi terakhir yang terverifikasi: `https://c1ba6404.smk-at-tahirin.pages.dev`. Deployment ini dibuat sebelum commit terbaru.
+- Deployment produksi terakhir yang diverifikasi end-to-end berada pada commit `3013ebd`; commit UI setelahnya sudah di-push tetapi deployment produksinya belum diverifikasi ulang dalam sesi ini.
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run lint` lulus, 144/144 test lulus, dan production build berhasil.
+- Verifikasi terakhir: `npm run verify` lulus, 188/188 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan browser responsif lulus.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
-- Commit terbaru: `4956096 feat(platform): tambah domain API, manajemen pengguna, dan WhatsApp`.
-- Perubahan lanjutan sesi ini masih berada di worktree dan belum di-commit atau di-push.
-- Migrasi `0010`-`0015` dan perubahan terbaru belum dideploy ke produksi.
+- Commit terbaru sebelum sesi integrasi: `39d9c62 fix(ui): tampilkan navigasi setelah login`.
+- Migrasi D1 remote masih diterapkan sampai `0016_security_hardening.sql`; migrasi `0017_external_integrations.sql` sudah lulus di D1 lokal tetapi belum diterapkan ke remote.
+- Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
+
+### Commit Milestone Terbaru
+
+- `11405a8 feat(platform): tuntaskan lifecycle dan integritas domain`
+- `17fc537 fix(ui): rapikan navbar dan tambah metadata SEO`
+- `e028e37 security(platform): perkuat sesi, rate limit, dan upload`
+- `3013ebd fix(auth): sesuaikan PBKDF2 dengan batas Cloudflare`
+- `2ed1c7a fix(ui): rapikan layout mobile dan overflow`
+- `39d9c62 fix(ui): tampilkan navigasi setelah login`
 
 ## Perubahan Utama Sesi Ini
 
@@ -26,13 +35,42 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ### UI Responsif
 
-- Landing page, hero, header, kartu sambutan, program keahlian, berita, dan footer dirapikan untuk viewport 320 px serta desktop.
-- Dock bawah tidak ditampilkan di landing page.
-- Dock mobile memakai menu utama + tombol `Lainnya`, sehingga tidak lagi overflow horizontal saat role memiliki banyak menu.
-- Jadwal siswa memakai kartu pada mobile dan tabel pada desktop.
-- Form Modul Ajar menjadi satu kolom pada mobile.
-- Kartu Kelas, Notifikasi, dan Manajemen Pengguna menangani teks/email panjang tanpa keluar viewport.
-- Global `overflow-x` guard ditambahkan di `src/index.css`.
+- Audit dan perbaikan overflow mencakup Profil, CBT, Absensi, Kelas, Modul Ajar, Forum, Notifikasi, Footer, serta modal terkait.
+- Email profil panjang memakai wrapping eksplisit; row label/nilai menjadi bertumpuk pada mobile dan kembali sejajar pada breakpoint yang cukup.
+- Header runner CBT dipadatkan pada 320 px; label aksi sekunder disembunyikan pada mobile tanpa menghilangkan tombolnya.
+- Tabel lebar memakai scroll lokal; grup tombol, filter tanggal, pagination, badge dinamis, dan konten pengguna dapat wrap.
+- Jadwal siswa memakai kartu pada mobile dan tabel pada desktop; form Modul Ajar menjadi satu kolom pada mobile.
+- Dock mobile memakai menu utama + tombol `Lainnya`, sehingga role dengan banyak menu tidak membuat document overflow.
+- Global `overflow-x: hidden` di `src/index.css` telah dihapus agar bug overflow tidak disembunyikan.
+- Verifikasi browser pada 320, 375, 768, dan 1366 px menghasilkan `scrollWidth === clientWidth`.
+
+### Navigasi Publik dan Login
+
+- Sebelum login, landing page tampil langsung dari hero tanpa navbar atas dan tanpa bottom dock.
+- Hero guest memiliki CTA utama `Masuk Portal` berikon `LogIn`; pada mobile tombol login memenuhi satu baris dan CBT/Absensi berada pada dua kolom di bawahnya.
+- Setelah login, navbar atas dan bottom dock tampil di semua halaman, termasuk Beranda.
+- Logout mengembalikan pengguna ke landing publik dan langsung menghilangkan kedua navigasi.
+- Bar gelap nama sekolah/tahun ajaran/telepon serta badge `Navigasi menu aktif di dock bawah layar` telah dihapus.
+- Footer memberi ruang tambahan ketika login agar bagian paling bawah tidak tertutup dock tetap.
+
+### Instalasi di HP / PWA
+
+- `index.html` sudah menautkan `public/site.webmanifest`, `theme-color`, dan `apple-touch-icon`.
+- Manifest memakai `display: standalone` dan ikon 192/512 px, sehingga Chrome dapat menawarkan `Install aplikasi` atau `Tambahkan ke layar utama`.
+- Android: buka situs di Chrome lalu pilih notifikasi install atau menu titik tiga -> Install aplikasi/Tambahkan ke layar utama.
+- iPhone: buka melalui Safari -> Bagikan -> Tambahkan ke Layar Utama.
+- Belum ada service worker. Aplikasi yang dipasang tetap memerlukan internet dan belum memiliki cache/offline mode penuh.
+
+### Hardening Integrasi Eksternal
+
+- Gemini sekarang fail-closed melalui `GEMINI_ENABLED`, model dapat dikonfigurasi, memiliki timeout, bounded retry untuk network/429/5xx, pemeriksaan safety/finish reason, batas output, dan validasi schema CBT/Modul Ajar.
+- WhatsApp Web memiliki integration gate, emergency pause, rollout `off/canary/all`, allowlist, heartbeat, graceful shutdown, status `sent_unknown`, rekonsiliasi manual, pagination history, consent audit atomik, dan dedupe revision.
+- `begin_send` memeriksa ulang semua kill switch sehingga emergency pause dapat menghentikan batch yang sudah diklaim.
+- Google Sync default `SYNC_ENABLED=false` dan `SYNC_DRY_RUN=true`; memakai stable key/fingerprint, lock lease, batch maksimal 10, bounded retry, idempotency manifest, dan per-entry error isolation.
+- Google Sync tidak lagi menghapus atau mengosongkan foto penuh D1. Apps Script menulis ke `Harian Sync v2` dan `Rekap Sync v2`, sehingga sheet lama tidak disentuh.
+- Status teragregasi Admin/Super Admin tersedia melalui `GET /api/integrations/status` tanpa mengekspos secret.
+- CI `.github/workflows/verify.yml` menjalankan aplikasi utama, sync-worker, build, syntax gateway, dan Wrangler dry-run.
+- Panduan rollout dan rollback lengkap berada di `EXTERNAL_INTEGRATIONS.md`.
 
 ### Role dan RBAC
 
@@ -74,7 +112,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Rate limiter memakai UPSERT atomik dan membersihkan window lama secara bertahap.
 - Lampiran Forum dan email simulasi tidak lagi ditampilkan sebagai fitur aktif.
 - Header autentikasi generate AI sudah konsisten dan code splitting sudah diterapkan.
-- Test domain/API/UI ditambah; total saat ini 144 test.
+- Test domain/API/UI ditambah; total saat ini 188 test dalam 38 file, ditambah 8 test sync-worker.
 
 ## Migrasi D1
 
@@ -83,15 +121,17 @@ Migrasi berikut sudah berhasil diterapkan ke D1 remote:
 - `0007_fix_principal_name.sql`
 - `0008_user_management.sql`
 - `0009_whatsapp_notifications.sql`
-
-Migrasi domain berikut sudah diterapkan secara lokal tetapi masih harus diterapkan ke D1 remote sebelum kode terbaru dideploy:
-
 - `0010_domain_architecture.sql`
 - `0011_api_rate_limits.sql`
 - `0012_domain_migration_markers.sql`
 - `0013_cbt_exam_lifecycle.sql`
 - `0014_rate_limit_expiration.sql`
 - `0015_domain_integrity.sql`
+- `0016_security_hardening.sql`
+
+Migrasi berikut baru diterapkan dan diverifikasi di D1 lokal; belum remote:
+
+- `0017_external_integrations.sql`
 
 Migrasi `0009` membuat tabel:
 
@@ -112,6 +152,7 @@ Migrasi `0009` membuat tabel:
 - Konfigurasi gateway lokal ada di `whatsapp-gateway/.env` dan di-ignore Git.
 - Dependensi gateway sudah terpasang dengan `PUPPETEER_SKIP_DOWNLOAD=true`.
 - Pengiriman otomatis masih `OFF` secara default.
+- Integration gate default `OFF`, emergency pause default aktif, rollout default `off`, dan gateway lokal default `GATEWAY_ENABLED=false`.
 - Belum ada QR WhatsApp yang dipindai dan gateway belum berjalan terus-menerus.
 - Komputer environment ini tidak memiliki Chrome/Chromium terdeteksi. Gateway memerlukan Google Chrome di komputer operator atau `CHROME_PATH` yang benar.
 
@@ -127,10 +168,11 @@ Migrasi `0009` membuat tabel:
 - Perubahan status menghasilkan pesan koreksi; perubahan foto/catatan tanpa perubahan status tidak membuat pesan status baru.
 - Reminder guru dibuat satu kali per guru per hari, hanya jika jadwal hari tersebut ditemukan.
 - Riwayat antrean/status tersedia pada panel Admin.
+- Panel menampilkan heartbeat/last-seen gateway, pagination history, serta rekonsiliasi manual `sent_unknown` oleh Super Admin.
 
 ### Hemat D1 dan Anti-Spam
 
-- Deduplikasi unik per siswa + tanggal + status + slot wali.
+- Deduplikasi memakai event revision agar transisi `Alpa -> Hadir -> Alpa` dapat menghasilkan koreksi baru tanpa mengirim ulang event yang sama.
 - Reminder guru memiliki dedupe key per guru per tanggal.
 - Gateway mengambil maksimal 25 pesan per batch.
 - Polling aktif default setiap 60 detik dan melambat ketika kosong/di luar jam aktif.
@@ -159,7 +201,7 @@ Migrasi `0009` membuat tabel:
 9. Uji satu presensi dan cek tab Riwayat sebelum memasukkan seluruh nomor wali.
 10. Jika stabil, impor/input seluruh kontak secara bertahap.
 
-Panduan gateway: `WHATSAPP_GATEWAY.md`.
+Panduan gateway: `WHATSAPP_GATEWAY.md` dan `EXTERNAL_INTEGRATIONS.md`.
 
 ### Catatan Risiko
 
@@ -174,6 +216,9 @@ Panduan gateway: `WHATSAPP_GATEWAY.md`.
 - Fungsi `testManual` pernah berhasil membuat baris `Harian` dan file Drive (`ok=true`, `driveLink` tersedia).
 - URL Apps Script aktif tersimpan di `sync-worker/wrangler.toml`.
 - Worker sinkronisasi berada di `sync-worker/` dengan job harian/mingguan.
+- Worker memiliki package/test/typecheck mandiri; 8 test lulus dan `wrangler deploy --dry-run` berhasil.
+- Worker default nonaktif/dry-run, batch maksimal 10, menggunakan stable key/fingerprint dan lock agar retry tidak membuat duplikat.
+- Apps Script baru memakai Script Property `SYNC_TOKEN` dan sheet versi baru; data foto penuh D1 tidak pernah dipurge oleh Worker.
 - `GET /exec` yang menampilkan `Fungsi skrip tidak ditemukan: doGet` adalah normal karena script hanya memiliki `doPost`.
 - Pengujian POST eksternal dari terminal sebelumnya masih menghasilkan halaman Google/redirect, sedangkan pengujian manual dari editor Apps Script berhasil. Jangan menyatakan integrasi eksternal end-to-end selesai tanpa verifikasi data nyata dari Worker ke Sheet/Drive.
 - Perlu sesi berikutnya: cek apakah `smk-absensi-sync` sudah dideploy, jalankan trigger manual, lihat log Worker, dan pastikan data benar-benar masuk ke Sheet/Drive.
@@ -181,6 +226,11 @@ Panduan gateway: `WHATSAPP_GATEWAY.md`.
 ## File Penting
 
 - `src/navItems.ts`: menu dan akses tab per role.
+- `src/App.tsx`: kondisi navbar/dock berdasarkan sesi login dan routing tab utama.
+- `src/components/Navbar.tsx`: navbar khusus pengguna yang sudah login.
+- `src/components/BottomDock.tsx`: navigasi tetap bawah setelah login, termasuk pada Beranda.
+- `src/components/LandingPage.tsx`: landing publik dan CTA login responsif.
+- `public/site.webmanifest`: metadata instalasi aplikasi di HP.
 - `src/components/UserManagementSection.tsx`: panel manajemen akun.
 - `src/components/WhatsAppAdminSection.tsx`: panel WhatsApp Admin.
 - `functions/api/users/`: API pengguna, reset password, audit.
@@ -190,6 +240,10 @@ Panduan gateway: `WHATSAPP_GATEWAY.md`.
 - `whatsapp-gateway/src/index.js`: gateway WhatsApp Web lokal.
 - `WHATSAPP_GATEWAY.md`: panduan setup.
 - `sync-worker/`: sinkronisasi Google Drive/Spreadsheet.
+- `functions/api/integrations/status.ts`: status Gemini, WhatsApp, dan Google Sync untuk Admin/Super Admin.
+- `EXTERNAL_INTEGRATIONS.md`: prosedur rollout, canary, monitoring, dan rollback integrasi.
+- `.github/workflows/verify.yml`: CI aplikasi utama dan sync-worker.
+- `migrations/0017_external_integrations.sql`: integration gate, delivery metadata, consent event, reminder, dan event revision WhatsApp.
 - `imported/kredensial-akun.txt`: kredensial awal produksi; file sensitif, jangan dipublikasikan.
 
 ## Verifikasi Terakhir
@@ -198,33 +252,40 @@ Perintah yang berhasil:
 
 ```bash
 npm run lint
-npm test
-npm run build
+npm run verify
 npm run db:migrate:local
 node --check whatsapp-gateway/src/index.js
+npx wrangler deploy --dry-run # dari sync-worker/
 ```
 
 Hasil terakhir:
 
-- 26 test files lulus.
-- 144 tests lulus.
+- 38 test files aplikasi lulus.
+- 188 tests aplikasi lulus.
+- 8 tests sync-worker lulus.
 - TypeScript lulus.
+- Typecheck sync-worker lulus.
 - Production build lulus.
-- Migrasi lokal sampai `0015` berhasil dan tidak ada migrasi lokal tertunda.
-- D1 remote baru terverifikasi sampai `0009`; jangan deploy kode terbaru sebelum `0010`-`0015` diterapkan.
-- Deployment produksi yang tercatat berhasil adalah versi sebelum commit `4956096`.
+- Migrasi D1 remote sampai `0016` berhasil.
+- Migrasi `0017` berhasil secara lokal dan belum diterapkan ke remote.
+- Wrangler sync-worker dry-run lulus.
+- Browser guest/authenticated pada 320, 375, 768, dan 1366 px tidak memiliki document overflow.
+- Guest: header/dock tidak ada dan CTA login tampil. Authenticated: header/dock tampil di Beranda dan CTA login hilang.
+- Klik CTA login membuka modal; logout menghapus header/dock dan mengembalikan CTA login.
+- `npm test` dapat sesekali membuat test forum melewati timeout default 5 detik ketika mesin sibuk. Test tersebut lulus terisolasi; full suite terakhir lulus dengan `npx vitest run --testTimeout=10000`.
+- Deployment produksi untuk commit integrasi terbaru belum diverifikasi ulang; integrasi WhatsApp/Sync harus tetap OFF saat smoke test awal.
 - Gateway claim diuji ketika sistem nonaktif: HTTP 200, `enabled=false`, antrean kosong.
 
 ## Urutan Aman Sesi Berikutnya
 
 1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main`.
-2. Pastikan secret Pages/Worker tersedia tanpa menuliskan nilainya ke Git.
-3. Terapkan migrasi remote dengan `npm run db:migrate:remote` dan pastikan `0010`-`0015` sukses.
-4. Deploy Pages dengan `npm run pages:deploy`.
-5. Smoke test login serta menu untuk `super_admin`, `admin`, `guru`, `ketua_kelas`, dan `siswa`.
-6. Smoke test CBT, Forum, Notifikasi, Manajemen Pengguna, presensi, upload foto, dan endpoint WhatsApp dalam kondisi pengiriman otomatis masih `OFF`.
-7. Deploy dan verifikasi `sync-worker` setelah `SYNC_TOKEN` dipasang sebagai secret.
-8. Aktifkan gateway WhatsApp hanya setelah uji terbatas 1-2 penerima berhasil.
+2. Pastikan commit integrasi terbaru sudah terdeploy di Cloudflare Pages, lalu terapkan `0017_external_integrations.sql` ke D1 remote.
+3. Smoke test produksi untuk landing, login/logout, semua role, CBT, Forum, Notifikasi, presensi, upload, dan `/api/integrations/status` dalam kondisi WhatsApp/Sync tetap OFF.
+4. Deploy ulang Apps Script, pasang `SYNC_TOKEN` sebagai Script Property dan Worker secret, lalu deploy sync-worker dengan `SYNC_DRY_RUN=true`.
+5. Jalankan dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
+6. Jalankan gateway dengan `GATEWAY_ENABLED=false`, scan QR nomor khusus sekolah, dan pastikan heartbeat muncul.
+7. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
+8. Jika offline mode dibutuhkan, tambahkan service worker sebagai proyek terpisah tanpa menyimpan respons API/sesi sensitif.
 
 ## Keamanan dan Tindak Lanjut
 

@@ -1,0 +1,14 @@
+{
+  "name": "smk-at-thahirin-sync-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260804.1",
+    "typescript": "~5.8.2",
+    "vitest": "^4.1.10"
+  }
+}

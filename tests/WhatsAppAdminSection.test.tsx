@@ -8,7 +8,7 @@ describe('WhatsAppAdminSection', () => {
   it('shows an API error instead of silently rendering empty data', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.endsWith('/history')) return new Response(JSON.stringify({ success: false, error: 'Riwayat tidak dapat dimuat.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      if (url.includes('/history?')) return new Response(JSON.stringify({ success: false, error: 'Riwayat tidak dapat dimuat.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({ success: true, data: [], stats: [] }), { headers: { 'Content-Type': 'application/json' } });
     }));
 

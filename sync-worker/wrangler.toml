@@ -16,4 +16,9 @@ crons = ["0 13 * * *", "0 14 * * 0"]
 
 [vars]
 APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwM8BSf3UVDZBD1HZhLsTQIer3_ZlIFm7mlUMX6nmPYbvAPuoEMq97serIgHkVzRMa4/exec"
+SYNC_ENABLED = "false"
+SYNC_DRY_RUN = "true"
+SYNC_BATCH_SIZE = "5"
+SYNC_TIMEOUT_MS = "10000"
+SYNC_MAX_RETRIES = "2"
 # Atur terpisah: npx wrangler secret put SYNC_TOKEN

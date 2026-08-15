@@ -1,4 +1,6 @@
-# Salin file ini menjadi .dev.vars dan isi kunci Gemini untuk development lokal.
+# Salin file ini menjadi .dev.vars dan isi konfigurasi development lokal.
 # .dev.vars TIDAK boleh di-commit (sudah ada di .gitignore).
 # Untuk production, set GEMINI_API_KEY sebagai Secret di dashboard Cloudflare Pages.
 GEMINI_API_KEY="ISI_GEMINI_API_KEY_ANDA"
+GEMINI_ENABLED="false"
+GEMINI_MODEL="gemini-3.6-flash"

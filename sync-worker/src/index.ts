@@ -1,43 +1,42 @@
-import { Env } from './types';
-import { dailySync, weeklySync } from './sync';
+import { runSync } from './sync';
+import { Env, JobName } from './types';
 
-const CRON_JOBS: Record<string, 'daily' | 'weekly'> = {
-  '0 13 * * *': 'daily', // setiap hari 20:00 WIB
-  '0 14 * * 0': 'weekly', // Minggu 21:00 WIB
+const CRON_JOBS: Record<string, JobName> = {
+  '0 13 * * *': 'daily',
+  '0 14 * * 0': 'weekly',
 };
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    const job = CRON_JOBS[event.cron] || 'daily';
-    ctx.waitUntil(run(job, env));
+    const job = CRON_JOBS[event.cron];
+    if (!job) {
+      console.error(`[sync] cron tidak dikenal: ${event.cron}`);
+      return;
+    }
+    ctx.waitUntil(runSync(job, env).then(result => {
+      console.log(`[sync] job=${job}`, JSON.stringify(result));
+    }));
   },
 
-  // Manual trigger untuk pengujian: POST /?job=daily|weekly
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    if (request.method === 'POST') {
-      const authorization = request.headers.get('Authorization');
-      if (!env.SYNC_TOKEN || authorization !== `Bearer ${env.SYNC_TOKEN}`) {
-        return new Response('Unauthorized', { status: 401 });
-      }
-      const url = new URL(request.url);
-      const job = url.searchParams.get('job');
-      if (job === 'daily' || job === 'weekly') {
-        ctx.waitUntil(run(job, env));
-        return new Response(JSON.stringify({ ok: true, job, started: true }), {
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
+  async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.method !== 'POST') return json({ ok: false, error: 'Not found' }, 404);
+    const authorization = request.headers.get('Authorization');
+    if (!env.SYNC_TOKEN || authorization !== `Bearer ${env.SYNC_TOKEN}`) {
+      return json({ ok: false, error: 'Unauthorized' }, 401);
     }
-    return new Response('Not found. POST /?job=daily|weekly', { status: 404 });
+    const job = new URL(request.url).searchParams.get('job');
+    if (job !== 'daily' && job !== 'weekly') {
+      return json({ ok: false, error: 'Use POST /?job=daily|weekly' }, 400);
+    }
+    const result = await runSync(job, env);
+    const status = result.status === 'locked' ? 409 : result.status === 'disabled' ? 503 : result.ok ? 200 : 502;
+    return json(result, status);
   },
 };
 
-async function run(job: 'daily' | 'weekly', env: Env): Promise<void> {
-  console.log(`[sync] mulai job=${job}`);
-  try {
-    const res = job === 'daily' ? await dailySync(env) : await weeklySync(env);
-    console.log(`[sync] selesai job=${job}`, JSON.stringify(res));
-  } catch (e: any) {
-    console.error(`[sync] GAGAL job=${job}`, e?.stack || String(e));
-  }
+function json(value: unknown, status: number): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  });
 }

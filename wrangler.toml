@@ -15,8 +15,11 @@ migrations_dir = "migrations"
 # Shared variable untuk konfigurasi akses
 [vars]
 APP_NAME = "SMKS PLUS AT THAHIRIN"
+# Flag harus eksplisit. Nilai true mempertahankan fitur AI yang sudah tersedia;
+# nonaktifkan dari dashboard bila diperlukan tanpa deploy ulang.
+GEMINI_ENABLED = "true"
+GEMINI_MODEL = "gemini-3.6-flash"
 
 # GEMINI_API_KEY sebaiknya di-set sebagai SECRET (bukan vars) di Cloudflare Pages:
 #   Dashboard Pages -> Settings -> Variables and Secrets -> Secrets -> GEMINI_API_KEY
 # atau via CLI:  npx wrangler pages secret put GEMINI_API_KEY --project-name smk-at-tahirin
-

@@ -33,35 +33,7 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       setNewQuestions(questions);
     } catch (err: any) {
       console.error('Error generating questions:', err);
-      alert(`Gagal membuat soal AI: ${err.message}. Menggunakan soal contoh default.`);
-      setNewQuestions([
-        {
-          id: 'ai-1',
-          question: 'Salah satu prinsip dasar penataan ruang kantor (office layout) menurut Geoffrey Lockey adalah ...',
-          options: [
-            { key: 'A', text: 'Prinsip jarak terpendek dalam alur kerja' },
-            { key: 'B', text: 'Prinsip isolasi antar karyawan' },
-            { key: 'C', text: 'Prinsip sekat tinggi tanpa pencahayaan' },
-            { key: 'D', text: 'Prinsip penumpukan berkas manual' },
-            { key: 'E', text: 'Prinsip penggunaan perabot berat' }
-          ],
-          correctAnswer: 'A',
-          explanation: 'Prinsip jarak terpendek memungkinkan alur dokumen berjalan efisien tanpa banyak pergerakan yang tak perlu.'
-        },
-        {
-          id: 'ai-2',
-          question: 'Alat perkantoran yang digunakan untuk menghancurkan dokumen rahasia menjadi potongan kecil adalah ...',
-          options: [
-            { key: 'A', text: 'Laminating Machine' },
-            { key: 'B', text: 'Paper Shredder (Penghancur Kertas)' },
-            { key: 'C', text: 'Binding Machine' },
-            { key: 'D', text: 'Risograph' },
-            { key: 'E', text: 'Guillotine Cutter' }
-          ],
-          correctAnswer: 'B',
-          explanation: 'Paper Shredder menjaga kerahasiaan dokumen kantor dengan menghancurkannya menjadi potongan strip atau cross-cut.'
-        }
-      ]);
+      alert(`Gagal membuat soal AI: ${err.message}`);
     } finally {
       setIsAiGenerating(false);
     }

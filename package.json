@@ -16,7 +16,10 @@
     "pages:deploy": "npm run build && wrangler pages deploy dist --project-name smk-at-tahirin",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:sync-worker": "npm --prefix sync-worker test",
+    "typecheck:sync-worker": "npm --prefix sync-worker run typecheck",
+    "verify": "npm run lint && npm run test -- --testTimeout=10000 && npm run test:sync-worker && npm run typecheck:sync-worker && npm run build"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",

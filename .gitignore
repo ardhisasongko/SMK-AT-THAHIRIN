@@ -6,8 +6,11 @@ coverage/
 .DS_Store
 *.log
 .env*
+.dev.vars
+.dev.vars.*
 whatsapp-gateway/.wwebjs_auth/
 whatsapp-gateway/.wwebjs_cache/
 !.env.example
+!.dev.vars.example
 data/
 imported/

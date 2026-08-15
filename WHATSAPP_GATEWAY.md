@@ -20,6 +20,7 @@ Isi `GATEWAY_KEY` pada `.env` dengan secret Cloudflare yang sama, lalu:
 
 - Pastikan Google Chrome sudah terpasang.
 - Jika Chrome tidak ditemukan otomatis, isi `CHROME_PATH`. Contoh Windows: `C:\Program Files\Google\Chrome\Application\chrome.exe`.
+- Pertahankan `GATEWAY_ENABLED=false` sampai heartbeat, allowlist canary, dan emergency pause terverifikasi.
 
 ```bash
 npm start
@@ -34,6 +35,7 @@ Scan QR menggunakan WhatsApp nomor pengirim. Sesi tersimpan lokal dalam folder `
 - Isi maksimal dua nomor wali per siswa dan catat persetujuan.
 - Isi nomor guru dan aktifkan reminder.
 - Super Admin mengaktifkan pengiriman otomatis.
+- Aktivasi lengkap dan rollback mengikuti `EXTERNAL_INTEGRATIONS.md`.
 
 ## Penghematan dan Anti-Spam
 
@@ -44,3 +46,4 @@ Scan QR menggunakan WhatsApp nomor pengirim. Sesi tersimpan lokal dalam folder `
 - Deduplikasi unik per siswa, tanggal, status, dan nomor wali.
 - Alpa dijadwalkan setelah pukul 09.00 WIB.
 - Reminder guru satu pesan ringkas per hari dan hanya jika ada jadwal.
+- Pesan berstatus `sent_unknown` tidak dikirim ulang otomatis; Super Admin merekonsiliasinya setelah verifikasi manual.
