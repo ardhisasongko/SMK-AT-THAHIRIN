@@ -9,6 +9,11 @@ export function jsonResponse(data: unknown, status = 200): Response {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Referrer-Policy': 'no-referrer',
+      'Permissions-Policy': 'camera=(self), geolocation=(self), microphone=()',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     },
   });
 }

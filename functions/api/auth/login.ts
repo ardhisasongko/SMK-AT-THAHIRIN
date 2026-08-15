@@ -1,13 +1,18 @@
-import { verifyPassword, createSession, type AuthEnv } from '../../_lib/auth';
+import { verifyPassword, createSession, hashPassword, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../_lib/rate-limit';
 
 interface Env extends AuthEnv {}
+const DUMMY_PASSWORD_HASH = 'pbkdf2$600000$4f4e4c5944554d4d5950415353574f52$cfd2fdd8fea414254f14ad759c96920dce324a3e10dcea3b8c9d40795afcf99b';
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   let body: { identifier?: string; password?: string };
   try {
-    body = await request.json();
+    const declaredLength = Number(request.headers.get('Content-Length') || 0);
+    if (declaredLength > 8192) return jsonResponse({ success: false, error: 'Ukuran permintaan terlalu besar.' }, 413);
+    const raw = await request.arrayBuffer();
+    if (raw.byteLength > 8192) return jsonResponse({ success: false, error: 'Ukuran permintaan terlalu besar.' }, 413);
+    body = JSON.parse(new TextDecoder().decode(raw));
   } catch {
     return jsonResponse({ success: false, error: 'Body harus berupa JSON.' }, 400);
   }
@@ -21,8 +26,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     return jsonResponse({ success: false, error: 'Identifier dan password wajib diisi.' }, 400);
   }
   const clientIp = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const rateKey = `login:${clientIp}:${identifier.toLowerCase()}`;
-  if (!(await consumeRateLimit(env.DB, rateKey, 10, 15 * 60))) {
+  const normalizedIdentifier = identifier.toLowerCase();
+  const ipRateKey = `login-ip:${clientIp}`;
+  const accountRateKey = `login-account:${normalizedIdentifier}`;
+  if (!(await consumeRateLimit(env.DB, ipRateKey, 500, 15 * 60)) || !(await consumeRateLimit(env.DB, accountRateKey, 10, 15 * 60))) {
     return jsonResponse({ success: false, error: 'Terlalu banyak percobaan login. Coba lagi beberapa menit.' }, 429);
   }
 
@@ -31,24 +38,25 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     'SELECT * FROM users WHERE email = ? OR nip_nisn = ?'
   ).bind(identifier, identifier).first();
   if (!row) {
+    await verifyPassword(password, DUMMY_PASSWORD_HASH);
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
-  }
-
-  if (String(row.status || 'active') !== 'active') {
-    return jsonResponse({ success: false, error: 'Akun ini sedang nonaktif. Hubungi administrator.' }, 403);
   }
 
   const ok = await verifyPassword(password, String(row.password_hash));
-  if (!ok) {
+  if (!ok || String(row.status || 'active') !== 'active') {
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
   }
 
+  const storedIterations = Number(String(row.password_hash).split('$')[1] || 0);
+  if (storedIterations < 600_000) {
+    await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(password), String(row.id)).run();
+  }
+
   const token = await createSession(env, String(row.id));
-  await clearRateLimit(env.DB, rateKey);
+  await clearRateLimit(env.DB, accountRateKey);
 
   const response = jsonResponse({
     success: true,
-    token,
     user: {
       id: String(row.id),
       name: String(row.name),

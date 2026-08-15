@@ -23,7 +23,7 @@ import {
 } from './data/initialData';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, AuthSession } from './types';
 import { usePersistedCollection } from './hooks/usePersistedCollection';
-import { loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest } from './utils/auth';
+import { authHeaders, loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest } from './utils/auth';
 import { canAccessTab } from './navItems';
 import { forumApi, notificationApi } from './utils/community-api';
 
@@ -61,6 +61,24 @@ export default function App() {
   }, [authSession]);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/me', { cache: 'no-store', headers: authHeaders() })
+      .then(async response => ({ response, json: await response.json().catch(() => ({})) as { user?: User } }))
+      .then(({ response, json }) => {
+        if (cancelled) return;
+        if (!response.ok || !json.user) {
+          setAuthSession(null);
+          return;
+        }
+        const next = { user: { ...json.user!, avatar: authSession?.user.avatar || AVATAR_BY_ROLE[json.user!.role] || AVATAR_BY_ROLE.siswa } };
+        saveAuthSession(next);
+        setAuthSession(next);
+      })
+      .catch(() => { if (!cancelled) setAuthSession(null); });
+    return () => { cancelled = true; };
+  }, []); // Validasi cookie sekali saat aplikasi dimuat.
+
+  useEffect(() => {
     if (currentUser && !canAccessTab(currentUser, activeTab)) {
       setActiveTab('profil');
     }
@@ -93,13 +111,14 @@ export default function App() {
         avatar: session.user.avatar || AVATAR_BY_ROLE[session.user.role] || AVATAR_BY_ROLE.siswa,
       },
     };
+    saveAuthSession(withAvatar);
     setAuthSession(withAvatar);
     setShowLoginModal(false);
   };
 
   const handleLogout = () => {
     if (authSession) {
-      logoutRequest(authSession.token);
+      logoutRequest(authSession.token || null);
     }
     setAuthSession(null);
     setActiveTab('landing');
@@ -247,7 +266,7 @@ export default function App() {
       )}
 
       {authSession?.user.mustChangePassword && (
-        <ChangePasswordModal token={authSession.token} onChanged={handlePasswordChanged} onLogout={handleLogout} />
+        <ChangePasswordModal onChanged={handlePasswordChanged} onLogout={handleLogout} />
       )}
 
     </div>

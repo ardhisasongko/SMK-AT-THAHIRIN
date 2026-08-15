@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword, type AuthUser } from '../../_lib/auth';
+import { createSession, hashPassword, verifyPassword, type AuthUser } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -17,12 +17,10 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   }
   await env.DB.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?')
     .bind(await hashPassword(body.newPassword), data.user.id).run();
-  const auth = request.headers.get('Authorization') || '';
-  const currentToken = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  if (currentToken) {
-    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token <> ?').bind(data.user.id, currentToken).run();
-  } else {
-    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(data.user.id).run();
-  }
-  return jsonResponse({ success: true });
+  await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(data.user.id).run();
+  const token = await createSession(env, data.user.id);
+  const response = jsonResponse({ success: true });
+  const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+  response.headers.set('Set-Cookie', `smk_session=${token}; Path=/; HttpOnly${secure}; SameSite=Strict; Max-Age=604800`);
+  return response;
 };

@@ -57,14 +57,9 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
     }
   }
 
-  if (wantLink && row.drive_link) {
-    // Arsitek: foto full sudah di Google Drive
-    return Response.redirect(row.drive_link, 302);
-  }
-
-  const payload = wantThumb ? row.thumb : (wantLink ? row.data : row.data);
+  const payload = wantThumb ? row.thumb : row.data || row.thumb;
   if (!payload) {
-    return new Response('Foto belum tersedia.', { status: 404 });
+    return new Response(wantLink && row.drive_link ? 'Foto arsip hanya tersedia untuk operator Drive sekolah.' : 'Foto belum tersedia.', { status: 404 });
   }
 
   const headers = new Headers();

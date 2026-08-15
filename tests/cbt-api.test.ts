@@ -19,7 +19,7 @@ describe('CBT client API', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/cbt/generate', expect.objectContaining({
       method: 'POST',
-      headers: expect.objectContaining({ Authorization: 'Bearer session-token', 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
     }));
   });
 });

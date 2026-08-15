@@ -24,7 +24,7 @@ export interface AuthEnv {
   DB: D1Database;
 }
 
-const ITERATIONS = 100_000;
+const ITERATIONS = 600_000;
 const KEY_LEN = 32;
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 hari
 
@@ -75,7 +75,12 @@ export async function verifyPassword(password: string, stored: string): Promise<
     keyMaterial,
     KEY_LEN * 8
   );
-  return toHex(new Uint8Array(bits)) === expected;
+  const actualBytes = new Uint8Array(bits);
+  const expectedBytes = fromHex(expected);
+  if (actualBytes.length !== expectedBytes.length) return false;
+  let difference = 0;
+  for (let i = 0; i < actualBytes.length; i++) difference |= actualBytes[i] ^ expectedBytes[i];
+  return difference === 0;
 }
 
 export function createToken(): string {
@@ -84,17 +89,23 @@ export function createToken(): string {
   return 'st_' + toHex(bytes);
 }
 
+async function hashSessionToken(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return `sha256:${toHex(new Uint8Array(digest))}`;
+}
+
 export async function createSession(env: AuthEnv, userId: string): Promise<string> {
   const token = createToken();
+  const tokenHash = await hashSessionToken(token);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   await env.DB.prepare(
     'INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)'
-  ).bind(token, userId, expiresAt).run();
+  ).bind(tokenHash, userId, expiresAt).run();
   return token;
 }
 
 export async function deleteSession(env: AuthEnv, token: string): Promise<void> {
-  await env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run();
+  await env.DB.prepare('DELETE FROM sessions WHERE token = ? OR token = ?').bind(await hashSessionToken(token), token).run();
 }
 
 function mapUser(row: any): AuthUser | null {
@@ -134,10 +145,18 @@ export async function getUserFromRequest(env: AuthEnv, request: Request): Promis
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : cookieToken || null;
   if (!token) return null;
 
-  const session = await env.DB.prepare(
-    'SELECT user_id, expires_at FROM sessions WHERE token = ?'
-  ).bind(token).first();
+  const tokenHash = await hashSessionToken(token);
+  let session = await env.DB.prepare(
+    'SELECT token, user_id, expires_at FROM sessions WHERE token = ?'
+  ).bind(tokenHash).first<any>();
+  if (!session && /^st_[0-9a-f]{64}$/.test(token)) {
+    session = await env.DB.prepare('SELECT token, user_id, expires_at FROM sessions WHERE token = ?').bind(token).first<any>();
+  }
   if (!session) return null;
+
+  if (session.token === token) {
+    await env.DB.prepare('UPDATE sessions SET token = ? WHERE token = ?').bind(tokenHash, token).run();
+  }
 
   const expiresAt = new Date(String(session.expires_at)).getTime();
   if (Number.isNaN(expiresAt) || expiresAt < Date.now()) return null;

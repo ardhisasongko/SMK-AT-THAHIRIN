@@ -82,14 +82,18 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   const passwordHash = await hashPassword(temporaryPassword);
   const now = new Date().toISOString();
 
-  const existing = await env.DB.prepare('SELECT id FROM users WHERE nip_nisn = ?').bind(nisn).first();
+  const existing = await env.DB.prepare('SELECT id, role FROM users WHERE nip_nisn = ?').bind(nisn).first<any>();
   if (existing) {
+    if (existing.role !== 'siswa') {
+      return jsonResponse({ success: false, error: 'Hanya akun siswa yang dapat ditetapkan sebagai ketua kelas.' }, 409);
+    }
     await env.DB.prepare(
       `UPDATE users
        SET role = 'ketua_kelas', class_id = ?, ketua_status = 'approved',
            approved_by = ?, approved_at = ?
        WHERE id = ?`
     ).bind(classId, data.user.id, now, String(existing.id)).run();
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(String(existing.id)).run();
     return jsonResponse({ success: true, data: { id: String(existing.id), name: siswa.name } });
   }
 
@@ -130,9 +134,13 @@ export const onRequestDelete: PagesFunction<Env, any, AuthData> = async ({ env, 
     return jsonResponse({ success: false, error: 'userId wajib diisi.' }, 400);
   }
 
-  await env.DB.prepare(
-    `UPDATE users SET role = 'siswa', ketua_status = 'none', approved_by = NULL, approved_at = NULL WHERE id = ?`
-  ).bind(userId).run();
+  const target = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(userId).first<any>();
+  if (!target) return jsonResponse({ success: false, error: 'Pengguna tidak ditemukan.' }, 404);
+  if (target.role !== 'ketua_kelas') return jsonResponse({ success: false, error: 'Pengguna bukan ketua kelas.' }, 409);
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE users SET role = 'siswa', ketua_status = 'none', approved_by = NULL, approved_at = NULL WHERE id = ? AND role = 'ketua_kelas'`).bind(userId),
+    env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId),
+  ]);
 
   return jsonResponse({ success: true });
 };

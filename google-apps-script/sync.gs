@@ -22,7 +22,7 @@
 const CONFIG = {
   TOKEN: 'GANTI_DENGAN_TOKEN_RAHASIA',           // wajib sama dengan SYNC_TOKEN di Worker
   ROOT_FOLDER_NAME: 'Absensi SMK AT-THAHIRIN',   // nama folder akar di Drive
-  SET_PUBLIC_LINKS: true,                        // set "anyone with the link" (view) utk file & folder
+  SET_PUBLIC_LINKS: false,                       // foto siswa wajib tetap privat
 };
 
 // ---------------------------------------------------------------- entry point
@@ -63,6 +63,11 @@ function getSheet(ss, name, headers) {
     sheet.setFrozenRows(1);
   }
   return sheet;
+}
+
+function safeSheetText(value) {
+  const text = String(value == null ? '' : value);
+  return /^[=+\-@]/.test(text) ? "'" + text : text;
 }
 
 // Nomor minggu ISO-8601 dari sebuah Date
@@ -107,7 +112,7 @@ function handleDaily(body) {
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       }
       link = file.getUrl();
-      sheet.appendRow([e.tanggal, e.kelas, e.nisn, e.siswaName, e.status, e.keterangan, e.waktu, link, folder.getUrl()]);
+      sheet.appendRow([e.tanggal, safeSheetText(e.kelas), safeSheetText(e.nisn), safeSheetText(e.siswaName), safeSheetText(e.status), safeSheetText(e.keterangan), e.waktu, link, folder.getUrl()]);
       results.push({ photoId: e.photoId, driveLink: link });
     }
   }
@@ -130,7 +135,7 @@ function handleWeekly(body) {
   for (const e of body.entries || []) {
     const folder = studentWeekFolder(e.nama, e.nisn, e.kelas, body.weekEnd);
     sheet.appendRow([
-      body.weekLabel, e.kelas, e.nisn, e.nama,
+      safeSheetText(body.weekLabel), safeSheetText(e.kelas), safeSheetText(e.nisn), safeSheetText(e.nama),
       e.hadir || 0, e.sakit || 0, e.izin || 0, e.alpa || 0,
       folder.getUrl(),
     ]);

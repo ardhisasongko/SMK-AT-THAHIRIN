@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { getAuthToken, authHeaders } from '../utils/auth';
+import { loadAuthSession, authHeaders } from '../utils/auth';
 
 export interface PersistedCollectionActions<T> {
   save: (action: SetStateAction<T>) => Promise<T>;
@@ -36,10 +36,10 @@ export function usePersistedCollection<T>(
   const [ready, setReady] = useState(false);
   const readyRef = useRef(false);
   const dataRef = useRef(data);
-  const token = getAuthToken();
+  const authUserId = loadAuthSession()?.user.id || null;
 
   const refresh = useCallback(async (): Promise<T> => {
-    if (!token) return dataRef.current;
+    if (!authUserId) return dataRef.current;
     const res = await fetch(`/api/data/${key}`, {
       cache: 'no-store',
       headers: authHeaders(),
@@ -51,10 +51,10 @@ export function usePersistedCollection<T>(
     dataRef.current = json.data;
     setData(json.data);
     return json.data;
-  }, [key, token]);
+  }, [key, authUserId]);
 
   const save = useCallback(async (action: SetStateAction<T>): Promise<T> => {
-    if (!token) throw new Error('Sesi login tidak tersedia. Silakan login kembali.');
+    if (!authUserId) throw new Error('Sesi login tidak tersedia. Silakan login kembali.');
     const next = typeof action === 'function'
       ? (action as (previous: T) => T)(dataRef.current)
       : action;
@@ -70,7 +70,7 @@ export function usePersistedCollection<T>(
     dataRef.current = json.data;
     setData(json.data);
     return json.data;
-  }, [key, token]);
+  }, [key, authUserId]);
 
   // Load dari API; refetch saat token berubah (login/logout)
   useEffect(() => {
@@ -79,7 +79,7 @@ export function usePersistedCollection<T>(
     readyRef.current = false;
     setData(fallback);
 
-    if (!token) {
+    if (!authUserId) {
       dataRef.current = fallback;
       setReady(true);
       readyRef.current = true;
@@ -97,7 +97,7 @@ export function usePersistedCollection<T>(
           if (json?.success && json.data !== null && json.data !== undefined) {
             dataRef.current = json.data as T;
             if (!cancelled) setData(json.data as T);
-          } else if (json?.success && json.data === null && token) {
+          } else if (json?.success && json.data === null && authUserId) {
             // D1 masih kosong (deploy pertama) & sudah login -> seed data fallback ke D1
             dataRef.current = fallback;
             fetch(`/api/data/${key}`, {
@@ -118,7 +118,7 @@ export function usePersistedCollection<T>(
       }
     })();
     return () => { cancelled = true; };
-  }, [key, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, authUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync ref agar setter selalu punya nilai terbaru
   useEffect(() => { dataRef.current = data; }, [data]);
@@ -133,7 +133,7 @@ export function usePersistedCollection<T>(
         : action;
       dataRef.current = next;
       setData(next);
-      if (!token) return;
+      if (!authUserId) return;
       void save(next).catch(async error => {
         console.error(`[persist:${key}] Gagal simpan:`, error);
         try {
@@ -149,7 +149,7 @@ export function usePersistedCollection<T>(
         }));
       });
     },
-    [key, refresh, save, token]
+    [authUserId, key, refresh, save]
   );
 
   return [data, setPersisted, ready, { save, refresh }];

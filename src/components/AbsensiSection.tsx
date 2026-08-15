@@ -7,6 +7,7 @@ import { getCurrentLocation, mapsUrl } from '../utils/geo';
 import { uploadPhoto } from '../utils/photo';
 import { StudentAbsensiCard } from './StudentAbsensiCard';
 import { dateWIB } from '../utils/date';
+import { authHeaders } from '../utils/auth';
 import { 
   UserCheck, 
   QrCode, 
@@ -127,7 +128,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     setLogLoading(true);
     try {
       const res = await fetch('/api/data/presensi_log', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('smk_auth') ? JSON.parse(localStorage.getItem('smk_auth')!).token : ''}` }
+        headers: authHeaders()
       });
       const json = await res.json() as { data?: any[] };
       setLogData(json.data || []);

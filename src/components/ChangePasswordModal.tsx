@@ -2,9 +2,9 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { KeyRound, LogOut } from 'lucide-react';
 
-interface Props { token: string; onChanged: () => void; onLogout: () => void }
+interface Props { onChanged: () => void; onLogout: () => void }
 
-export function ChangePasswordModal({ token, onChanged, onLogout }: Props) {
+export function ChangePasswordModal({ onChanged, onLogout }: Props) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -17,7 +17,7 @@ export function ChangePasswordModal({ token, onChanged, onLogout }: Props) {
     setLoading(true); setError('');
     try {
       const res = await fetch('/api/auth/change-password', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       const json = await res.json() as { success?: boolean; error?: string };

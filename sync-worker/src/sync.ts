@@ -29,9 +29,28 @@ interface AppsScriptResult {
  * tulis baris di tabel "Harian", lalu kosongkan `data` (thumb tetap di D1).
  */
 export async function dailySync(env: Env): Promise<unknown> {
+  await env.DB.prepare(`
+    DELETE FROM photos
+    WHERE pushed = 0
+      AND created_at < datetime('now', '-1 day')
+      AND NOT EXISTS (
+        SELECT 1 FROM app_data, json_each(app_data.value) AS attendance
+        WHERE app_data.key = 'presensi_v1'
+          AND json_extract(attendance.value, '$.fotoUrl') = '/api/photo/' || photos.id
+      )
+  `).run();
   const photos = await env.DB
     .prepare(
-      'SELECT id, data, mime FROM photos WHERE pushed = 0 AND data IS NOT NULL ORDER BY created_at ASC LIMIT 300'
+      `SELECT photos.id, photos.data, photos.mime
+       FROM photos, app_data
+       WHERE app_data.key = 'presensi_v1'
+         AND photos.pushed = 0
+         AND photos.data IS NOT NULL
+         AND EXISTS (
+           SELECT 1 FROM json_each(app_data.value) AS attendance
+           WHERE json_extract(attendance.value, '$.fotoUrl') = '/api/photo/' || photos.id
+         )
+       ORDER BY photos.created_at ASC LIMIT 300`
     )
     .all<PhotoRow>();
 
@@ -80,9 +99,7 @@ export async function dailySync(env: Env): Promise<unknown> {
       };
     });
 
-  if (!entries.length) {
-    return { action: 'daily', pushed: 0, orphan: photos.results.length };
-  }
+  if (!entries.length) return { action: 'daily', pushed: 0, skipped: true };
 
   const resp = await postAppsScript(env, { action: 'daily', token: env.SYNC_TOKEN, entries });
 

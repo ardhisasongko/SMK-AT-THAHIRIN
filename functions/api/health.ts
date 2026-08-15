@@ -1,27 +1,19 @@
-interface Env {
-  DB: D1Database;
-  APP_NAME?: string;
-}
+import { jsonResponse } from '../_lib/response';
+
+interface Env { DB: D1Database; APP_NAME?: string }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
-  let dbStatus = "ok";
+  let db = 'ok';
   try {
-    await env.DB.prepare("SELECT 1").first();
+    await env.DB.prepare('SELECT 1').first();
   } catch {
-    dbStatus = "error";
+    db = 'error';
   }
-
-  return new Response(
-    JSON.stringify({
-      status: "ok",
+  return jsonResponse({
+      status: db === 'ok' ? 'ok' : 'degraded',
       school: "SMKS PLUS AT THAHIRIN",
       app: env.APP_NAME || "SMKS PLUS AT THAHIRIN",
-      db: dbStatus,
+      db,
       time: new Date().toISOString(),
-    }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
+  }, db === 'ok' ? 200 : 503);
 };

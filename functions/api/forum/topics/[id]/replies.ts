@@ -1,3 +1,25 @@
-import type { AuthUser } from '../../../../_lib/auth'; import { forumTopicVisible } from '../../../../_lib/forum-notifications'; import { jsonResponse } from '../../../../_lib/response';
-interface Env { DB: D1Database } type AuthData = Record<string, unknown> & { user: AuthUser | null };
-export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env,data,request,params }) => { if(!data.user)return jsonResponse({success:false,error:'Silakan login.'},401); let body:any;try{body=await request.json()}catch{return jsonResponse({success:false,error:'Body harus JSON.'},400)} if(typeof body.content!=='string'||!body.content.trim()||body.content.length>10000)return jsonResponse({success:false,error:'Balasan tidak valid.'},400); const topic=await env.DB.prepare('SELECT * FROM forum_topics WHERE id=? AND deleted_at IS NULL').bind(String(params.id)).first<any>();if(!topic||!(await forumTopicVisible(env.DB,data.user,topic)))return jsonResponse({success:false,error:'Topik tidak ditemukan.'},404);const id=`fr-${crypto.randomUUID()}`;await env.DB.prepare('INSERT INTO forum_replies (id,topic_id,author_user_id,author_name,author_role,author_avatar,content,attachments_json) VALUES (?,?,?,?,?,?,?,?)').bind(id,String(params.id),data.user.id,data.user.name,data.user.role,'',body.content.trim(),'[]').run();return jsonResponse({success:true,data:{id,authorId:data.user.id,authorName:data.user.name,authorRole:data.user.role,authorAvatar:'',createdAt:new Date().toISOString(),content:body.content.trim(),attachments:[],likes:0,likedBy:[]}},201)};
+import type { AuthUser } from '../../../../_lib/auth';
+import { forumTopicVisible } from '../../../../_lib/forum-notifications';
+import { consumeRateLimit } from '../../../../_lib/rate-limit';
+import { jsonResponse } from '../../../../_lib/response';
+
+interface Env { DB: D1Database }
+type AuthData = Record<string, unknown> & { user: AuthUser | null };
+
+export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, data, request, params }) => {
+  if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
+  if (!(await consumeRateLimit(env.DB, `forum-reply:${data.user.id}`, 30, 60 * 60))) {
+    return jsonResponse({ success: false, error: 'Batas balasan per jam tercapai.' }, 429);
+  }
+  let body: any;
+  try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
+  if (typeof body.content !== 'string' || !body.content.trim() || body.content.length > 10000) {
+    return jsonResponse({ success: false, error: 'Balasan tidak valid.' }, 400);
+  }
+  const topic = await env.DB.prepare('SELECT * FROM forum_topics WHERE id=? AND deleted_at IS NULL').bind(String(params.id)).first<any>();
+  if (!topic || !(await forumTopicVisible(env.DB, data.user, topic))) return jsonResponse({ success: false, error: 'Topik tidak ditemukan.' }, 404);
+  const id = `fr-${crypto.randomUUID()}`;
+  await env.DB.prepare('INSERT INTO forum_replies (id,topic_id,author_user_id,author_name,author_role,author_avatar,content,attachments_json) VALUES (?,?,?,?,?,?,?,?)')
+    .bind(id, String(params.id), data.user.id, data.user.name, data.user.role, '', body.content.trim(), '[]').run();
+  return jsonResponse({ success: true, data: { id, authorId: data.user.id, authorName: data.user.name, authorRole: data.user.role, authorAvatar: '', createdAt: new Date().toISOString(), content: body.content.trim(), attachments: [], likes: 0, likedBy: [] } }, 201);
+};

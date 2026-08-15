@@ -17,7 +17,7 @@ export interface User {
 }
 
 export interface AuthSession {
-  token: string;
+  token?: string;
   user: User;
 }
 

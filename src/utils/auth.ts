@@ -1,7 +1,8 @@
 /**
  * Client auth utilities untuk SMKS PLUS AT THAHIRIN.
  * Autentikasi dilakukan SERVER (Pages Functions + D1); file ini hanya
- * mengelola token sesi di browser & validasi ringan sisi client.
+ * menyimpan profil tampilan dan validasi ringan sisi client. Token sesi berada
+ * di cookie HttpOnly agar tidak dapat dibaca JavaScript.
  */
 
 import { AuthSession } from '../types';
@@ -10,7 +11,7 @@ const AUTH_STORAGE_KEY = 'smk_auth';
 
 export function saveAuthSession(session: AuthSession): void {
   try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user: session.user }));
   } catch (e) {
     console.error('Gagal menyimpan sesi:', e);
   }
@@ -21,15 +22,15 @@ export function loadAuthSession(): AuthSession | null {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.token || !parsed.user) return null;
-    return parsed as AuthSession;
+    if (!parsed?.user) return null;
+    return { user: parsed.user } as AuthSession;
   } catch {
     return null;
   }
 }
 
 export function getAuthToken(): string | null {
-  return loadAuthSession()?.token ?? null;
+  return null;
 }
 
 export function clearAuthSession(): void {
@@ -40,13 +41,9 @@ export function clearAuthSession(): void {
   }
 }
 
-/** Header Authorization untuk dipakai di fetch. */
+/** Cookie HttpOnly dikirim otomatis untuk request same-origin. */
 export function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const token = getAuthToken();
-  return {
-    ...extra,
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+  return extra;
 }
 
 /** Login ke server, kirimkan token + user bila sukses. */
@@ -63,7 +60,6 @@ export async function loginRequest(
     const json = await res.json() as {
       success?: boolean;
       error?: string;
-      token?: string;
       user?: {
         id: string; name: string; email: string; role: string;
         nipNisn?: string | null; classId?: string | null;
@@ -87,7 +83,7 @@ export async function loginRequest(
       status: (json.user!.status || 'active') as AuthSession['user']['status'],
       mustChangePassword: Boolean(json.user!.mustChangePassword),
     };
-    return { ok: true, session: { token: json.token!, user } };
+    return { ok: true, session: { user } };
   } catch (e: any) {
     return { ok: false, error: e?.message || 'Gagal terhubung ke server.' };
   }

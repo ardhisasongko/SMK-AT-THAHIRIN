@@ -8,6 +8,7 @@
 
 import { type AuthUser } from '../_lib/auth';
 import { jsonResponse } from '../_lib/response';
+import { consumeRateLimit } from '../_lib/rate-limit';
 
 interface Env {
   DB: D1Database;
@@ -39,15 +40,27 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   const url = new URL(request.url);
   const attachId = url.searchParams.get('id');
 
+  if (!attachId && !(await consumeRateLimit(env.DB, `upload:${data.user.id}`, 10, 60 * 60))) {
+    return jsonResponse({ success: false, error: 'Batas upload per jam tercapai.' }, 429);
+  }
+
+  if (!attachId) {
+    const daily = await env.DB.prepare("SELECT COUNT(*) AS total FROM photos WHERE created_by = ? AND created_at >= datetime('now', '-1 day')")
+      .bind(data.user.id).first<{ total: number }>();
+    if (Number(daily?.total || 0) >= 20) {
+      return jsonResponse({ success: false, error: 'Batas 20 foto per hari tercapai.' }, 429);
+    }
+  }
+
   const contentLength = Number(request.headers.get('Content-Length') || 0);
-  if (contentLength > 5 * 1024 * 1024) {
-    return jsonResponse({ success: false, error: 'Ukuran foto melebihi 5MB.' }, 413);
+  if (contentLength > 2 * 1024 * 1024) {
+    return jsonResponse({ success: false, error: 'Ukuran foto melebihi 2MB.' }, 413);
   }
   const bytes = await request.arrayBuffer();
   const sizeMB = bytes.byteLength / (1024 * 1024);
 
-  if (sizeMB > 5) {
-    return jsonResponse({ success: false, error: 'Ukuran foto melebihi 5MB.' }, 413);
+  if (sizeMB > 2) {
+    return jsonResponse({ success: false, error: 'Ukuran foto melebihi 2MB.' }, 413);
   }
   if (sizeMB === 0) {
     return jsonResponse({ success: false, error: 'Tidak ada data foto.' }, 400);
@@ -78,10 +91,15 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
 
     // Foto full baru
     const id = crypto.randomUUID();
-    await env.DB
-      .prepare('INSERT INTO photos (id, data, mime, created_by) VALUES (?, ?, ?, ?)')
-      .bind(id, base64, contentType, data.user.id)
+    const inserted = await env.DB
+      .prepare(`INSERT INTO photos (id, data, mime, created_by)
+        SELECT ?, ?, ?, ?
+        WHERE (SELECT COUNT(*) FROM photos WHERE created_by = ? AND created_at >= datetime('now', '-1 day')) < 20`)
+      .bind(id, base64, contentType, data.user.id, data.user.id)
       .run();
+    if (Number(inserted.meta?.changes || 0) === 0) {
+      return jsonResponse({ success: false, error: 'Batas 20 foto per hari tercapai.' }, 429);
+    }
     return jsonResponse({ success: true, id, url: `/api/photo/${id}` });
   } catch (e: any) {
     console.error('Upload gagal:', e);

@@ -6,7 +6,7 @@ const { Client, LocalAuth } = pkg;
 const cfg={api:process.env.API_URL||'https://smk-at-tahirin.pages.dev',key:process.env.GATEWAY_KEY,activeMs:Number(process.env.POLL_ACTIVE_MS)||60000,idleMs:Number(process.env.POLL_IDLE_MS)||600000,minDelay:Number(process.env.SEND_DELAY_MIN_MS)||5000,maxDelay:Number(process.env.SEND_DELAY_MAX_MS)||7000};
 if(!cfg.key)throw new Error('GATEWAY_KEY wajib diisi.');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const client=new Client({authStrategy:new LocalAuth({clientId:'smk-notification'}),puppeteer:{headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{}),args:['--no-sandbox','--disable-setuid-sandbox']}});
+const client=new Client({authStrategy:new LocalAuth({clientId:'smk-notification'}),puppeteer:{headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})}});
 let ready=false,emptyRuns=0,active=false;
 client.on('qr',qr=>{console.log('Scan QR berikut menggunakan WhatsApp nomor sekolah:');qrcode.generate(qr,{small:true});});
 client.on('ready',()=>{ready=true;console.log('WhatsApp gateway siap.');});

@@ -1,6 +1,7 @@
 import type { AuthUser } from '../../../_lib/auth';
 import { ensureLegacyForumMigrated } from '../../../_lib/forum-notifications';
 import { jsonResponse } from '../../../_lib/response';
+import { consumeRateLimit } from '../../../_lib/rate-limit';
 
 interface Env { DB: D1Database }
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -33,6 +34,7 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
 
 export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, data, request }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
+  if (!(await consumeRateLimit(env.DB, `forum-topic:${data.user.id}`, 5, 60 * 60))) return jsonResponse({ success: false, error: 'Batas pembuatan topik per jam tercapai.' }, 429);
   await ensureLegacyForumMigrated(env.DB);
   let body: any; try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200 || typeof body.content !== 'string' || !body.content.trim() || body.content.length > 10000 || !['mapel','kelas'].includes(body.categoryType) || typeof body.categoryName !== 'string' || body.categoryName.length > 100) return jsonResponse({ success: false, error: 'Data topik tidak valid.' }, 400);
