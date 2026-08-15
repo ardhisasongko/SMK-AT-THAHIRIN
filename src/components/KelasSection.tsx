@@ -26,7 +26,7 @@ interface KelasSectionProps {
   kelasList: Kelas[];
   setKelasList: React.Dispatch<React.SetStateAction<Kelas[]>>;
   siswaList: Siswa[];
-  setSiswaList: React.Dispatch<React.SetStateAction<Siswa[]>>;
+  refreshSiswa: () => Promise<Siswa[]>;
   currentUser: User | null;
 }
 
@@ -34,7 +34,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   kelasList,
   setKelasList,
   siswaList,
-  setSiswaList,
+  refreshSiswa,
   currentUser
 }) => {
   const [selectedKelas, setSelectedKelas] = useState<Kelas | null>(null);
@@ -180,7 +180,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   };
 
   // FIXED: Add New Siswa submit with validation
-  const handleAddSiswaSubmit = (e: React.FormEvent) => {
+  const handleAddSiswaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSiswaFormError('');
 
@@ -210,17 +210,30 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
       return;
     }
 
-    const createdSiswa: Siswa = {
-      id: 's-' + Date.now(),
-      nisn: newSiswaNisn.trim(),
-      name: newSiswaName.trim(),
-      classId: selectedKelas.id,
-      gender: newSiswaGender,
-      foto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      noHpOrangTua: '0812' + Math.floor(10000000 + Math.random() * 90000000)
-    };
-
-    setSiswaList([...siswaList, createdSiswa]);
+    const nisn = newSiswaNisn.trim();
+    let response: Response;
+    try {
+      response = await fetch('/api/users', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ name: newSiswaName.trim(), email: `s${nisn}@smksplusatthahirin.sch.id`, identifier: nisn, role: 'siswa', classId: selectedKelas.id, gender: newSiswaGender }),
+      });
+    } catch {
+      setSiswaFormError('Gagal terhubung ke server.');
+      return;
+    }
+    const result = await response.json().catch(() => ({})) as { error?: string; initialPassword?: string };
+    if (!response.ok) {
+      setSiswaFormError(result.error || 'Gagal membuat akun siswa.');
+      return;
+    }
+    alert(`Akun siswa berhasil dibuat. Password awal: ${result.initialPassword || '-'} (catat sekarang, hanya ditampilkan sekali).`);
+    try {
+      await refreshSiswa();
+    } catch {
+      setSiswaFormError('Akun sudah dibuat, tetapi roster gagal dimuat ulang. Silakan refresh halaman.');
+      return;
+    }
     
     // Update count
     setKelasList(prev => prev.map(k => k.id === selectedKelas.id ? { ...k, jumlahSiswa: k.jumlahSiswa + 1 } : k));
@@ -260,7 +273,6 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
       const isDuplicate = siswaList.some(s => s.id !== editingSiswa.id && s.nisn === nisn);
       if (isDuplicate) { setEditError(`NISN ${nisn} sudah terdaftar di siswa lain!`); return; }
 
-      const nisnChanged = nisn !== editingSiswa.nisn;
       const updated: Siswa = {
         ...editingSiswa,
         name,
@@ -270,19 +282,17 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
         gender: editGender,
         noHpOrangTua: editHp.trim() || undefined,
       };
-      setSiswaList(prev => prev.map(s => s.id === editingSiswa.id ? updated : s));
-
-      if (nisnChanged) {
-        const res = await fetch('/api/users/nisn', {
-          method: 'PATCH',
-          headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ oldNisn: editingSiswa.nisn, newNisn: nisn, name }),
-        });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({})) as { error?: string };
-          setEditError(`Data roster tersimpan, tapi akun login belum disinkron: ${j?.error || 'gagal'}`);
-        }
+      const res = await fetch('/api/users/nisn', {
+        method: 'PATCH',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ oldNisn: editingSiswa.nisn, newNisn: nisn, name, student: updated }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({})) as { error?: string };
+        setEditError(j?.error || 'Gagal menyinkronkan data siswa.');
+        return;
       }
+      await refreshSiswa();
       setEditingSiswa(null);
     } finally {
       setEditSaving(false);

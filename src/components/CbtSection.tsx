@@ -13,8 +13,10 @@ import {
   BookOpen,
   Users,
   ShieldCheck,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
-import { User as UserType, CbtExam, CbtSubmission } from '../types';
+import { User as UserType, CbtExam, CbtSubmission, Kelas } from '../types';
 import { useFilter } from '../hooks/useFilter';
 import { CbtTestRunner } from './cbt/CbtTestRunner';
 import { CbtResultsTable } from './cbt/CbtResultsTable';
@@ -25,11 +27,13 @@ import { cbtApi } from '../utils/cbt-api';
 
 interface CbtSectionProps {
   currentUser: UserType | null;
+  kelasList: Kelas[];
   onOpenLogin: () => void;
 }
 
 export function CbtSection({
   currentUser,
+  kelasList,
   onOpenLogin
 }: CbtSectionProps) {
   const [cbtExams, setCbtExams] = useState<CbtExam[]>([]);
@@ -40,6 +44,7 @@ export function CbtSection({
   const [selectedExamForToken, setSelectedExamForToken] = useState<CbtExam | null>(null);
 
   const [showCreateExamModal, setShowCreateExamModal] = useState<boolean>(false);
+  const [editingExam, setEditingExam] = useState<CbtExam | null>(null);
   const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
   const { query: searchTerm, setQuery: setSearchTerm, filtered: filteredExams } = useFilter(
     cbtExams,
@@ -98,12 +103,34 @@ export function CbtSection({
 
   const handleSaveExam = async (exam: CbtExam) => {
     try {
-      const saved = await cbtApi.createExam(exam);
-      setCbtExams(prev => [saved, ...prev]);
+      const saved = editingExam ? await cbtApi.updateExam(exam) : await cbtApi.createExam(exam);
+      setCbtExams(prev => editingExam ? prev.map(item => item.id === saved.id ? saved : item) : [saved, ...prev]);
       setShowCreateExamModal(false);
-      alert(`Ujian dibuat. Token pengawas: ${saved.token}`);
+      setEditingExam(null);
+      alert(editingExam ? 'Ujian berhasil diperbarui.' : `Ujian dibuat. Token pengawas: ${saved.token}`);
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Ujian gagal dibuat.');
+    }
+  };
+
+  const handleStatusChange = async (exam: CbtExam, status: 'active' | 'inactive' | 'completed') => {
+    const label = status === 'active' ? 'mengaktifkan' : status === 'inactive' ? 'menonaktifkan' : 'menyelesaikan';
+    if (!window.confirm(`Yakin ingin ${label} ujian "${exam.title}"?`)) return;
+    try {
+      const result = await cbtApi.setExamStatus(exam.id, status);
+      setCbtExams(prev => prev.map(item => item.id === exam.id ? { ...item, status: result.status } : item));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Status ujian gagal diubah.');
+    }
+  };
+
+  const handleDeleteExam = async (exam: CbtExam) => {
+    if (!window.confirm(`Hapus permanen ujian "${exam.title}"?`)) return;
+    try {
+      await cbtApi.deleteExam(exam.id);
+      setCbtExams(prev => prev.filter(item => item.id !== exam.id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Ujian gagal dihapus.');
     }
   };
 
@@ -171,7 +198,7 @@ export function CbtSection({
 
                   <button
                     id="btn-create-cbt"
-                    onClick={() => setShowCreateExamModal(true)}
+                    onClick={() => { setEditingExam(null); setShowCreateExamModal(true); }}
                     className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
@@ -229,7 +256,7 @@ export function CbtSection({
                       </span>
                       <span className="bg-slate-100 text-slate-600 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1">
                         <Users className="w-3 h-3 text-slate-500" />
-                        {exam.classTarget}
+                         {exam.classTarget === 'all' || exam.classTarget === 'Semua Kelas MPLB' ? 'Semua Kelas' : kelasList.find(kelas => kelas.id === exam.classTarget)?.name || exam.classTarget}
                       </span>
                     </div>
 
@@ -275,20 +302,26 @@ export function CbtSection({
                           <span>Token diberikan oleh pengawas</span>
                         </div>
 
-                        {!isStaff && <button
+                        {!isStaff && exam.status === 'active' ? <button
                           id={`start-exam-${exam.id}`}
                           onClick={() => handleStartExam(exam)}
                           className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.02]"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
                           <span>Kerjakan Ujian</span>
-                        </button>}
+                        </button> : !isStaff && <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500">{exam.status === 'upcoming' ? 'Belum Dimulai' : 'Ujian Ditutup'}</span>}
                       </div>
                     )}
                     {isStaff && (
-                      <button type="button" onClick={() => handleRotateToken(exam)} className="ml-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100">
-                        Rotasi Token
-                      </button>
+                       <div className="ml-2 flex flex-wrap justify-end gap-1.5">
+                         <button type="button" onClick={() => { setEditingExam(exam); setShowCreateExamModal(true); }} title="Edit ujian" className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"><Pencil className="h-3.5 w-3.5" /></button>
+                         <button type="button" onClick={() => handleRotateToken(exam)} className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100">Rotasi Token</button>
+                         {exam.status === 'inactive'
+                           ? <button type="button" onClick={() => handleStatusChange(exam, 'active')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100">Aktifkan</button>
+                           : exam.status !== 'completed' && <button type="button" onClick={() => handleStatusChange(exam, 'inactive')} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-100">Nonaktifkan</button>}
+                         {exam.status !== 'completed' && <button type="button" onClick={() => handleStatusChange(exam, 'completed')} className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100">Selesai</button>}
+                         <button type="button" onClick={() => handleDeleteExam(exam)} title="Hapus ujian" className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-rose-700 hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                       </div>
                     )}
                   </div>
                 </div>
@@ -319,10 +352,12 @@ export function CbtSection({
 
       {/* CREATE NEW EXAM MODAL (GURU/ADMIN) */}
       {showCreateExamModal && (
-        <CbtCreateExamModal
-          currentUser={currentUser}
-          onSave={handleSaveExam}
-          onClose={() => setShowCreateExamModal(false)}
+         <CbtCreateExamModal
+           currentUser={currentUser}
+           kelasList={kelasList}
+           initialExam={editingExam}
+           onSave={handleSaveExam}
+           onClose={() => { setShowCreateExamModal(false); setEditingExam(null); }}
         />
       )}
 

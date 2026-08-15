@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ModulAjar, ModulAjarData, User } from '../types';
 import { SCHOOL_INFO } from '../data/initialData';
+import { authHeaders } from '../utils/auth';
 import { 
   BookOpen, 
   Sparkles, 
@@ -62,7 +63,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
     try {
       const response = await fetch('/api/modul-ajar/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           mataPelajaran,
           jurusan,

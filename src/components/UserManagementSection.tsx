@@ -7,44 +7,76 @@ import { Modal } from './ui/Modal';
 
 type ManagedUser = { id: string; name: string; email: string; nipNisn: string; role: string; classId?: string; jabatan?: string; status: string; createdAt: string };
 type Audit = { id: string; actor_name: string; actor_role: string; action: string; target_name?: string; reason?: string; created_at: string };
+type ApiJson<T = unknown> = { success?: boolean; data?: T; error?: string; initialPassword?: string };
 
-export function UserManagementSection({ currentUser }: { currentUser: User }) {
+async function requestJson<T = unknown>(input: RequestInfo | URL, init?: RequestInit): Promise<ApiJson<T>> {
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch {
+    throw new Error('Gagal terhubung ke server.');
+  }
+  let body: ApiJson<T>;
+  try {
+    body = await response.json() as ApiJson<T>;
+  } catch {
+    throw new Error(`Respons server tidak valid (HTTP ${response.status}).`);
+  }
+  if (!response.ok || !body.success) throw new Error(body.error || `Permintaan gagal (HTTP ${response.status}).`);
+  return body;
+}
+
+export function UserManagementSection({ currentUser, onStudentsChanged }: { currentUser: User; onStudentsChanged?: () => Promise<unknown> }) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [audit, setAudit] = useState<Audit[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('active');
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<ManagedUser | null>(null);
+  const [editingOriginalRole, setEditingOriginalRole] = useState('');
+  const [editingGender, setEditingGender] = useState<'L' | 'P'>('L');
   const [credentials, setCredentials] = useState<Array<{ identifier: string; password: string }> | null>(null);
   const [message, setMessage] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', identifier: '', role: 'guru', classId: '', jabatan: '' });
+  const [form, setForm] = useState({ name: '', email: '', identifier: '', role: 'guru', classId: '', jabatan: '', gender: 'L' });
   const isSuper = currentUser.role === 'super_admin';
 
   const load = async () => {
-    const [u, a] = await Promise.all([
-      fetch(`/api/users?status=${status}`, { headers: authHeaders() }),
-      fetch('/api/users/audit', { headers: authHeaders() }),
-    ]);
-    const uj = await u.json() as { data?: ManagedUser[] };
-    const aj = await a.json() as { data?: Audit[] };
-    setUsers(uj.data || []); setAudit(aj.data || []);
+    try {
+      const [uj, aj] = await Promise.all([
+        requestJson<ManagedUser[]>(`/api/users?status=${status}`, { headers: authHeaders() }),
+        requestJson<Audit[]>('/api/users/audit', { headers: authHeaders() }),
+      ]);
+      setUsers(uj.data || []); setAudit(aj.data || []);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Gagal memuat pengguna.');
+    }
   };
   useEffect(() => { load(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (editing && !editingOriginalRole) {
+      setEditingOriginalRole(editing.role);
+      setEditingGender('L');
+    }
+    if (!editing) setEditingOriginalRole('');
+  }, [editing, editingOriginalRole]);
 
   const create = async (e: FormEvent) => {
     e.preventDefault(); setMessage('');
-    const res = await fetch('/api/users', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(form) });
-    const json = await res.json() as { success?: boolean; error?: string; initialPassword?: string };
-    if (!res.ok) return setMessage(json.error || 'Gagal membuat akun.');
-    setCredentials([{ identifier: form.identifier, password: json.initialPassword! }]);
-    setShowCreate(false); setForm({ name: '', email: '', identifier: '', role: 'guru', classId: '', jabatan: '' }); load();
+    try {
+      const json = await requestJson('/api/users', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(form) });
+      setCredentials([{ identifier: form.identifier, password: json.initialPassword! }]);
+      setShowCreate(false); setForm({ name: '', email: '', identifier: '', role: 'guru', classId: '', jabatan: '', gender: 'L' });
+      await Promise.all([load(), form.role === 'siswa' ? onStudentsChanged?.() : undefined]);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Gagal membuat akun.'); }
   };
   const saveEdit = async (e: FormEvent) => {
     e.preventDefault(); if (!editing) return;
-    const res = await fetch('/api/users', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: editing.id, name: editing.name, email: editing.email, identifier: editing.nipNisn, role: editing.role, classId: editing.classId || null, jabatan: editing.jabatan || null, reason: 'Pembaruan data melalui panel admin' }) });
-    const json = await res.json() as { error?: string };
-    if (!res.ok) return setMessage(json.error || 'Gagal memperbarui akun.');
-    setEditing(null); load();
+    setMessage('');
+    try {
+      await requestJson('/api/users', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: editing.id, name: editing.name, email: editing.email, identifier: editing.nipNisn, role: editing.role, classId: editing.classId || null, jabatan: editing.jabatan || null, gender: editingGender, reason: 'Pembaruan data melalui panel admin' }) });
+      setEditing(null);
+      await Promise.all([load(), editing.role === 'siswa' || editingOriginalRole === 'siswa' ? onStudentsChanged?.() : undefined]);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Gagal memperbarui akun.'); }
   };
   const importCsv = async (file: File) => {
     setMessage('');
@@ -55,39 +87,48 @@ export function UserManagementSection({ currentUser }: { currentUser: User }) {
     for (const line of lines.slice(1)) {
       const values = line.split(',').map(v => v.trim());
       const row = Object.fromEntries(headers.map((h, i) => [h, values[i] || '']));
-      const res = await fetch('/api/users', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(row) });
-      const json = await res.json() as { error?: string; initialPassword?: string };
-      if (!res.ok) { setMessage(`Impor berhenti pada ${row.name || 'baris data'}: ${json.error || 'gagal'}`); break; }
-      created.push({ identifier: row.identifier, password: json.initialPassword! });
+      try {
+        const json = await requestJson('/api/users', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(row) });
+        created.push({ identifier: row.identifier, password: json.initialPassword! });
+      } catch (error) { setMessage(`Impor berhenti pada ${row.name || 'baris data'}: ${error instanceof Error ? error.message : 'gagal'}`); break; }
     }
     if (created.length) setCredentials(created);
-    load();
+    await Promise.all([load(), onStudentsChanged?.()]);
   };
 
   const setActive = async (u: ManagedUser, next: 'active' | 'inactive') => {
     const reason = prompt(`Alasan ${next === 'active' ? 'mengaktifkan' : 'menonaktifkan'} akun ${u.name}:`);
     if (!reason) return;
-    await fetch('/api/users', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id, status: next, reason }) });
-    load();
+    setMessage('');
+    try {
+      await requestJson('/api/users', { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id, status: next, reason }) });
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Gagal mengubah status akun.'); }
   };
   const archive = async (u: ManagedUser) => {
     const reason = prompt(`Alasan mengarsipkan akun ${u.name}:`); if (!reason) return;
-    await fetch('/api/users', { method: 'DELETE', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id, reason }) }); load();
+    setMessage('');
+    try {
+      await requestJson('/api/users', { method: 'DELETE', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id, reason }) });
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Gagal mengarsipkan akun.'); }
   };
   const permanentDelete = async (u: ManagedUser) => {
     const reason = prompt(`Alasan menghapus permanen akun ${u.name}:`); if (!reason) return;
     const password = prompt('Masukkan password Super Admin untuk konfirmasi:'); if (!password) return;
-    const res = await fetch('/api/users', { method: 'DELETE', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id, reason, password, permanent: true }) });
-    const json = await res.json() as { success?: boolean; error?: string };
-    if (!res.ok) return setMessage(json.error || 'Gagal menghapus permanen.');
-    load();
+    setMessage('');
+    try {
+      await requestJson('/api/users', { method: 'DELETE', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id, reason, password, permanent: true }) });
+      await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Gagal menghapus permanen.'); }
   };
   const resetPassword = async (u: ManagedUser) => {
     if (!confirm(`Reset password ${u.name}? Semua sesi akun akan dikeluarkan.`)) return;
-    const res = await fetch('/api/users/reset-password', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id }) });
-    const json = await res.json() as { initialPassword?: string; error?: string };
-    if (!res.ok) return setMessage(json.error || 'Gagal reset password.');
-    setCredentials([{ identifier: u.nipNisn, password: json.initialPassword! }]); load();
+    setMessage('');
+    try {
+      const json = await requestJson('/api/users/reset-password', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: u.id }) });
+      setCredentials([{ identifier: u.nipNisn, password: json.initialPassword! }]); await load();
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Gagal reset password.'); }
   };
   const visible = users.filter(u => `${u.name} ${u.email} ${u.nipNisn}`.toLowerCase().includes(search.toLowerCase()));
 
@@ -104,8 +145,8 @@ export function UserManagementSection({ currentUser }: { currentUser: User }) {
       </div>
     </div>
     <div className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="mb-3 flex items-center gap-2 font-bold"><ShieldCheck className="h-5 w-5 text-emerald-600" />Audit Aktivitas Terbaru</h2><div className="grid gap-2">{audit.slice(0, 20).map(a => <div key={a.id} className="rounded-lg bg-slate-50 p-3 text-xs"><strong>{a.actor_name}</strong> · {a.action} · {a.target_name || '-'}<span className="block text-slate-400">{a.created_at}{a.reason ? ` · ${a.reason}` : ''}</span></div>)}</div></div>
-    {showCreate && <Modal onClose={() => setShowCreate(false)} scrollable className="space-y-4"><div className="flex items-center justify-between"><h2 className="font-extrabold">Tambah Akun</h2><button onClick={() => setShowCreate(false)}><X /></button></div><form onSubmit={create} className="space-y-3"><input required placeholder="Nama lengkap" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required placeholder="NIK/NIP/NISN" value={form.identifier} onChange={e => setForm({ ...form, identifier: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full rounded-xl border p-3 text-sm"><option value="guru">Guru</option><option value="siswa">Siswa</option>{isSuper && <option value="admin">Admin</option>}</select><input placeholder="ID kelas (untuk siswa, opsional)" value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input placeholder="Jabatan (opsional)" value={form.jabatan} onChange={e => setForm({ ...form, jabatan: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><button className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white cursor-pointer">Buat Akun</button></form></Modal>}
-    {editing && <Modal onClose={() => setEditing(null)} scrollable className="space-y-4"><div className="flex items-center justify-between"><h2 className="font-extrabold">Edit Akun</h2><button onClick={() => setEditing(null)}><X /></button></div><form onSubmit={saveEdit} className="space-y-3"><input required value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required type="email" value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required value={editing.nipNisn} onChange={e => setEditing({ ...editing, nipNisn: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><select value={editing.role} onChange={e => setEditing({ ...editing, role: e.target.value })} className="w-full rounded-xl border p-3 text-sm"><option value="guru">Guru</option><option value="siswa">Siswa</option>{isSuper && <option value="admin">Admin</option>}</select><input placeholder="ID kelas" value={editing.classId || ''} onChange={e => setEditing({ ...editing, classId: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input placeholder="Jabatan" value={editing.jabatan || ''} onChange={e => setEditing({ ...editing, jabatan: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><button className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white cursor-pointer">Simpan Perubahan</button></form></Modal>}
+    {showCreate && <Modal onClose={() => setShowCreate(false)} scrollable className="space-y-4"><div className="flex items-center justify-between"><h2 className="font-extrabold">Tambah Akun</h2><button onClick={() => setShowCreate(false)}><X /></button></div><form onSubmit={create} className="space-y-3"><input required placeholder="Nama lengkap" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required placeholder="NIK/NIP/NISN" value={form.identifier} onChange={e => setForm({ ...form, identifier: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full rounded-xl border p-3 text-sm"><option value="guru">Guru</option><option value="siswa">Siswa</option>{isSuper && <option value="admin">Admin</option>}</select><input required={form.role === 'siswa'} placeholder="ID kelas (wajib untuk siswa)" value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} className="w-full rounded-xl border p-3 text-sm" />{form.role === 'siswa' && <select aria-label="Jenis kelamin" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })} className="w-full rounded-xl border p-3 text-sm"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>}<input placeholder="Jabatan (opsional)" value={form.jabatan} onChange={e => setForm({ ...form, jabatan: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><button className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white cursor-pointer">Buat Akun</button></form></Modal>}
+    {editing && <Modal onClose={() => setEditing(null)} scrollable className="space-y-4"><div className="flex items-center justify-between"><h2 className="font-extrabold">Edit Akun</h2><button onClick={() => setEditing(null)}><X /></button></div><form onSubmit={saveEdit} className="space-y-3"><input required value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required type="email" value={editing.email} onChange={e => setEditing({ ...editing, email: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><input required value={editing.nipNisn} onChange={e => setEditing({ ...editing, nipNisn: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><select value={editing.role} onChange={e => setEditing({ ...editing, role: e.target.value })} className="w-full rounded-xl border p-3 text-sm"><option value="guru">Guru</option><option value="siswa">Siswa</option>{isSuper && <option value="admin">Admin</option>}</select><input required={editing.role === 'siswa'} placeholder="ID kelas" value={editing.classId || ''} onChange={e => setEditing({ ...editing, classId: e.target.value })} className="w-full rounded-xl border p-3 text-sm" />{editing.role === 'siswa' && <select aria-label="Jenis kelamin siswa" value={editingGender} onChange={e => setEditingGender(e.target.value as 'L' | 'P')} className="w-full rounded-xl border p-3 text-sm"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>}<input placeholder="Jabatan" value={editing.jabatan || ''} onChange={e => setEditing({ ...editing, jabatan: e.target.value })} className="w-full rounded-xl border p-3 text-sm" /><button className="w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white cursor-pointer">Simpan Perubahan</button></form></Modal>}
     {credentials && <Modal onClose={() => setCredentials(null)} scrollable><div className="space-y-4 text-center"><UserCog className="mx-auto h-10 w-10 text-emerald-600" /><h2 className="font-extrabold">Kredensial Awal</h2><p className="text-xs text-rose-600">Ditampilkan satu kali. Serahkan langsung kepada pemilik akun.</p><div className="max-h-64 space-y-2 overflow-y-auto rounded-xl bg-slate-100 p-4 text-left text-sm">{credentials.map(c => <div key={c.identifier} className="border-b border-slate-200 pb-2 last:border-0"><p>Username: <strong>{c.identifier}</strong></p><p>Password: <strong>{c.password}</strong></p></div>)}</div><button onClick={() => setCredentials(null)} className="w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white cursor-pointer">Saya Sudah Mencatat</button></div></Modal>}
   </div>;
 }

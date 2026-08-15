@@ -382,6 +382,16 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
     return jsonResponse({ success: true, data: checked.result, changed: checked.changedCount });
   }
 
+  if (k === 'siswa_v1') {
+    const inserted = await env.DB.prepare(
+      "INSERT OR IGNORE INTO app_data (key, value, updated_at) VALUES ('siswa_v1', ?, unixepoch())"
+    ).bind(JSON.stringify(body)).run();
+    if (Number(inserted.meta?.changes || 0) === 0) {
+      return jsonResponse({ success: false, error: 'Roster siswa dikelola melalui Manajemen Pengguna agar perubahan akun tetap sinkron.' }, 409);
+    }
+    return jsonResponse({ success: true, data: body });
+  }
+
   await save(env.DB, k, body);
   return jsonResponse({ success: true, data: body });
 };

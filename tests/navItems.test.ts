@@ -13,15 +13,16 @@ const user = (role: User['role']): User => ({
 describe('role navigation', () => {
   it('membatasi siswa ke fitur siswa', () => {
     expect(getNavItems(user('siswa')).map(item => item.id)).toEqual([
-      'landing', 'cbt', 'absensi', 'forum', 'profil',
+      'landing', 'cbt', 'absensi', 'forum', 'notifikasi', 'profil',
     ]);
     expect(canAccessTab(user('siswa'), 'modul-ajar')).toBe(false);
   });
 
   it('memberi ketua kelas menu siswa dan akses absensi', () => {
     expect(getNavItems(user('ketua_kelas')).map(item => item.id)).toEqual([
-      'landing', 'cbt', 'absensi', 'forum', 'profil',
+      'landing', 'cbt', 'absensi', 'forum', 'notifikasi', 'profil',
     ]);
+    expect(canAccessTab(user('ketua_kelas'), 'notifikasi')).toBe(true);
   });
 
   it('memberi guru dan admin fitur pengelolaan', () => {

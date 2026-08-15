@@ -15,16 +15,16 @@ import {
   BookOpen, 
   Users, 
   Sparkles,
-  Download,
   AlertCircle
 } from 'lucide-react';
-import { ForumTopic, ForumAttachment, User, ForumReply } from '../types';
+import { ForumTopic, Kelas, User, ForumReply } from '../types';
 import { forumApi } from '../utils/community-api';
 
 interface ForumSectionProps {
   topics: ForumTopic[];
   setTopics: React.Dispatch<React.SetStateAction<ForumTopic[]>>;
   currentUser: User | null;
+  kelasList: Kelas[];
   onNewTopicNotification?: (topicTitle: string, category: string) => void;
   onOpenLogin: () => void;
 }
@@ -33,6 +33,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
   topics,
   setTopics,
   currentUser,
+  kelasList,
   onNewTopicNotification,
   onOpenLogin
 }) => {
@@ -52,13 +53,9 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
   const [newCategoryName, setNewCategoryName] = useState<string>('Pemrograman Web & Perangkat Bergerak');
   const [newContent, setNewContent] = useState<string>('');
   const [newTagsInput, setNewTagsInput] = useState<string>('WebDev, Diskusi');
-  const [newAttachments, setNewAttachments] = useState<ForumAttachment[]>([]);
-  const [simulatedFileName, setSimulatedFileName] = useState<string>('');
 
   // Reply Form State inside active topic
   const [replyText, setReplyText] = useState<string>('');
-  const [replyAttachments, setReplyAttachments] = useState<ForumAttachment[]>([]);
-  const [simulatedReplyFileName, setSimulatedReplyFileName] = useState<string>('');
 
   // Predefined category options
   const mapelOptions = [
@@ -70,39 +67,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
     'General / Pengumuman Lomba'
   ];
 
-  const kelasOptions = [
-    'X RPL 1',
-    'XI TKJ 2',
-    'XII TKR 1',
-    'X AKL 1'
-  ];
-
-  // Helper for adding simulated file
-  const handleAddFileAttachment = (isReply: boolean = false) => {
-    const fileName = isReply ? simulatedReplyFileName : simulatedFileName;
-    if (!fileName.trim()) return;
-
-    const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
-    let fileType = 'doc';
-    if (['jpg', 'jpeg', 'png', 'webp'].includes(fileExt)) fileType = 'image';
-    if (fileExt === 'pdf') fileType = 'pdf';
-
-    const newFile: ForumAttachment = {
-      id: `fa-${Date.now()}`,
-      name: fileName.includes('.') ? fileName : `${fileName}.pdf`,
-      url: '#',
-      size: `${(Math.random() * 2 + 0.5).toFixed(1)} MB`,
-      type: fileType
-    };
-
-    if (isReply) {
-      setReplyAttachments([...replyAttachments, newFile]);
-      setSimulatedReplyFileName('');
-    } else {
-      setNewAttachments([...newAttachments, newFile]);
-      setSimulatedFileName('');
-    }
-  };
+  const kelasOptions = kelasList.map(kelas => kelas.name);
 
   // Create Topic Handler
   const handleCreateTopic = async (e: React.FormEvent) => {
@@ -129,7 +94,6 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
       authorAvatar: currentUser.avatar,
       createdAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
       content: newContent,
-      attachments: newAttachments.length > 0 ? newAttachments : undefined,
       tags: parsedTags.length > 0 ? parsedTags : ['DiskusiSekolah'],
       likes: 1,
       likedBy: [currentUser.id],
@@ -151,7 +115,6 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
     // Reset Form
     setNewTitle('');
     setNewContent('');
-    setNewAttachments([]);
     setShowCreateModal(false);
   };
 
@@ -171,7 +134,6 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
       authorAvatar: currentUser.avatar,
       createdAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
       content: replyText,
-      attachments: replyAttachments.length > 0 ? replyAttachments : undefined,
       likes: 0,
       likedBy: []
     };
@@ -194,7 +156,6 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
     }));
 
     setReplyText('');
-    setReplyAttachments([]);
   };
 
   // Like Topic Toggle
@@ -284,7 +245,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
               Forum Diskusi Siswa & Guru
             </h1>
             <p className="text-slate-300 text-sm leading-relaxed">
-              Wadah interaksi akademis berdasarkan mata pelajaran kejuruan maupun kelas. Buat topik tanya jawab, bagikan modul pendukung, dan lampirkan materi diskusi secara real-time.
+              Wadah interaksi akademis berdasarkan mata pelajaran kejuruan maupun kelas untuk membuat topik dan tanggapan secara real-time.
             </p>
           </div>
 
@@ -646,14 +607,14 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
               {/* Category Selector */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Tipe Kategori</label>
+                  <label htmlFor="new-topic-category-type" className="block font-bold text-slate-700 mb-1">Tipe Kategori</label>
                   <select
                     id="new-topic-category-type"
                     value={newCategoryType}
                     onChange={(e) => {
-                      const val = e.target.value as 'mapel' | 'kelas';
-                      setNewCategoryType(val);
-                      setNewCategoryName(val === 'mapel' ? mapelOptions[0] : kelasOptions[0]);
+                       const val = e.target.value as 'mapel' | 'kelas';
+                       setNewCategoryType(val);
+                       setNewCategoryName(val === 'mapel' ? mapelOptions[0] : (kelasOptions[0] || ''));
                     }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -663,7 +624,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nama {newCategoryType === 'mapel' ? 'Mata Pelajaran' : 'Kelas'}</label>
+                  <label htmlFor="new-topic-category-name" className="block font-bold text-slate-700 mb-1">Nama {newCategoryType === 'mapel' ? 'Mata Pelajaran' : 'Kelas'}</label>
                   <select
                     id="new-topic-category-name"
                     value={newCategoryName}
@@ -718,50 +679,12 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                 ></textarea>
               </div>
 
-              {/* File Attachment Upload Simulator */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
-                <label className="block font-bold text-slate-700 flex items-center gap-1.5">
-                  <Paperclip className="w-4 h-4 text-blue-600" />
-                  <span>Unggah File Lampiran (PDF, Gambar, Doc)</span>
-                </label>
-
-                <div className="flex gap-2">
-                  <input
-                    id="new-topic-filename-input"
-                    type="text"
-                    placeholder="Ketik nama file (misal: Modul_Latihan.pdf)..."
-                    value={simulatedFileName}
-                    onChange={(e) => setSimulatedFileName(e.target.value)}
-                    className="flex-1 bg-white border border-slate-200 rounded-lg p-2 text-xs font-medium outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddFileAttachment(false)}
-                    className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-3 py-2 rounded-lg text-xs cursor-pointer shrink-0"
-                  >
-                    + Tambahkan File
-                  </button>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+                <div className="flex items-center gap-2 font-bold">
+                  <Paperclip className="h-4 w-4" />
+                  Lampiran belum tersedia
                 </div>
-
-                {/* Attached files list */}
-                {newAttachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {newAttachments.map(att => (
-                      <div key={att.id} className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-[11px] font-medium text-slate-700 flex items-center gap-2">
-                        <FileText className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{att.name}</span>
-                        <span className="text-[10px] text-slate-400">({att.size})</span>
-                        <button 
-                          type="button"
-                          onClick={() => setNewAttachments(newAttachments.filter(a => a.id !== att.id))}
-                          className="text-rose-500 hover:text-rose-700 ml-1"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <p className="mt-1 text-[11px]">Topik hanya akan menyimpan teks sampai penyimpanan dan pemindaian berkas tersedia.</p>
               </div>
 
               {/* Submit Buttons */}
@@ -888,13 +811,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                             <div className="text-[10px] text-slate-400">{att.size}</div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => alert(`Mengunduh berkas simulasi: ${att.name}`)}
-                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors cursor-pointer shrink-0"
-                          title="Unduh Berkas"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
+                        <span className="shrink-0 text-[10px] font-semibold text-amber-700">Tidak tersedia</span>
                       </div>
                     ))}
                   </div>
@@ -997,27 +914,9 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                 className="w-full bg-white border border-slate-200 rounded-lg p-3 text-xs outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed disabled:bg-slate-100"
               ></textarea>
 
-              {/* Reply File Upload Simulator */}
               {currentUser && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <input
-                      id="reply-filename-input"
-                      type="text"
-                      placeholder="Nama file terlampir (opsional)..."
-                      value={simulatedReplyFileName}
-                      onChange={(e) => setSimulatedReplyFileName(e.target.value)}
-                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none w-full sm:w-56"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleAddFileAttachment(true)}
-                      className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer shrink-0"
-                    >
-                      + File
-                    </button>
-                  </div>
-
+                <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+                  <span className="text-[11px] text-amber-700">Lampiran balasan belum tersedia.</span>
                   <button
                     id="submit-reply-btn"
                     onClick={() => handleAddReply(activeTopic.id)}
@@ -1029,17 +928,6 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                 </div>
               )}
 
-              {/* Attached files preview in reply */}
-              {replyAttachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 text-[10px]">
-                  {replyAttachments.map(att => (
-                    <span key={att.id} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded flex items-center gap-1">
-                      {att.name}
-                      <button onClick={() => setReplyAttachments(replyAttachments.filter(a => a.id !== att.id))}>×</button>
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
 
           </div>

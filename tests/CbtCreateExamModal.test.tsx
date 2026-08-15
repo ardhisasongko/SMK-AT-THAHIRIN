@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 function renderModal(onSave = vi.fn(), onClose = vi.fn()) {
-  render(<CbtCreateExamModal currentUser={guruUser} onSave={onSave} onClose={onClose} />);
+  render(<CbtCreateExamModal currentUser={guruUser} kelasList={[]} onSave={onSave} onClose={onClose} />);
   return { onSave, onClose };
 }
 

@@ -45,7 +45,7 @@ export default function App() {
 
   // App persistent states - disimpan ke Cloudflare D1 via API
   const [kelasList, setKelasList] = usePersistedCollection<Kelas[]>('kelas_v1', INITIAL_KELAS);
-  const [siswaList, setSiswaList] = usePersistedCollection<Siswa[]>('siswa_v1', INITIAL_SISWA);
+  const [siswaList, setSiswaList, , siswaActions] = usePersistedCollection<Siswa[]>('siswa_v1', INITIAL_SISWA);
   const [presensiList, setPresensiList, presensiReady, presensiActions] = usePersistedCollection<PresensiRecord[]>('presensi_v1', INITIAL_PRESENSI);
   const [modulList, setModulList] = usePersistedCollection<ModulAjar[]>('modulAjar_v1', INITIAL_MODUL_AJAR);
   const [topics, setTopics] = useState<ForumTopic[]>([]);
@@ -68,7 +68,7 @@ export default function App() {
 
   // Calculate unread notifications count for current user
   const unreadCount = currentUser 
-    ? notifications.filter(n => !n.isReadBy.includes(currentUser.id)).length
+    ? notifications.filter(n => !n.isRead).length
     : 0;
 
   useEffect(() => {
@@ -145,6 +145,7 @@ export default function App() {
         {activeTab === 'cbt' && (
           <CbtSection 
              currentUser={currentUser}
+             kelasList={kelasList}
              onOpenLogin={() => setShowLoginModal(true)}
           />
         )}
@@ -167,7 +168,7 @@ export default function App() {
             kelasList={kelasList}
             setKelasList={setKelasList}
             siswaList={siswaList}
-            setSiswaList={setSiswaList}
+            refreshSiswa={siswaActions.refresh}
             currentUser={currentUser}
           />
         )}
@@ -185,6 +186,7 @@ export default function App() {
             topics={topics}
             setTopics={setTopics}
             currentUser={currentUser}
+            kelasList={kelasList}
             onNewTopicNotification={() => { void notificationApi.list().then(setNotifications); }}
              onOpenLogin={() => setShowLoginModal(true)}
           />
@@ -195,6 +197,7 @@ export default function App() {
             notifications={notifications}
             setNotifications={setNotifications}
             currentUser={currentUser}
+            kelasList={kelasList}
             setActiveTab={setActiveTab}
             onOpenLogin={() => setShowLoginModal(true)}
           />
@@ -213,7 +216,7 @@ export default function App() {
         )}
 
         {activeTab === 'pengguna' && currentUser && (
-          <UserManagementSection currentUser={currentUser} />
+          <UserManagementSection currentUser={currentUser} onStudentsChanged={siswaActions.refresh} />
         )}
         {activeTab === 'whatsapp' && currentUser && (
           <WhatsAppAdminSection currentUser={currentUser} />

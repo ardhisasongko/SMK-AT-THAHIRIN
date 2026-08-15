@@ -14,6 +14,8 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, dat
   let b: any; try { b = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   const phone = b.phone ? normalizeIndonesianPhone(b.phone) : null;
   if (!b.teacherId || (b.phone && !phone)) return jsonResponse({ success: false, error: 'Guru atau nomor tidak valid.' }, 400);
+  const teacher = await env.DB.prepare("SELECT id FROM users WHERE id=? AND role='guru' AND status='active'").bind(b.teacherId).first();
+  if (!teacher) return jsonResponse({ success: false, error: 'Guru aktif tidak ditemukan.' }, 404);
   await env.DB.prepare(`INSERT INTO teacher_whatsapp_settings (teacher_user_id, phone, reminder_enabled, reminder_time, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(teacher_user_id) DO UPDATE SET phone=excluded.phone, reminder_enabled=excluded.reminder_enabled, reminder_time=excluded.reminder_time, updated_by=excluded.updated_by, updated_at=excluded.updated_at`)
     .bind(b.teacherId, phone, b.enabled ? 1 : 0, b.reminderTime || '05:30', data.user!.id, new Date().toISOString()).run();
   return jsonResponse({ success: true, data: { masked: maskPhone(phone) } });

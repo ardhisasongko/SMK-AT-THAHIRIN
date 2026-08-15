@@ -301,10 +301,9 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     targetRole: 'guru',
     category: 'Pengumuman',
     createdAt: '2026-08-03 08:00',
-    isReadBy: [],
+    isRead: false,
     senderName: 'Ir. Surantro (Kepala Sekolah)',
-    senderRole: 'admin',
-    isEmailSent: true
+    senderRole: 'admin'
   },
   {
     id: 'n2',
@@ -314,11 +313,10 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     targetClassId: 'k1',
     category: 'Tugas',
     createdAt: '2026-08-02 09:35',
-    isReadBy: ['u3'],
+    isRead: true,
     actionUrl: 'forum',
     senderName: 'Bpk. Ahmad Fauzi, S.Pd.',
-    senderRole: 'guru',
-    isEmailSent: true
+    senderRole: 'guru'
   }
 ];
 

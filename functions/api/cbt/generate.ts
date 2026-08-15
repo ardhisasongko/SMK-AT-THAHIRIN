@@ -3,6 +3,7 @@ import { callGeminiJson } from "../../_lib/gemini";
 import { jsonResponse, errorResponse } from "../../_lib/response";
 import type { AuthUser } from "../../_lib/auth";
 import { consumeRateLimit } from "../../_lib/rate-limit";
+import { validateCbtQuestions } from "../../_lib/cbt";
 
 interface Env {
   GEMINI_API_KEY?: string;
@@ -22,10 +23,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
       return errorResponse("Mata pelajaran wajib diisi dan jumlah soal harus 1-50.", 400);
     }
 
-    const prompt = `Buatkan ${count} soal ujian untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB) dengan VARIASI TIPE SOAL:
-- 60% soal pilihan ganda (type: "pg", 5 opsi A-E)
-- 20% soal benar/salah (type: "truefalse", 2 opsi A="Benar", B="Salah")
-- 20% soal essay (type: "essay", options: [], correctAnswer: "A", expectedAnswer: "kata,kunci,jawaban")
+    const prompt = `Buatkan ${count} soal pilihan ganda untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB). Setiap soal wajib memiliki tepat 5 opsi A-E dengan teks yang tidak kosong.
 Format JSON murni tanpa markdown/backticks:
 [
   {
@@ -53,16 +51,17 @@ Format JSON murni tanpa markdown/backticks:
 
     const normalized = (Array.isArray(parsed) ? parsed : []).map((q: any, i: number) => ({
       id: q.id || `ai-${Date.now()}-${i}`,
-      type: q.type === "essay" ? "essay" : q.type === "truefalse" ? "truefalse" : "pg",
       question: q.question || "",
       options: Array.isArray(q.options) && q.options.length > 0
         ? q.options.map((o: any) => ({ key: o.key, text: o.text }))
         : [],
       correctAnswer: q.correctAnswer || "A",
-      expectedAnswer: q.expectedAnswer,
       points: q.points || 1,
       explanation: q.explanation || "",
     }));
+
+    const validationError = validateCbtQuestions(normalized);
+    if (validationError) return errorResponse(`Soal AI tidak memenuhi format CBT: ${validationError}`, 502);
 
     return jsonResponse({ success: true, data: normalized });
   } catch (error: any) {

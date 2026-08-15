@@ -25,6 +25,11 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, dat
   if (!allowed(data.user)) return jsonResponse({ success: false, error: 'Akses ditolak.' }, 403);
   let b: any; try { b = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   if (!b.studentId) return jsonResponse({ success: false, error: 'Siswa wajib dipilih.' }, 400);
+  const roster = await env.DB.prepare("SELECT value FROM app_data WHERE key = 'siswa_v1'").first();
+  let students: any[] = [];
+  try { students = roster ? JSON.parse(String(roster.value)) : []; } catch { return jsonResponse({ success: false, error: 'Data siswa tidak dapat dibaca.' }, 500); }
+  if (!Array.isArray(students)) return jsonResponse({ success: false, error: 'Data siswa tidak dapat dibaca.' }, 500);
+  if (!students.some(student => String(student.id) === String(b.studentId))) return jsonResponse({ success: false, error: 'Siswa tidak ditemukan.' }, 404);
   const p1 = b.guardian1Phone ? normalizeIndonesianPhone(b.guardian1Phone) : null;
   const p2 = b.guardian2Phone ? normalizeIndonesianPhone(b.guardian2Phone) : null;
   if ((b.guardian1Phone && !p1) || (b.guardian2Phone && !p2)) return jsonResponse({ success: false, error: 'Format nomor WhatsApp tidak valid.' }, 400);

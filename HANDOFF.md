@@ -1,16 +1,18 @@
 # HANDOFF - Status Proyek
 
-Tanggal pembaruan: Jumat, 14 Agustus 2026
+Tanggal pembaruan: Sabtu, 15 Agustus 2026
 Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
-- Deployment terakhir berhasil. URL deployment: `https://c1ba6404.smk-at-tahirin.pages.dev`.
+- Deployment produksi terakhir yang terverifikasi: `https://c1ba6404.smk-at-tahirin.pages.dev`. Deployment ini dibuat sebelum commit terbaru.
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run lint` lulus, 114/114 test lulus, dan production build berhasil.
-- Build memberi warning bundle utama sekitar 516 KB setelah minify. Ini warning, bukan error; code splitting belum dikerjakan.
-- Worktree masih memiliki banyak perubahan belum di-commit. Jangan membuang perubahan yang ada.
+- Verifikasi terakhir: `npm run lint` lulus, 144/144 test lulus, dan production build berhasil.
+- Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
+- Commit terbaru: `4956096 feat(platform): tambah domain API, manajemen pengguna, dan WhatsApp`.
+- Perubahan lanjutan sesi ini masih berada di worktree dan belum di-commit atau di-push.
+- Migrasi `0010`-`0015` dan perubahan terbaru belum dideploy ke produksi.
 
 ## Perubahan Utama Sesi Ini
 
@@ -63,6 +65,17 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Foto kepala sekolah pada landing page diganti dengan foto laki-laki.
 - Data pengguna admin produksi juga sudah dimigrasikan ke nama `Ir. Suranto`.
 
+## Pekerjaan Coding Selesai
+
+- Lifecycle CBT lengkap: tanggal dinamis, kelas aktual, edit, aktif/nonaktif, selesai, hapus, validasi soal, state transition, dan proteksi database setelah attempt dimulai.
+- Retry WhatsApp maksimal dua attempt, stale claim, jam aktif D1, retensi, statistik, validasi referensi, dan error handling panel sudah diperbaiki.
+- Akun siswa dan roster disinkronkan dengan mutasi JSON atomik, termasuk perubahan identitas serta transisi role.
+- Menu dan filter Notifikasi siswa/ketua kelas, target kelas, query status baca, serta visibilitas Forum per kelas sudah diselesaikan.
+- Rate limiter memakai UPSERT atomik dan membersihkan window lama secara bertahap.
+- Lampiran Forum dan email simulasi tidak lagi ditampilkan sebagai fitur aktif.
+- Header autentikasi generate AI sudah konsisten dan code splitting sudah diterapkan.
+- Test domain/API/UI ditambah; total saat ini 144 test.
+
 ## Migrasi D1
 
 Migrasi berikut sudah berhasil diterapkan ke D1 remote:
@@ -76,6 +89,9 @@ Migrasi domain berikut sudah diterapkan secara lokal tetapi masih harus diterapk
 - `0010_domain_architecture.sql`
 - `0011_api_rate_limits.sql`
 - `0012_domain_migration_markers.sql`
+- `0013_cbt_exam_lifecycle.sql`
+- `0014_rate_limit_expiration.sql`
+- `0015_domain_integrity.sql`
 
 Migrasi `0009` membuat tabel:
 
@@ -119,7 +135,7 @@ Migrasi `0009` membuat tabel:
 - Gateway mengambil maksimal 25 pesan per batch.
 - Polling aktif default setiap 60 detik dan melambat ketika kosong/di luar jam aktif.
 - Jeda pengiriman acak 5-7 detik per pesan.
-- Maksimal dua percobaan otomatis.
+- Kegagalan normal otomatis dicoba kembali maksimal dua attempt.
 - Claim kedaluwarsa setelah 10 menit agar pesan tidak hilang ketika gateway mati.
 - Sesi WhatsApp (`.wwebjs_auth`) tersimpan lokal, bukan di D1.
 - Statistik harian disimpan sebagai satu baris per tanggal.
@@ -184,20 +200,31 @@ Perintah yang berhasil:
 npm run lint
 npm test
 npm run build
-npm run db:migrate:remote
-npm run pages:deploy
+npm run db:migrate:local
 node --check whatsapp-gateway/src/index.js
 ```
 
 Hasil terakhir:
 
-- 17 test files lulus.
-- 114 tests lulus.
+- 26 test files lulus.
+- 144 tests lulus.
 - TypeScript lulus.
 - Production build lulus.
-- Migrasi D1 sampai `0009` berhasil.
-- Deployment produksi berhasil.
+- Migrasi lokal sampai `0015` berhasil dan tidak ada migrasi lokal tertunda.
+- D1 remote baru terverifikasi sampai `0009`; jangan deploy kode terbaru sebelum `0010`-`0015` diterapkan.
+- Deployment produksi yang tercatat berhasil adalah versi sebelum commit `4956096`.
 - Gateway claim diuji ketika sistem nonaktif: HTTP 200, `enabled=false`, antrean kosong.
+
+## Urutan Aman Sesi Berikutnya
+
+1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main`.
+2. Pastikan secret Pages/Worker tersedia tanpa menuliskan nilainya ke Git.
+3. Terapkan migrasi remote dengan `npm run db:migrate:remote` dan pastikan `0010`-`0015` sukses.
+4. Deploy Pages dengan `npm run pages:deploy`.
+5. Smoke test login serta menu untuk `super_admin`, `admin`, `guru`, `ketua_kelas`, dan `siswa`.
+6. Smoke test CBT, Forum, Notifikasi, Manajemen Pengguna, presensi, upload foto, dan endpoint WhatsApp dalam kondisi pengiriman otomatis masih `OFF`.
+7. Deploy dan verifikasi `sync-worker` setelah `SYNC_TOKEN` dipasang sebagai secret.
+8. Aktifkan gateway WhatsApp hanya setelah uji terbatas 1-2 penerima berhasil.
 
 ## Keamanan dan Tindak Lanjut
 
@@ -205,4 +232,5 @@ Hasil terakhir:
 - Token Cloudflare pernah terlihat selama sesi sebelumnya; rotasi token Cloudflare sangat disarankan.
 - Password admin pernah disebut dalam percakapan dan tersimpan pada file kredensial lokal; ganti password Super Admin setelah pengujian.
 - `SYNC_TOKEN` sudah dihapus dari konfigurasi statis. Pastikan nilainya dipasang sebagai secret Worker sebelum deploy ulang.
-- Belum ada commit untuk kumpulan perubahan besar ini. Sebelum commit, tinjau `git diff`, pastikan `.env`, data pribadi, dan session WhatsApp tidak ikut staged.
+- Nilai `SYNC_TOKEN` lama pernah ada di riwayat Git. Rotasi token sebelum deploy ulang Worker.
+- `.env`, data impor, kredensial lokal, `node_modules`, cache Wrangler, dan session WhatsApp tetap harus berada di luar commit.

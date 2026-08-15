@@ -10,20 +10,16 @@ import {
   MessageSquare, 
   Megaphone, 
   ShieldAlert, 
-  Mail, 
-  Plus, 
   X, 
-  UserCheck, 
-  Sparkles,
-  Info
 } from 'lucide-react';
-import { NotificationItem, NotificationCategory, NotificationTargetRole, User } from '../types';
+import { Kelas, NotificationItem, NotificationCategory, NotificationTargetRole, User } from '../types';
 import { notificationApi } from '../utils/community-api';
 
 interface NotifikasiSectionProps {
   notifications: NotificationItem[];
   setNotifications: React.Dispatch<React.SetStateAction<NotificationItem[]>>;
   currentUser: User | null;
+  kelasList: Kelas[];
   setActiveTab: (tab: string) => void;
   onOpenLogin: () => void;
 }
@@ -32,6 +28,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   notifications,
   setNotifications,
   currentUser,
+  kelasList,
   setActiveTab,
   onOpenLogin
 }) => {
@@ -47,14 +44,6 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   const [broadcastTargetRole, setBroadcastTargetRole] = useState<NotificationTargetRole>('siswa');
   const [broadcastClassId, setBroadcastClassId] = useState<string>('semua');
   const [broadcastMessage, setBroadcastMessage] = useState<string>('');
-  const [simulateEmail, setSimulateEmail] = useState<boolean>(true);
-
-  // Email Sent Confirmation Modal Banner
-  const [emailConfirmationData, setEmailConfirmationData] = useState<{
-    recipientCount: number;
-    targetRoleName: string;
-    sampleEmail: string;
-  } | null>(null);
 
   // Icon mapping for notification categories
   const getCategoryIcon = (category: NotificationCategory) => {
@@ -74,10 +63,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
     try { await notificationApi.read(id); } catch { return; }
     setNotifications(notifications.map(n => {
       if (n.id === id) {
-        const isAlreadyRead = n.isReadBy.includes(currentUser.id);
-        if (!isAlreadyRead) {
-          return { ...n, isReadBy: [...n.isReadBy, currentUser.id] };
-        }
+        return { ...n, isRead: true };
       }
       return n;
     }));
@@ -87,10 +73,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
   const handleMarkAllAsRead = async () => {
     if (!currentUser) return;
     try { await notificationApi.readAll(); } catch { return; }
-    setNotifications(notifications.map(n => ({
-      ...n,
-      isReadBy: n.isReadBy.includes(currentUser.id) ? n.isReadBy : [...n.isReadBy, currentUser.id]
-    })));
+    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
   };
 
   // Create Broadcast Notification
@@ -104,13 +87,12 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
       title: broadcastTitle,
       message: broadcastMessage,
       targetRole: broadcastTargetRole,
-      targetClassId: broadcastClassId !== 'semua' ? broadcastClassId : undefined,
+      targetClassId: broadcastTargetRole === 'siswa' && broadcastClassId !== 'semua' ? broadcastClassId : undefined,
       category: broadcastCategory,
       createdAt: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
-      isReadBy: [currentUser.id],
+      isRead: true,
       senderName: currentUser.name,
       senderRole: currentUser.role,
-      isEmailSent: simulateEmail
     };
 
     try {
@@ -121,16 +103,6 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
       return;
     }
 
-    if (simulateEmail) {
-      const recipientCount = broadcastTargetRole === 'siswa' ? 32 : broadcastTargetRole === 'guru' ? 68 : 1250;
-      const targetRoleName = broadcastTargetRole === 'siswa' ? 'Siswa & Orang Tua Murid' : broadcastTargetRole === 'guru' ? 'Dewan Guru' : 'Seluruh Pengguna Sekolah';
-      setEmailConfirmationData({
-        recipientCount,
-        targetRoleName,
-        sampleEmail: broadcastTargetRole === 'siswa' ? 'm.rizky@smksplusatthahirin.sch.id' : 'fauzi@smksplusatthahirin.sch.id'
-      });
-    }
-
     // Reset Form
     setBroadcastTitle('');
     setBroadcastMessage('');
@@ -139,12 +111,6 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
 
   // Filtered Notifications
   const filteredNotifications = notifications.filter(n => {
-    // Role relevance: Show if target is 'semua' OR matches current user's role OR if current user is admin viewing all
-    if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'super_admin') {
-      const isForMyRole = n.targetRole === 'semua' || n.targetRole === currentUser.role;
-      if (!isForMyRole) return false;
-    }
-
     // Target role tab filter
     if (selectedTargetRole !== 'semua' && n.targetRole !== selectedTargetRole) {
       return false;
@@ -156,16 +122,14 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
     }
 
     // Unread filter
-    if (onlyUnread && currentUser && n.isReadBy.includes(currentUser.id)) {
+    if (onlyUnread && n.isRead) {
       return false;
     }
 
     return true;
   });
 
-  const unreadCount = currentUser 
-    ? notifications.filter(n => (n.targetRole === 'semua' || n.targetRole === currentUser.role) && !n.isReadBy.includes(currentUser.id)).length
-    : 0;
+  const unreadCount = currentUser ? notifications.filter(n => !n.isRead).length : 0;
 
   return (
     <div id="notifikasi-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -178,7 +142,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 text-xs font-semibold px-3 py-1 rounded-full border border-indigo-400/30">
               <Bell className="w-3.5 h-3.5" />
-              <span>Sistem Notifikasi Terpusat & Multi-Channel</span>
+              <span>Sistem Notifikasi Terpusat dalam Aplikasi</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
               Pusat Notifikasi Sekolah
@@ -213,35 +177,6 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Simulated Email Confirmation Alert Modal */}
-      {emailConfirmationData && (
-        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 space-y-3 relative shadow-md animate-in slide-in-from-top duration-300">
-          <button 
-            onClick={() => setEmailConfirmationData(null)}
-            className="absolute top-4 right-4 text-emerald-700 hover:text-emerald-900"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-              <Mail className="w-5 h-5" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-extrabold text-emerald-900">
-                Simulasi Salinan Email Berhasil Disampaikan!
-              </h3>
-              <p className="text-xs text-emerald-800 leading-relaxed">
-                Notifikasi broadcast telah dipublikasikan ke sistem web dan salinan email pemberitahuan simulasi telah dikirimkan secara otomatis kepada <strong>{emailConfirmationData.recipientCount} penerima ({emailConfirmationData.targetRoleName})</strong>.
-              </p>
-              <div className="text-[11px] font-mono text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-md inline-block mt-1">
-                Contoh email sampel: {emailConfirmationData.sampleEmail}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Filter Tabs & Controls */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-4">
@@ -325,7 +260,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
           </div>
         ) : (
           filteredNotifications.map((notif) => {
-            const isRead = currentUser ? notif.isReadBy.includes(currentUser.id) : false;
+            const isRead = notif.isRead;
 
             return (
               <div
@@ -384,14 +319,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
 
                 {/* Footer Action Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs sm:pl-12">
-                  <div className="flex items-center gap-3 text-[11px] text-slate-500">
-                    {notif.isEmailSent && (
-                      <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
-                        <Mail className="w-3 h-3" />
-                        <span>Salinan email dikirim</span>
-                      </span>
-                    )}
-                  </div>
+                  <div />
 
                   {notif.actionUrl && (
                     <button
@@ -479,6 +407,21 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
                 </div>
               </div>
 
+              {broadcastTargetRole === 'siswa' && (
+                <div>
+                  <label htmlFor="broadcast-target-class-select" className="block font-bold text-slate-700 mb-1">Target Kelas</label>
+                  <select
+                    id="broadcast-target-class-select"
+                    value={broadcastClassId}
+                    onChange={(e) => setBroadcastClassId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 font-medium text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="semua">Semua Kelas</option>
+                    {kelasList.map(kelas => <option key={kelas.id} value={kelas.id}>{kelas.name}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Pesan Notifikasi Lengkap *</label>
                 <textarea
@@ -492,23 +435,8 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
                 ></textarea>
               </div>
 
-              {/* Email Simulation Checkbox */}
-              <div className="bg-indigo-50/80 border border-indigo-200 rounded-xl p-3 flex items-start gap-3">
-                <input
-                  id="broadcast-simulate-email-checkbox"
-                  type="checkbox"
-                  checked={simulateEmail}
-                  onChange={(e) => setSimulateEmail(e.target.checked)}
-                  className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                />
-                <div className="text-xs">
-                  <label htmlFor="broadcast-simulate-email-checkbox" className="font-bold text-slate-800 cursor-pointer">
-                    Simulasikan Kirim Salinan Notifikasi via Email
-                  </label>
-                  <p className="text-[11px] text-slate-600">
-                    Sistem akan mensimulasikan pengiriman email otomatis ke alamat email pengguna yang ditargetkan.
-                  </p>
-                </div>
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/80 p-3 text-xs text-indigo-900">
+                Broadcast dipublikasikan di aplikasi web. Pengiriman email belum tersedia.
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

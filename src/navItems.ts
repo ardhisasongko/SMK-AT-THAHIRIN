@@ -33,6 +33,7 @@ export function getNavItems(currentUser: User | null, unreadCount = 0): NavItem[
       { id: 'cbt', label: 'Ujian CBT', icon: FileText, highlight: true },
       { id: 'absensi', label: 'Absensi', icon: UserCheck },
       { id: 'forum', label: 'Forum', icon: MessageSquare },
+      { id: 'notifikasi', label: 'Notifikasi', icon: Bell, badge: unreadCount },
       { id: 'profil', label: 'Profil', icon: UserIcon },
     ];
   }

@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../../_lib/auth';
-import { canTakeExam, ensureLegacyCbtMigrated, getExamQuestions, hashCbtToken, isCbtStudent, todayWIB } from '../../../../_lib/cbt';
+import { canTakeExam, effectiveCbtStatus, ensureLegacyCbtMigrated, getExamQuestions, hashCbtToken, isCbtStudent } from '../../../../_lib/cbt';
 import { jsonResponse } from '../../../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../../../_lib/rate-limit';
 
@@ -15,8 +15,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   if (typeof body.token !== 'string' || body.token.length > 32) return jsonResponse({ success: false, error: 'Token tidak valid.' }, 400);
   const exam = await env.DB.prepare('SELECT * FROM cbt_exams WHERE id=?').bind(String(params.id)).first<any>();
   if (!exam || !(await canTakeExam(env.DB, data.user, exam))) return jsonResponse({ success: false, error: 'Ujian tidak tersedia.' }, 404);
-  const today = todayWIB();
-  if (exam.status !== 'active' || today < exam.start_date || today > exam.end_date) return jsonResponse({ success: false, error: 'Ujian belum dimulai atau sudah berakhir.' }, 403);
+  if (effectiveCbtStatus(exam) !== 'active') return jsonResponse({ success: false, error: 'Ujian belum dimulai, dinonaktifkan, atau sudah berakhir.' }, 403);
   const rateKey = `cbt-token:${exam.id}:${data.user.id}`;
   if (!(await consumeRateLimit(env.DB, rateKey, 10, 15 * 60))) return jsonResponse({ success: false, error: 'Terlalu banyak percobaan token. Coba lagi beberapa menit.' }, 429);
   if (await hashCbtToken(body.token) !== exam.token_hash) return jsonResponse({ success: false, error: 'Token ujian tidak valid.' }, 403);
@@ -43,6 +42,6 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   }
   return jsonResponse({ success: true, data: {
     attemptId: attempt.id, startedAt: attempt.started_at, expiresAt: attempt.expires_at,
-    exam: { id: exam.id, title: exam.title, subject: exam.subject, classTarget: exam.class_target, durationMinutes: exam.duration_minutes, token: '', teacherName: exam.teacher_name, startDate: exam.start_date, endDate: exam.end_date, status: exam.status, questions: await getExamQuestions(env.DB, exam.id, false) },
+    exam: { id: exam.id, title: exam.title, subject: exam.subject, classTarget: exam.class_target, durationMinutes: exam.duration_minutes, token: '', teacherName: exam.teacher_name, startDate: exam.start_date, endDate: exam.end_date, status: effectiveCbtStatus(exam), questions: await getExamQuestions(env.DB, exam.id, false) },
   } });
 };

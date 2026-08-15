@@ -1,10 +1,12 @@
 import { hashPassword, verifyPassword, type AuthUser } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
-import { writeUserAudit } from '../../_lib/user-audit';
+import { prepareUserAudit, writeUserAudit } from '../../_lib/user-audit';
+import { appendStudentStatement, classExists, readCollection, removeStudentStatement, replaceStudentStatement, syncStudentRoster, type StudentRosterRecord } from '../../_lib/student-roster';
 
 interface Env { DB: D1Database }
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
 type ManagedRole = 'admin' | 'guru' | 'siswa';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SELECT_FIELDS = `id, name, email, nip_nisn, nik, tanggal_lahir, role, class_id, jabatan,
   status, must_change_password, archived_at, created_at`;
@@ -74,7 +76,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   if (!actor || !['super_admin', 'admin'].includes(actor.role)) {
     return jsonResponse({ success: false, error: 'Akses khusus administrator.' }, 403);
   }
-  let body: { name?: string; email?: string; identifier?: string; role?: ManagedRole; classId?: string; jabatan?: string };
+  let body: { name?: string; email?: string; identifier?: string; role?: ManagedRole; classId?: string; jabatan?: string; gender?: 'L' | 'P' };
   try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   const name = (body.name || '').trim();
   const email = (body.email || '').trim().toLowerCase();
@@ -83,24 +85,61 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   if (!name || !email || !identifier || !canManage(actor, role)) {
     return jsonResponse({ success: false, error: 'Nama, email, nomor identitas, dan role yang valid wajib diisi.' }, 400);
   }
+  if (!EMAIL_PATTERN.test(email)) return jsonResponse({ success: false, error: 'Format email tidak valid.' }, 400);
+  if (role === 'siswa' && !/^\d{10}$/.test(identifier)) {
+    return jsonResponse({ success: false, error: 'NISN siswa harus 10 digit angka.' }, 400);
+  }
+  if (role === 'siswa' && !['L', 'P'].includes(String(body.gender || ''))) {
+    return jsonResponse({ success: false, error: 'Jenis kelamin siswa wajib diisi dengan L atau P.' }, 400);
+  }
+  const classId = (body.classId || '').trim();
+  let roster: unknown[] | null = null;
+  if (role === 'siswa') {
+    if (!classId) return jsonResponse({ success: false, error: 'Kelas siswa wajib diisi.' }, 400);
+    try {
+      const [classes, currentRoster] = await Promise.all([
+        readCollection(env.DB, 'kelas_v1'),
+        readCollection(env.DB, 'siswa_v1'),
+      ]);
+      if (!classExists(classes, classId)) return jsonResponse({ success: false, error: 'Kelas siswa tidak ditemukan.' }, 400);
+      roster = currentRoster;
+    } catch (error) {
+      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data roster tidak dapat diproses.' }, 500);
+    }
+  }
   const duplicate = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR nip_nisn = ?').bind(email, identifier).first();
   if (duplicate) return jsonResponse({ success: false, error: 'Email atau nomor identitas sudah digunakan.' }, 409);
   const password = randomPassword();
   const id = `u-${crypto.randomUUID()}`;
-  await env.DB.prepare(
+  const insert = env.DB.prepare(
     `INSERT INTO users
       (id, name, email, nip_nisn, role, class_id, password_hash, jabatan, ketua_status, status, must_change_password, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'none', 'active', 1, ?)`
-  ).bind(id, name, email, identifier, role, body.classId || null, await hashPassword(password), body.jabatan || null, new Date().toISOString()).run();
-  const created = { id, name, email, nipNisn: identifier, role, classId: body.classId || null, jabatan: body.jabatan || null, status: 'active' };
-  await writeUserAudit(env.DB, actor, 'CREATE_USER', created, undefined, created);
+  ).bind(id, name, email, identifier, role, classId || null, await hashPassword(password), body.jabatan || null, new Date().toISOString());
+  const created = { id, name, email, nipNisn: identifier, role, classId: classId || null, jabatan: body.jabatan || null, status: 'active' };
+  const statements = [insert];
+  if (role === 'siswa') {
+    const nextRoster = syncStudentRoster(roster, { nisn: identifier, name, classId, gender: body.gender });
+    const existingStudent = roster?.some(item => item && typeof item === 'object' && String((item as any).nisn) === identifier);
+    const nextStudent = nextRoster.find(item => item.nisn === identifier)!;
+    statements.push(existingStudent
+      ? replaceStudentStatement(env.DB, identifier, nextStudent)
+      : appendStudentStatement(env.DB, nextStudent));
+  }
+  statements.push(prepareUserAudit(env.DB, actor, 'CREATE_USER', created, undefined, created));
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    console.error('Gagal membuat akun dan roster:', error);
+    return jsonResponse({ success: false, error: 'Akun gagal dibuat. Tidak ada perubahan yang disimpan.' }, 500);
+  }
   return jsonResponse({ success: true, data: created, initialPassword: password }, 201);
 };
 
 export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, data, request }) => {
   const actor = data.user;
   if (!actor || !['super_admin', 'admin'].includes(actor.role)) return jsonResponse({ success: false, error: 'Akses ditolak.' }, 403);
-  let body: { id?: string; name?: string; email?: string; identifier?: string; role?: ManagedRole; classId?: string | null; jabatan?: string | null; status?: 'active' | 'inactive'; reason?: string };
+  let body: { id?: string; name?: string; email?: string; identifier?: string; role?: ManagedRole; classId?: string | null; jabatan?: string | null; status?: 'active' | 'inactive'; reason?: string; gender?: 'L' | 'P' };
   try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   if (!body.id) return jsonResponse({ success: false, error: 'ID pengguna wajib diisi.' }, 400);
   const target = await getTarget(env.DB, body.id);
@@ -113,15 +152,64 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
     email: body.email?.trim().toLowerCase() || String(target.email),
     identifier: body.identifier?.trim() || String(target.nip_nisn),
     role: nextRole,
-    classId: body.classId === undefined ? target.class_id : body.classId,
+    classId: body.classId === undefined ? target.class_id : body.classId?.trim() || null,
     jabatan: body.jabatan === undefined ? target.jabatan : body.jabatan,
     status: body.status || String(target.status),
   };
-  await env.DB.prepare(
+  if (!next.name.trim()) return jsonResponse({ success: false, error: 'Nama wajib diisi.' }, 400);
+  if (!EMAIL_PATTERN.test(next.email)) return jsonResponse({ success: false, error: 'Format email tidak valid.' }, 400);
+  const duplicate = await env.DB.prepare('SELECT id FROM users WHERE id != ? AND (email = ? OR nip_nisn = ?)')
+    .bind(body.id, next.email, next.identifier).first();
+  if (duplicate) return jsonResponse({ success: false, error: 'Email atau nomor identitas sudah digunakan.' }, 409);
+
+  let rosterStatement: D1PreparedStatement | null = null;
+  const studentIdentityChanged = next.role === 'siswa' && (
+    String(target.role) !== 'siswa'
+    || next.name !== String(target.name)
+    || next.identifier !== String(target.nip_nisn)
+    || next.classId !== target.class_id
+  );
+  if (studentIdentityChanged) {
+    if (!/^\d{10}$/.test(next.identifier)) return jsonResponse({ success: false, error: 'NISN siswa harus 10 digit angka.' }, 400);
+    if (!next.classId || typeof next.classId !== 'string') return jsonResponse({ success: false, error: 'Kelas siswa wajib diisi.' }, 400);
+    try {
+      const [classes, roster] = await Promise.all([
+        readCollection(env.DB, 'kelas_v1'),
+        readCollection(env.DB, 'siswa_v1'),
+      ]);
+      if (!classExists(classes, next.classId)) return jsonResponse({ success: false, error: 'Kelas siswa tidak ditemukan.' }, 400);
+      const existingStudent = roster?.find(item => item && typeof item === 'object' && String((item as any).nisn) === String(target.nip_nisn));
+      if (String(target.role) !== 'siswa' && !['L', 'P'].includes(String(body.gender || ''))) {
+        return jsonResponse({ success: false, error: 'Jenis kelamin wajib diisi saat mengubah akun menjadi siswa.' }, 400);
+      }
+      const nextRoster = syncStudentRoster(roster, {
+        oldNisn: String(target.nip_nisn), nisn: next.identifier, name: next.name, classId: next.classId,
+        gender: body.gender,
+      });
+      const nextStudent = nextRoster.find(item => item.nisn === next.identifier)!;
+      rosterStatement = existingStudent
+        ? replaceStudentStatement(env.DB, String(target.nip_nisn), nextStudent)
+        : appendStudentStatement(env.DB, nextStudent);
+    } catch (error) {
+      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data roster tidak dapat diproses.' }, 500);
+    }
+  }
+  if (String(target.role) === 'siswa' && next.role !== 'siswa') {
+    rosterStatement = removeStudentStatement(env.DB, String(target.nip_nisn));
+  }
+  const update = env.DB.prepare(
     `UPDATE users SET name = ?, email = ?, nip_nisn = ?, role = ?, class_id = ?, jabatan = ?, status = ?,
       archived_at = CASE WHEN ? = 'active' THEN NULL ELSE archived_at END WHERE id = ?`
-  ).bind(next.name, next.email, next.identifier, next.role, next.classId, next.jabatan, next.status, next.status, body.id).run();
-  await writeUserAudit(env.DB, actor, 'UPDATE_USER', { id: body.id, name: next.name }, publicUser(target), next, body.reason);
+  ).bind(next.name, next.email, next.identifier, next.role, next.classId, next.jabatan, next.status, next.status, body.id);
+  const statements = [update];
+  if (rosterStatement) statements.push(rosterStatement);
+  statements.push(prepareUserAudit(env.DB, actor, 'UPDATE_USER', { id: body.id, name: next.name }, publicUser(target), next, body.reason));
+  try {
+    await env.DB.batch(statements);
+  } catch (error) {
+    console.error('Gagal memperbarui akun dan roster:', error);
+    return jsonResponse({ success: false, error: 'Akun gagal diperbarui. Tidak ada perubahan yang disimpan.' }, 500);
+  }
   return jsonResponse({ success: true, data: { id: body.id, ...next } });
 };
 

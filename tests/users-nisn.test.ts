@@ -9,18 +9,21 @@ import { onRequestPatch } from '../functions/api/users/nisn';
 
 const mockedGetUser = vi.mocked(getUserFromRequest);
 
-function makeDb(accountRow: Record<string, unknown> | null, clashRow: Record<string, unknown> | null) {
+function makeDb(accountRow: Record<string, unknown> | null, clashRow: Record<string, unknown> | null, batchError = false) {
   const binds: unknown[][] = [];
   const prepare = (sql: string) => ({
     bind: (...args: unknown[]) => {
       binds.push(args);
       return {
-        first: async () => (sql.includes('nip_nisn') ? accountRow : clashRow),
+        first: async () => {
+          if (sql.includes('FROM app_data')) return { value: JSON.stringify([{ id: 's1', nisn: '1234567801', name: 'SAINA', classId: 'k1', gender: 'P', foto: '/s.jpg' }]) };
+          return sql.includes("role = 'siswa'") ? accountRow : clashRow;
+        },
         run: async () => ({ success: true }),
       };
     },
   });
-  return { db: { prepare } as any, binds };
+  return { db: { prepare, batch: async () => { if (batchError) throw new Error('fail'); return []; } } as any, binds };
 }
 
 function patchReq(body: unknown) {
@@ -72,7 +75,7 @@ describe('PATCH /api/users/nisn', () => {
     expect(await res.json()).toMatchObject({ error: expect.stringContaining('wajib diisi') });
   });
 
-  it('menolak NISN bukan 8-10 digit (400)', async () => {
+  it('menolak NISN yang bukan 10 digit (400)', async () => {
     mockedGetUser.mockResolvedValue(ADMIN);
     const { db } = makeDb(ACCOUNT, null);
     const res = await call(db, patchReq({ oldNisn: '1234567801', newNisn: 'abc' }));
@@ -104,5 +107,13 @@ describe('PATCH /api/users/nisn', () => {
 
     const update = binds.find((b) => b[0] === '0068123401');
     expect(update).toEqual(['0068123401', 's0068123401@smksplusatthahirin.sch.id', 'SAINA A. K.', 'u-s1234567801']);
+  });
+
+  it('mengembalikan 500 bila batch akun dan roster gagal', async () => {
+    mockedGetUser.mockResolvedValue(ADMIN);
+    const { db } = makeDb(ACCOUNT, null, true);
+    const res = await call(db, patchReq({ oldNisn: '1234567801', newNisn: '0068123401' }));
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({ success: false });
   });
 });

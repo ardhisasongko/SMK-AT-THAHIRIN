@@ -39,9 +39,8 @@ export async function enqueueMessage(db: D1Database, input: { dedupeKey: string;
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(`wa-${crypto.randomUUID()}`, input.dedupeKey, input.phone, input.type, input.text, input.studentId || null, input.teacherId || null, input.attendanceDate || null, input.scheduledAt, new Date().toISOString()).run();
   const inserted = Number(result.meta?.changes || 0) > 0;
-  if (inserted) {
-    const date = input.scheduledAt.slice(0, 10);
-    await db.prepare(`INSERT INTO whatsapp_daily_stats (stat_date, queued) VALUES (?, 1) ON CONFLICT(stat_date) DO UPDATE SET queued = queued + 1`).bind(date).run();
-  }
+  const date = input.scheduledAt.slice(0, 10);
+  const column = inserted ? 'queued' : 'skipped';
+  await db.prepare(`INSERT INTO whatsapp_daily_stats (stat_date, ${column}) VALUES (?, 1) ON CONFLICT(stat_date) DO UPDATE SET ${column} = ${column} + 1`).bind(date).run();
   return inserted;
 }

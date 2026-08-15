@@ -3,6 +3,7 @@ import type { AuthUser } from './auth';
 export const CBT_STAFF_ROLES = ['guru', 'admin', 'super_admin'];
 export const CBT_STUDENT_ROLES = ['siswa', 'ketua_kelas'];
 export const ANSWER_KEYS = new Set(['A', 'B', 'C', 'D', 'E']);
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function hashCbtToken(token: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token.trim().toUpperCase()));
@@ -28,6 +29,13 @@ export function todayWIB(): string {
   return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+export function effectiveCbtStatus(exam: { status: string; start_date: string; end_date: string; is_active?: number | null }): 'active' | 'upcoming' | 'inactive' | 'completed' {
+  if (exam.status === 'completed' || exam.end_date < todayWIB()) return 'completed';
+  if (Number(exam.is_active ?? 1) === 0) return 'inactive';
+  if (exam.start_date > todayWIB()) return 'upcoming';
+  return 'active';
+}
+
 export function parseJson<T>(value: unknown, fallback: T): T {
   try {
     return typeof value === 'string' ? JSON.parse(value) as T : fallback;
@@ -40,6 +48,44 @@ export function scoreCbtAnswers(questions: Array<{ id: string; correctAnswer?: s
   const correctCount = questions.filter(question => answers[question.id] === question.correctAnswer).length;
   const wrongCount = questions.length - correctCount;
   return { correctCount, wrongCount, score: questions.length ? Math.round(correctCount / questions.length * 100) : 0 };
+}
+
+export function validateCbtExamInput(body: any, tokenRequired = true): string | null {
+  const questions = Array.isArray(body?.questions) ? body.questions : [];
+  if (typeof body?.title !== 'string' || !body.title.trim() || body.title.length > 200) return 'Judul ujian wajib diisi dan maksimal 200 karakter.';
+  if (typeof body.subject !== 'string' || !body.subject.trim() || body.subject.length > 150) return 'Mata pelajaran wajib diisi dan maksimal 150 karakter.';
+  if (!Number.isInteger(body.durationMinutes) || body.durationMinutes < 1 || body.durationMinutes > 300) return 'Durasi ujian harus 1-300 menit.';
+  if (tokenRequired && (typeof body.token !== 'string' || body.token.trim().length < 4 || body.token.length > 32)) return 'Token ujian harus 4-32 karakter.';
+  if (!tokenRequired && body.token && (typeof body.token !== 'string' || body.token.trim().length < 4 || body.token.length > 32)) return 'Token ujian harus 4-32 karakter.';
+  if (!isValidDate(body.startDate) || !isValidDate(body.endDate) || body.endDate < body.startDate) return 'Rentang tanggal ujian tidak valid.';
+  return validateCbtQuestions(questions);
+}
+
+export function validateCbtQuestions(questions: unknown): string | null {
+  if (!Array.isArray(questions)) return 'Daftar soal tidak valid.';
+  if (questions.length < 1 || questions.length > 200) return 'Jumlah soal harus 1-200.';
+
+  const questionIds = new Set<string>();
+  for (const question of questions) {
+    const id = typeof question?.id === 'string' ? question.id.trim() : '';
+    if (!id || id.length > 100 || questionIds.has(id)) return 'Setiap soal harus memiliki ID unik maksimal 100 karakter.';
+    questionIds.add(id);
+    if (typeof question.question !== 'string' || !question.question.trim() || question.question.length > 2000 || !ANSWER_KEYS.has(question.correctAnswer)) return 'Pertanyaan atau kunci jawaban tidak valid.';
+    if (!Array.isArray(question.options) || question.options.length !== ANSWER_KEYS.size) return 'Setiap soal wajib memiliki opsi A-E lengkap.';
+    const optionKeys = new Set<string>();
+    for (const option of question.options) {
+      if (!option || !ANSWER_KEYS.has(option.key) || optionKeys.has(option.key) || typeof option.text !== 'string' || !option.text.trim() || option.text.length > 1000) return 'Opsi A-E harus unik dan berisi teks.';
+      optionKeys.add(option.key);
+    }
+    if (optionKeys.size !== ANSWER_KEYS.size) return 'Setiap soal wajib memiliki opsi A-E lengkap.';
+  }
+  return null;
+}
+
+function isValidDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !DATE_PATTERN.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 export async function getExamQuestions(db: D1Database, examId: string, includeAnswers: boolean): Promise<any[]> {

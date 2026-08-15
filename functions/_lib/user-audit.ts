@@ -9,7 +9,19 @@ export async function writeUserAudit(
   afterValue?: unknown,
   reason?: string
 ): Promise<void> {
-  await db.prepare(
+  await prepareUserAudit(db, actor, action, target, beforeValue, afterValue, reason).run();
+}
+
+export function prepareUserAudit(
+  db: D1Database,
+  actor: AuthUser,
+  action: string,
+  target: { id?: string; name?: string },
+  beforeValue?: unknown,
+  afterValue?: unknown,
+  reason?: string
+): D1PreparedStatement {
+  return db.prepare(
     `INSERT INTO user_audit_log
       (id, actor_id, actor_name, actor_role, action, target_user_id, target_name, before_value, after_value, reason, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -25,5 +37,5 @@ export async function writeUserAudit(
     afterValue === undefined ? null : JSON.stringify(afterValue),
     reason || null,
     new Date().toISOString()
-  ).run();
+  );
 }

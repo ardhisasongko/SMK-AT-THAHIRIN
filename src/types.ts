@@ -211,11 +211,10 @@ export interface NotificationItem {
   targetClassId?: string;
   category: NotificationCategory;
   createdAt: string;
-  isReadBy: string[]; // List of user IDs who read it
+  isRead: boolean;
   actionUrl?: string;
   senderName?: string;
   senderRole?: string;
-  isEmailSent?: boolean;
 }
 
 // CBT (Computer Based Test) Types
@@ -242,7 +241,7 @@ export interface CbtExam {
   teacherName: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'upcoming' | 'completed';
+  status: 'active' | 'upcoming' | 'inactive' | 'completed';
   questions: CbtQuestion[];
   questionCount?: number;
 }

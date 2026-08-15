@@ -1,42 +1,36 @@
 import React, { useState } from 'react';
 import { Plus, Sparkles } from 'lucide-react';
-import { User as UserType, CbtExam, CbtQuestion } from '../../types';
+import { User as UserType, CbtExam, CbtQuestion, Kelas } from '../../types';
 import { Modal } from '../ui/Modal';
+import { cbtApi } from '../../utils/cbt-api';
 
 interface CbtCreateExamModalProps {
   currentUser: UserType | null;
+  kelasList: Kelas[];
+  initialExam?: CbtExam | null;
   onSave: (exam: CbtExam) => void;
   onClose: () => void;
 }
 
-export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateExamModalProps) {
-  const [newTitle, setNewTitle] = useState('');
-  const [newSubject, setNewSubject] = useState('Otomatisasi Kearsipan Digital');
-  const [newClassTarget, setNewClassTarget] = useState('Semua Kelas MPLB');
-  const [newDuration, setNewDuration] = useState<number>(30);
-  const [newToken, setNewToken] = useState('MPLB' + Math.floor(1000 + Math.random() * 9000));
-  const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>([]);
+export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave, onClose }: CbtCreateExamModalProps) {
+  const today = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+  const initialClassTarget = initialExam?.classTarget === 'Semua Kelas MPLB' ? 'all' : kelasList.find(kelas => kelas.id === initialExam?.classTarget || kelas.name === initialExam?.classTarget)?.id || initialExam?.classTarget || 'all';
+  const [newTitle, setNewTitle] = useState(initialExam?.title || '');
+  const [newSubject, setNewSubject] = useState(initialExam?.subject || 'Otomatisasi Kearsipan Digital');
+  const [newClassTarget, setNewClassTarget] = useState(initialClassTarget);
+  const [newDuration, setNewDuration] = useState<number>(initialExam?.durationMinutes || 30);
+  const [newToken, setNewToken] = useState(initialExam ? '' : 'MPLB' + Math.floor(1000 + Math.random() * 9000));
+  const [newStartDate, setNewStartDate] = useState(initialExam?.startDate || today);
+  const [newEndDate, setNewEndDate] = useState(initialExam?.endDate || today);
+  const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>(initialExam?.questions || []);
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
 
   const handleGenerateAiQuestions = async () => {
     setIsAiGenerating(true);
     try {
-      const response = await fetch('/api/cbt/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: newSubject,
-          count: 5
-        })
-      });
-
-      const json = await response.json() as { success?: boolean; data?: CbtQuestion[]; error?: string };
-
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        setNewQuestions(json.data);
-      } else {
-        throw new Error(json.error || 'Gagal menghasilkan soal ujian.');
-      }
+      const questions = await cbtApi.generateQuestions(newSubject);
+      if (!questions.length) throw new Error('Generator tidak menghasilkan soal.');
+      setNewQuestions(questions);
     } catch (err: any) {
       console.error('Error generating questions:', err);
       alert(`Gagal membuat soal AI: ${err.message}. Menggunakan soal contoh default.`);
@@ -99,22 +93,30 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
       alert('Judul ujian tidak boleh kosong.');
       return;
     }
+    if (!newSubject.trim()) {
+      alert('Mata pelajaran tidak boleh kosong.');
+      return;
+    }
+    if (newEndDate < newStartDate) {
+      alert('Tanggal akhir tidak boleh sebelum tanggal mulai.');
+      return;
+    }
     if (newQuestions.length === 0) {
       alert('Harap tambahkan minimal 1 soal ujian.');
       return;
     }
 
     const createdExam: CbtExam = {
-      id: `cbt-${Date.now()}`,
+      id: initialExam?.id || `cbt-${Date.now()}`,
       title: newTitle,
       subject: newSubject,
       classTarget: newClassTarget,
       durationMinutes: newDuration,
       token: newToken.toUpperCase(),
-      teacherName: currentUser?.name || 'Bpk. Ahmad Fauzi, S.Pd.',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: '2026-08-31',
-      status: 'active',
+      teacherName: initialExam?.teacherName || currentUser?.name || 'Guru',
+      startDate: newStartDate,
+      endDate: newEndDate,
+      status: initialExam?.status || 'active',
       questions: newQuestions
     };
 
@@ -126,7 +128,7 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
       <div className="flex items-center justify-between pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2 text-emerald-700 font-bold text-base">
           <Plus className="w-5 h-5" />
-          <span>Buat Paket Ujian CBT Baru</span>
+          <span>{initialExam ? 'Edit Paket Ujian CBT' : 'Buat Paket Ujian CBT Baru'}</span>
         </div>
         <button
           onClick={onClose}
@@ -167,11 +169,8 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
                 onChange={(e) => setNewClassTarget(e.target.value)}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
               >
-                <option value="Semua Kelas MPLB">Semua Kelas MPLB</option>
-                <option value="X MPLB 1">X MPLB 1</option>
-                <option value="X MPLB 2">X MPLB 2</option>
-                <option value="XI MPLB 1">XI MPLB 1</option>
-                <option value="XII MPLB 1">XII MPLB 1</option>
+                 <option value="all">Semua Kelas</option>
+                 {kelasList.map(kelas => <option key={kelas.id} value={kelas.id}>{kelas.name}</option>)}
               </select>
             </div>
           </div>
@@ -190,14 +189,26 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Token Akses Ujian</label>
+               <label className="block font-bold text-slate-700 mb-1">Token Akses Ujian{initialExam ? ' (opsional)' : ''}</label>
               <input
                 type="text"
-                required
+                 required={!initialExam}
+                 placeholder={initialExam ? 'Kosongkan jika tidak diubah' : undefined}
                 value={newToken}
                 onChange={(e) => setNewToken(e.target.value.toUpperCase())}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 uppercase"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+              <input type="date" required value={newStartDate} onChange={(e) => { setNewStartDate(e.target.value); if (newEndDate < e.target.value) setNewEndDate(e.target.value); }} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900" />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Tanggal Akhir</label>
+              <input type="date" required min={newStartDate} value={newEndDate} onChange={(e) => setNewEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900" />
             </div>
           </div>
 
@@ -268,7 +279,7 @@ export function CbtCreateExamModal({ currentUser, onSave, onClose }: CbtCreateEx
               type="submit"
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-md cursor-pointer"
             >
-              Simpan Ujian CBT
+               {initialExam ? 'Simpan Perubahan' : 'Simpan Ujian CBT'}
             </button>
           </div>
         </form>
