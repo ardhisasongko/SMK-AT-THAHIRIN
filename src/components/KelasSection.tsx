@@ -485,13 +485,13 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             
-            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
-              <div>
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="min-w-0">
                 <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-md">
                   {selectedKelas.jurusanCode}
                 </span>
-                <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{selectedKelas.name}</h3>
-                <p className="text-xs text-slate-500">Wali Kelas: {selectedKelas.waliKelas} • Ruang: {selectedKelas.ruang}</p>
+                <h3 className="break-words text-2xl font-extrabold text-slate-900 mt-1">{selectedKelas.name}</h3>
+                <p className="break-words text-xs text-slate-500">Wali Kelas: {selectedKelas.waliKelas} • Ruang: {selectedKelas.ruang}</p>
               </div>
               <button 
                 onClick={() => setSelectedKelas(null)}
@@ -502,8 +502,8 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
             </div>
 
             {/* Sub Tabs Inside Detail Modal */}
-            <div className="flex items-center justify-between border-b border-slate-200">
-              <div className="flex gap-4">
+            <div className="flex flex-col gap-3 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap gap-4">
                 <button
                   onClick={() => setActiveSubTab('roster')}
                   className={`pb-3 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
@@ -571,8 +571,8 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                 {selectedKelas.jadwal && selectedKelas.jadwal.length > 0 ? (
                   <div className="space-y-3">
                     {selectedKelas.jadwal.map((j, idx) => (
-                      <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                        <div className="space-y-1">
+                      <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-start gap-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 space-y-1 break-words">
                           <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md text-[10px]">
                             {j.hari} • Jam {j.jamKe} ({j.jamRentan})
                           </span>

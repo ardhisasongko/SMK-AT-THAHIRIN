@@ -386,7 +386,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                   <button
                     key={tag}
                     onClick={() => setSelectedTag(isSelected ? '' : tag)}
-                    className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                    className={`max-w-full break-all text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                       isSelected
                         ? 'bg-blue-600 text-white font-bold'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -748,16 +748,16 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
             </div>
 
             {/* Author Header */}
-            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div className="flex min-w-0 items-center gap-3">
                 <img 
                   src={activeTopic.authorAvatar} 
                   alt={activeTopic.authorName} 
                   className="w-10 h-10 rounded-full object-cover border border-slate-200"
                 />
-                <div>
-                  <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                    <span>{activeTopic.authorName}</span>
+                <div className="min-w-0">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-bold text-slate-900">
+                    <span className="break-words">{activeTopic.authorName}</span>
                     <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.2 rounded font-bold capitalize">
                       {activeTopic.authorRole}
                     </span>
@@ -789,7 +789,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
 
             {/* Topic Main Content Body */}
             <div className="text-xs text-slate-800 leading-relaxed bg-white space-y-4">
-              <p className="whitespace-pre-line text-sm">{activeTopic.content}</p>
+              <p className="whitespace-pre-line break-words text-sm">{activeTopic.content}</p>
 
               {/* Attachments list */}
               {activeTopic.attachments && activeTopic.attachments.length > 0 && (
@@ -862,14 +862,14 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                 <div className="space-y-3">
                   {activeTopic.replies.map((reply) => (
                     <div key={reply.id} className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/80 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
                           <img 
                             src={reply.authorAvatar} 
                             alt={reply.authorName} 
                             className="w-7 h-7 rounded-full object-cover border border-slate-200"
                           />
-                          <span className="text-xs font-bold text-slate-900">{reply.authorName}</span>
+                          <span className="break-words text-xs font-bold text-slate-900">{reply.authorName}</span>
                           <span className="bg-white border border-slate-200 text-slate-700 text-[9px] px-1.5 py-0.2 rounded font-bold capitalize">
                             {reply.authorRole}
                           </span>
@@ -877,7 +877,7 @@ export const ForumSection: React.FC<ForumSectionProps> = ({
                         <span className="text-[10px] text-slate-400">{reply.createdAt}</span>
                       </div>
 
-                      <p className="text-xs text-slate-700 leading-relaxed pl-9">
+                      <p className="break-words text-xs text-slate-700 leading-relaxed sm:pl-9">
                         {reply.content}
                       </p>
 

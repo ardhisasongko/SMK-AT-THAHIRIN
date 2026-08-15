@@ -314,7 +314,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
             {/* GENERATED RESULT DOCUMENT DISPLAY */}
             {generatedResult && (
               <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div className="flex flex-col items-start gap-3 pb-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-700">
                     <Check className="w-4 h-4 text-emerald-600" />
                     <span>Modul Ajar Berhasil Dibuat oleh AI!</span>
@@ -329,7 +329,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
                 </div>
 
                 {/* Printable Document Box */}
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-6 text-slate-800 text-xs leading-relaxed font-sans shadow-inner">
+                <div className="break-words bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200 space-y-6 text-slate-800 text-xs leading-relaxed font-sans shadow-inner">
                   
                   {/* Kop Sekolah */}
                   <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
@@ -428,7 +428,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
       {/* KOLEKSI MODUL AJAR TERSIMPAN TAB */}
       {activeTab === 'koleksi' && !selectedModul && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex flex-col items-start gap-3 pb-4 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-bold text-lg text-slate-900">Daftar Modul Ajar Tersimpan</h3>
             <button
               onClick={() => setActiveTab('generator')}
@@ -472,8 +472,8 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
 
       {/* DETAIL VIEW SELECTED MODUL FROM KOLEKSI */}
       {selectedModul && (
-        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-8 space-y-6 max-w-4xl mx-auto">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-4 sm:p-8 space-y-6 max-w-4xl mx-auto">
+          <div className="flex flex-col items-stretch gap-3 pb-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
             <button
               onClick={() => setSelectedModul(null)}
               className="flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
@@ -491,7 +491,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
             </button>
           </div>
 
-          <div className="bg-slate-50 p-8 rounded-2xl border border-slate-200 space-y-6 text-slate-800 text-xs leading-relaxed font-sans">
+          <div className="break-words bg-slate-50 p-4 sm:p-8 rounded-2xl border border-slate-200 space-y-6 text-slate-800 text-xs leading-relaxed font-sans">
             <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
               <h2 className="text-lg font-extrabold uppercase tracking-wide text-slate-900">{SCHOOL_INFO.name}</h2>
               <p className="text-xs font-semibold text-slate-600">DOKUMEN MODUL AJAR KURIKULUM MERDEKA</p>

@@ -439,7 +439,7 @@ export const NotifikasiSection: React.FC<NotifikasiSectionProps> = ({
                 Broadcast dipublikasikan di aplikasi web. Pengiriman email belum tersedia.
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex flex-col-reverse items-stretch gap-2 pt-3 border-t border-slate-100 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setShowBroadcastModal(false)}

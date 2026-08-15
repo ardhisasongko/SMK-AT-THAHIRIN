@@ -304,43 +304,43 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       {activeSubTab === 'pribadi' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+          <div className="min-w-0 bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               <UserIcon className="w-4 h-4 text-emerald-600" />
               <span>Detail Data Diri</span>
             </h3>
 
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Nama Lengkap</span>
-                <span className="font-bold text-slate-800">{currentUser.name}</span>
+              <div className="flex flex-col gap-1 py-1 border-b border-slate-50 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="shrink-0 text-slate-500">Nama Lengkap</span>
+                <span className="min-w-0 break-words font-bold text-slate-800 sm:text-right">{currentUser.name}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Email Utama</span>
-                <span className="font-bold text-slate-800">{currentUser.email}</span>
+              <div className="flex flex-col gap-1 py-1 border-b border-slate-50 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="shrink-0 text-slate-500">Email Utama</span>
+                <span className="min-w-0 break-all font-bold text-slate-800 sm:text-right">{currentUser.email}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Nomor Induk ({isStudentRole ? 'NISN' : 'NIP'})</span>
-                <span className="font-mono font-bold text-slate-800">{currentUser.nipNisn || '19890215 201502 1 003'}</span>
+              <div className="flex flex-col gap-1 py-1 border-b border-slate-50 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="shrink-0 text-slate-500">Nomor Induk ({isStudentRole ? 'NISN' : 'NIP'})</span>
+                <span className="min-w-0 break-words font-mono font-bold text-slate-800 sm:text-right">{currentUser.nipNisn || '19890215 201502 1 003'}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-50">
-                <span className="text-slate-500">Jabatan / Role</span>
-                <span className="font-bold text-emerald-700 capitalize">{currentUser.jabatan || currentUser.role}</span>
+              <div className="flex flex-col gap-1 py-1 border-b border-slate-50 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="shrink-0 text-slate-500">Jabatan / Role</span>
+                <span className="min-w-0 break-words font-bold text-emerald-700 capitalize sm:text-right">{currentUser.jabatan || currentUser.role}</span>
               </div>
               {isStudentRole && (
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-500">Kelas Aktif</span>
-                  <span className="font-bold text-slate-800">{studentClass?.name || 'X RPL 1'}</span>
+                <div className="flex flex-col gap-1 py-1 border-b border-slate-50 sm:flex-row sm:justify-between sm:gap-4">
+                  <span className="shrink-0 text-slate-500">Kelas Aktif</span>
+                  <span className="min-w-0 break-words font-bold text-slate-800 sm:text-right">{studentClass?.name || 'X RPL 1'}</span>
                 </div>
               )}
-              <div className="flex justify-between py-1">
+              <div className="flex flex-col items-start gap-1 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <span className="text-slate-500">Status Keaktifan</span>
                 <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Aktif Terdaftar</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+          <div className="min-w-0 bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-blue-600" />
               <span>Instansi & Keamanan Akun</span>
@@ -349,15 +349,15 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
             <div className="space-y-3 text-xs">
               <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
                 <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                <div>
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800">{SCHOOL_INFO.name}</div>
-                  <div className="text-[11px] text-slate-500">{SCHOOL_INFO.alamat}</div>
+                  <div className="break-words text-[11px] text-slate-500">{SCHOOL_INFO.alamat}</div>
                 </div>
               </div>
 
               <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
                 <Phone className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                <div>
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800">Kontak Darurat / Wali</div>
                   <div className="text-[11px] text-slate-500">{studentData?.noHpOrangTua || '(021) 7752091'}</div>
                 </div>

@@ -416,8 +416,8 @@ export const StudentAbsensiCard: React.FC<Props> = ({
         ) : (
           <div className="space-y-2">
             {myHistory.map(rec => (
-              <div key={`${rec.tanggal}-${rec.siswaId}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                <span className="text-xs text-slate-500 font-mono w-20">{rec.tanggal}</span>
+              <div key={`${rec.tanggal}-${rec.siswaId}`} className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 rounded-xl">
+                <span className="shrink-0 text-xs text-slate-500 font-mono">{rec.tanggal}</span>
                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${statusColor(rec.status)}`}>{rec.status}</span>
                 {rec.fotoUrl && (
                   <a href={`${rec.fotoUrl}?link=1`} target="_blank" rel="noreferrer" className="text-emerald-500 hover:text-emerald-700">

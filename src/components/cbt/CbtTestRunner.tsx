@@ -112,12 +112,12 @@ export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTes
   return (
     <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 flex flex-col font-sans select-none overflow-hidden">
       {/* CBT Header Toolbar */}
-      <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-extrabold text-lg shadow-sm">
+      <header className="bg-slate-800 border-b border-slate-700 px-2 py-2 flex items-center gap-2 shadow-md sm:px-4 sm:py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-extrabold text-base shadow-sm sm:w-10 sm:h-10 sm:text-lg">
             CBT
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-bold text-white line-clamp-1">{exam.title}</h1>
             <p className="text-xs text-emerald-400 font-medium line-clamp-1">
               {exam.subject} • Target: {exam.classTarget}
@@ -125,7 +125,7 @@ export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTes
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-4">
           {/* Student Info Pill */}
           <div className="hidden md:flex items-center gap-2 bg-slate-700/80 px-3 py-1.5 rounded-xl border border-slate-600 text-xs text-slate-200">
             <User className="w-4 h-4 text-emerald-400" />
@@ -134,22 +134,22 @@ export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTes
           </div>
 
           {/* Countdown Timer */}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono text-base sm:text-lg font-bold border transition-all ${
+          <div className={`flex items-center gap-1 px-2 py-2 rounded-xl font-mono text-sm sm:gap-2 sm:px-4 sm:text-lg font-bold border transition-all ${
             timeLeft < 300
               ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse'
               : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
           }`}>
-            <Clock className="w-5 h-5" />
+            <Clock className="hidden w-5 h-5 sm:block" />
             <span>{formatTime(timeLeft)}</span>
           </div>
 
           <button
             id="cbt-finish-btn"
             onClick={() => setShowFinishModal(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
           >
             <Send className="w-4 h-4" />
-            <span>Selesaikan</span>
+            <span className="hidden sm:inline">Selesaikan</span>
           </button>
         </div>
       </header>

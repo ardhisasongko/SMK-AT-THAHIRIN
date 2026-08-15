@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-html, body, #root {
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
 /* Print styles: sembunyikan navigasi, tampilkan hanya konten saat mencetak laporan */
 @media print {
   nav,

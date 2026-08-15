@@ -56,7 +56,10 @@ function renderRunner(onFinish = vi.fn()) {
 describe('CbtTestRunner', () => {
   it('menampilkan soal pertama dan judul ujian', () => {
     renderRunner();
-    expect(screen.getByText('Ujian Kearsipan')).toBeInTheDocument();
+    const title = screen.getByText('Ujian Kearsipan');
+    expect(title).toBeInTheDocument();
+    expect(title.parentElement).toHaveClass('min-w-0');
+    expect(screen.getByText('Selesaikan')).toHaveClass('hidden', 'sm:inline');
     expect(screen.getByText('Soal No. 1')).toBeInTheDocument();
     expect(screen.getByText('Pertanyaan pertama?')).toBeInTheDocument();
   });

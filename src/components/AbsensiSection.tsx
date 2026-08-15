@@ -842,7 +842,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               disabled={!canEditCurrent}
               onChange={(e) => setQrNisnInput(e.target.value)}
               placeholder="Masukkan NISN atau Scan QR..."
-              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-w-0 flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               type="submit"
@@ -875,7 +875,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               <p className="text-xs text-slate-500">{SCHOOL_INFO.name} — Semester Ganjil 2026/2027</p>
             </div>
             
-            <div className="print-hidden flex gap-2">
+            <div className="print-hidden flex flex-wrap justify-center gap-2">
               <button
                 onClick={handleExportCSV}
                 className="flex items-center gap-2 bg-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-emerald-700 cursor-pointer transition-colors"
@@ -896,22 +896,22 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
           {/* Date Range & Class Filter Controls */}
           <div className="print-hidden flex flex-col md:flex-row flex-wrap gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-slate-500" />
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+              <Calendar className="hidden w-4 h-4 text-slate-500 sm:block" />
               <input
                 type="date"
                 value={rekapStartDate}
                 max={rekapEndDate}
                 onChange={(e) => { setRekapStartDate(e.target.value); setRekapPage(1); }}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="min-w-0 w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:w-auto"
               />
-              <span className="text-slate-400 text-xs">s/d</span>
+              <span className="text-center text-slate-400 text-xs">s/d</span>
               <input
                 type="date"
                 value={rekapEndDate}
                 min={rekapStartDate}
                 onChange={(e) => { setRekapEndDate(e.target.value); setRekapPage(1); }}
-                className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="min-w-0 w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:w-auto"
               />
             </div>
             <select
@@ -989,7 +989,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                 <div className="text-xs text-slate-500 font-medium">
                   Menampilkan <strong>{filteredSiswaList.length === 0 ? 0 : (currentPage - 1) * rekapPageSize + 1}</strong> - <strong>{Math.min(currentPage * rekapPageSize, filteredSiswaList.length)}</strong> dari <strong>{filteredSiswaList.length}</strong> siswa
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <select
                     value={rekapPageSize}
                     onChange={(e) => { setRekapPageSize(Number(e.target.value)); setRekapPage(1); }}

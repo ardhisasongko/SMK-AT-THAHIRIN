@@ -104,7 +104,7 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, currentUser }) => 
         {/* Bottom copyright */}
         <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>© 2026 {SCHOOL_INFO.name} MEGAMENDUNG BOGOR. Hak Cipta Dilindungi Undang-Undang.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-2 text-center sm:flex-row sm:gap-4">
             <span className="hover:text-slate-300">Kurikulum Merdeka SMK</span>
             <span>•</span>
             <span className="hover:text-slate-300">Sistem Informasi Manajemen Sekolah v2.5</span>
