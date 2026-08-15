@@ -34,9 +34,10 @@ import {
 interface LandingPageProps {
   setActiveTab: (tab: string) => void;
   onOpenLogin: () => void;
+  isAuthenticated: boolean;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLogin }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLogin, isAuthenticated }) => {
   const [selectedJurusan, setSelectedJurusan] = useState<Jurusan | null>(null);
   const [selectedBerita, setSelectedBerita] = useState<Berita | null>(null);
 
@@ -80,22 +81,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 Selamat datang di <strong>{SCHOOL_INFO.name}</strong>, sekolah kejuruan terakreditasi B yang memadukan pembelajaran industri, teknologi digital, dan penguatan karakter.
               </p>
 
-              <div className="flex items-center justify-center gap-2.5 pt-1 lg:justify-start">
+              <div className="grid w-full grid-cols-2 gap-2.5 pt-1 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-center lg:justify-start">
+                {!isAuthenticated && (
+                  <button
+                    id="hero-cta-login"
+                    onClick={onOpenLogin}
+                    className="col-span-2 flex min-w-0 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] hover:bg-emerald-500 cursor-pointer sm:w-auto sm:px-5 sm:py-3 sm:text-sm"
+                  >
+                    <LogIn className="w-4 h-4 shrink-0" />
+                    <span>Masuk Portal</span>
+                  </button>
+                )}
+
                 <button
                   id="hero-cta-cbt"
                   onClick={() => setActiveTab('cbt')}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] hover:bg-emerald-500 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
+                  className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:scale-[1.02] hover:bg-emerald-500/20 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-4 h-4 shrink-0 text-emerald-400" />
                   <span>Ujian CBT</span>
                 </button>
 
                 <button
                   id="hero-cta-absensi"
                   onClick={() => setActiveTab('absensi')}
-                  className="flex items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:scale-[1.02] hover:bg-slate-700 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
+                  className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-600 bg-slate-800/80 px-2.5 py-2.5 text-xs font-bold text-white shadow-md transition-all hover:scale-[1.02] hover:bg-slate-700 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
                 >
-                  <UserCheck className="w-4 h-4 text-emerald-400" />
+                  <UserCheck className="w-4 h-4 shrink-0 text-emerald-400" />
                   <span>Absensi</span>
                 </button>
               </div>

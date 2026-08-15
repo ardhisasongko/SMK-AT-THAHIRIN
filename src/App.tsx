@@ -135,18 +135,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-900">
       
-      {/* Navigation Header */}
-      <Navbar 
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        currentUser={currentUser}
-        unreadCount={unreadCount}
-        onLoginClick={() => setShowLoginModal(true)}
-        onLogoutClick={handleLogout}
-      />
+      {currentUser && (
+        <Navbar
+          setActiveTab={setActiveTab}
+          currentUser={currentUser}
+          onLogoutClick={handleLogout}
+        />
+      )}
 
       {/* Main Content Area */}
-      <main className={`flex-1 ${currentUser && activeTab !== 'landing' ? 'pb-20' : ''}`}>
+      <main className="flex-1">
         {(!currentUser && isProtectedTab) || (currentUser && !isAllowedTab) ? (
           <LoginGate 
             onLoginClick={() => setShowLoginModal(true)}
@@ -158,6 +156,7 @@ export default function App() {
           <LandingPage 
             setActiveTab={setActiveTab}
             onOpenLogin={() => setShowLoginModal(true)}
+            isAuthenticated={Boolean(currentUser)}
           />
         )}
 
@@ -247,8 +246,7 @@ export default function App() {
       {/* Footer */}
       <Footer setActiveTab={setActiveTab} currentUser={currentUser} />
 
-      {/* Landing sudah memiliki navigasi dan CTA sendiri. */}
-      {currentUser && activeTab !== 'landing' && (
+      {currentUser && (
         <BottomDock
           activeTab={activeTab}
           setActiveTab={setActiveTab}
