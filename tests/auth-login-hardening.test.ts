@@ -18,7 +18,7 @@ vi.mock('../functions/_lib/rate-limit', () => ({
 describe('login hardening', () => {
   it('mengirim sesi lewat cookie HttpOnly tanpa token di body', async () => {
     const user = {
-      id: 'user-1', name: 'Siswa', email: 'siswa@example.test', role: 'siswa', password_hash: 'pbkdf2$600000$salt$hash',
+      id: 'user-1', name: 'Siswa', email: 'siswa@example.test', role: 'siswa', password_hash: 'pbkdf2$100000$salt$hash',
       status: 'active', nip_nisn: '0011223344', class_id: 'k1', ketua_status: 'none', must_change_password: 0,
     };
     const first = vi.fn(async () => user);

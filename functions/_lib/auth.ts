@@ -24,7 +24,8 @@ export interface AuthEnv {
   DB: D1Database;
 }
 
-const ITERATIONS = 600_000;
+// Cloudflare Workers Web Crypto membatasi PBKDF2 maksimal 100.000 iterasi.
+const ITERATIONS = 100_000;
 const KEY_LEN = 32;
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 hari
 

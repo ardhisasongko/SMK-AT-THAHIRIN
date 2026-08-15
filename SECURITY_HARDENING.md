@@ -4,7 +4,7 @@
 
 - Sesi browser menggunakan cookie `HttpOnly`, `Secure`, dan `SameSite=Strict`.
 - Token sesi disimpan sebagai hash SHA-256 di D1; sesi legacy dimigrasikan saat digunakan.
-- Password baru menggunakan PBKDF2-SHA256 600.000 iterasi dan hash lama di-upgrade saat login.
+- Password menggunakan PBKDF2-SHA256 100.000 iterasi, yaitu batas maksimum Web Crypto pada Cloudflare Workers.
 - Login dibatasi per IP dan per akun dengan respons kegagalan generik.
 - Request mutasi berbasis cookie wajib berasal dari origin website yang sama.
 - Ukuran body dibatasi berdasarkan route dan diverifikasi dari stream aktual.

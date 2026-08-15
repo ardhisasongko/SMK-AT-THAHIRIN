@@ -1,9 +1,9 @@
-import { verifyPassword, createSession, hashPassword, type AuthEnv } from '../../_lib/auth';
+import { verifyPassword, createSession, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../_lib/rate-limit';
 
 interface Env extends AuthEnv {}
-const DUMMY_PASSWORD_HASH = 'pbkdf2$600000$4f4e4c5944554d4d5950415353574f52$cfd2fdd8fea414254f14ad759c96920dce324a3e10dcea3b8c9d40795afcf99b';
+const DUMMY_PASSWORD_HASH = 'pbkdf2$100000$4f4e4c5944554d4d5950415353574f52$416f812aa8e8077cf41a5f602ebd520c42b0f276d3439667bfc25e81ce26b8c7';
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   let body: { identifier?: string; password?: string };
@@ -45,11 +45,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const ok = await verifyPassword(password, String(row.password_hash));
   if (!ok || String(row.status || 'active') !== 'active') {
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
-  }
-
-  const storedIterations = Number(String(row.password_hash).split('$')[1] || 0);
-  if (storedIterations < 600_000) {
-    await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(await hashPassword(password), String(row.id)).run();
   }
 
   const token = await createSession(env, String(row.id));
