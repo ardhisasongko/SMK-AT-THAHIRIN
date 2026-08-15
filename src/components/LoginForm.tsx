@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AuthSession } from '../types';
-import { School, LogIn, Lock, Mail, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { LogIn, Lock, Mail, AlertCircle, Eye, EyeOff, Loader2, GraduationCap, BriefcaseBusiness } from 'lucide-react';
 import { loginRequest, isPasswordStrong } from '../utils/auth';
 import { SCHOOL_INFO } from '../data/initialData';
 import { Modal } from './ui/Modal';
@@ -52,8 +52,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md">
-            <School className="w-6 h-6" />
+          <div className="h-10 w-10 overflow-hidden rounded-xl bg-emerald-600 text-white shadow-md">
+            <img src="/school-mark.svg" alt="Logo portal SMK Plus At Thahirin" className="h-full w-full" width="40" height="40" />
           </div>
           <div>
             <h3 className="font-extrabold text-lg text-slate-900">Login Portal SMK</h3>
@@ -72,23 +72,25 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
       <div className="flex bg-slate-100 p-1 rounded-xl">
         <button
           onClick={() => setLoginType('guru')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+          className={`flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             loginType === 'guru'
               ? 'bg-white text-emerald-700 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Portal Guru & Staf
+          <BriefcaseBusiness className="h-3.5 w-3.5" />
+          <span>Guru & Staf</span>
         </button>
         <button
           onClick={() => setLoginType('siswa')}
-          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+          className={`flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             loginType === 'siswa'
               ? 'bg-white text-emerald-700 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Portal Siswa / Orang Tua
+          <GraduationCap className="h-3.5 w-3.5" />
+          <span>Siswa / Orang Tua</span>
         </button>
       </div>
 
@@ -138,7 +140,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Password minimal 6 karakter</p>
+          <p className="text-[10px] text-slate-400 mt-1">Password minimal 8 karakter</p>
         </div>
 
         <button

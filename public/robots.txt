@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://smk-at-tahirin.pages.dev/sitemap.xml

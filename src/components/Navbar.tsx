@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { SCHOOL_INFO } from '../data/initialData';
-import { School, LogIn, LogOut, Menu, X } from 'lucide-react';
+import { LogIn, LogOut, Menu, X } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -62,8 +62,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex min-w-0 items-center gap-2.5 cursor-pointer group sm:gap-3"
             onClick={() => setActiveTab('landing')}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-800 text-white shadow-md shadow-emerald-700/20 transition-transform group-hover:scale-105 sm:h-11 sm:w-11">
-              <School className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-800 text-white shadow-md shadow-emerald-700/20 transition-transform group-hover:scale-105 sm:h-11 sm:w-11">
+              <img src="/school-mark.svg" alt="Logo portal SMK Plus At Thahirin" className="h-full w-full" width="44" height="44" />
             </div>
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-1.5">
@@ -138,10 +138,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex shrink-0 items-center gap-2 lg:hidden">
+          <div className="flex shrink-0 items-center gap-2 sm:hidden">
             <button
               id="mobile-menu-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Tutup menu akun' : 'Buka menu akun'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-account-menu"
               className="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -153,7 +156,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Drawer: menu akun saja (navigasi sudah dihandle BottomDock) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-4 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top duration-200">
+        <div id="mobile-account-menu" className="border-t border-slate-200 bg-white px-4 pt-4 pb-6 space-y-2 shadow-xl animate-in slide-in-from-top duration-200 sm:hidden">
           <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 px-1">
             Menu Akun
           </p>

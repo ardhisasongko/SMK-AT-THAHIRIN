@@ -124,6 +124,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                   <img 
                     src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80" 
                     alt="Siswa SMKS PLUS AT THAHIRIN Praktikum" 
+                    fetchPriority="high"
+                    decoding="async"
                     className="h-64 w-full object-cover sm:h-80 lg:h-96"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
@@ -195,6 +197,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 <img
                   src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80"
                   alt={SCHOOL_INFO.kepalaSekolah}
+                  loading="lazy"
+                  decoding="async"
                   className="mx-auto h-36 w-36 rounded-full border-4 border-emerald-600 object-cover shadow-xl sm:h-48 sm:w-48 lg:h-56 lg:w-56"
                 />
                 <div className="absolute bottom-2 right-2 bg-emerald-600 text-white p-2 rounded-full shadow-md">
@@ -361,6 +365,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                     <img 
                       src={berita.gambar} 
                       alt={berita.judul} 
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <span className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-md">
