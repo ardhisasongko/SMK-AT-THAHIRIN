@@ -26,6 +26,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `c87ae10 docs(project): catat migrasi 0017-0018 live di produksi`
 - `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
 - `dcdae6a feat(cbt): soal essai (textarea + kunci otomatis) dan hemat free tier — jawaban simpan di localStorage, sinkron server tiap 10 menit, wajib semua soal terisi sebelum submit`
+- `(berikutnya) feat(cbt): tab "Nilai Saya" untuk siswa — riwayat ujian, skor, benar/salah, detail jawaban (UI-only, tanpa ubah backend); diverifikasi e2e di produksi via Playwright`
 
 ## Perubahan Utama Sesi Ini
 

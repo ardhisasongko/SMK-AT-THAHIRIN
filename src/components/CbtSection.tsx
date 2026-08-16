@@ -22,6 +22,7 @@ import { User as UserType, CbtExam, CbtSubmission, CbtSummary, Kelas } from '../
 import { useFilter } from '../hooks/useFilter';
 import { CbtTestRunner } from './cbt/CbtTestRunner';
 import { CbtResultsTable } from './cbt/CbtResultsTable';
+import { CbtMyResults } from './cbt/CbtMyResults';
 import { CbtResultReviewModal } from './cbt/CbtResultReviewModal';
 import { CbtTokenModal } from './cbt/CbtTokenModal';
 import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
@@ -59,7 +60,7 @@ export function CbtSection({
   const [attemptExpiresAt, setAttemptExpiresAt] = useState('');
   const [savedAnswers, setSavedAnswers] = useState<{ [questionId: string]: string }>({});
   const [savedDoubtful, setSavedDoubtful] = useState<{ [questionId: string]: boolean }>({});
-  const [scheduleTab, setScheduleTab] = useState<'today' | 'all'>('today');
+  const [scheduleTab, setScheduleTab] = useState<'today' | 'all' | 'nilai'>('today');
   const [cbtSummary, setCbtSummary] = useState<CbtSummary[]>([]);
   const isStaff = Boolean(currentUser && ['guru', 'admin', 'super_admin'].includes(currentUser.role));
 
@@ -331,6 +332,14 @@ export function CbtSection({
                 >
                   Semua
                 </button>
+                {!isStaff && (
+                  <button
+                    onClick={() => setScheduleTab('nilai')}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleTab === 'nilai' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Nilai Saya
+                  </button>
+                )}
               </div>
 
               {/* Search Input */}
@@ -347,6 +356,14 @@ export function CbtSection({
             </div>
           </div>
 
+          {scheduleTab === 'nilai' ? (
+            <CbtMyResults
+              submissions={cbtSubmissions}
+              exams={cbtExams}
+              onReview={(sub) => setShowReviewModal(sub)}
+            />
+          ) : (
+          <>
           {!isStaff && scheduleTab === 'today' && (
             <div className="flex flex-wrap gap-2">
               {scheduleDays.length > 0 ? scheduleDays.map(day => (
@@ -462,6 +479,8 @@ export function CbtSection({
               );
             })}
           </div>
+          </>
+          )}
         </div>
 
       </div>
