@@ -22,6 +22,8 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
   const [newToken, setNewToken] = useState(initialExam ? '' : 'MPLB' + Math.floor(1000 + Math.random() * 9000));
   const [newStartDate, setNewStartDate] = useState(initialExam?.startDate || today);
   const [newEndDate, setNewEndDate] = useState(initialExam?.endDate || today);
+  const [newOpenTime, setNewOpenTime] = useState(initialExam?.openTime || '');
+  const [newCloseTime, setNewCloseTime] = useState(initialExam?.closeTime || '');
   const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>(initialExam?.questions || []);
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
 
@@ -73,6 +75,10 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       alert('Tanggal akhir tidak boleh sebelum tanggal mulai.');
       return;
     }
+    if (newOpenTime && newCloseTime && newCloseTime <= newOpenTime) {
+      alert('Jam tutup harus lebih lambat dari jam buka.');
+      return;
+    }
     if (newQuestions.length === 0) {
       alert('Harap tambahkan minimal 1 soal ujian.');
       return;
@@ -88,6 +94,8 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       teacherName: initialExam?.teacherName || currentUser?.name || 'Guru',
       startDate: newStartDate,
       endDate: newEndDate,
+      openTime: newOpenTime || undefined,
+      closeTime: newCloseTime || undefined,
       status: initialExam?.status || 'active',
       questions: newQuestions
     };
@@ -182,6 +190,31 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
               <label className="block font-bold text-slate-700 mb-1">Tanggal Akhir</label>
               <input type="date" required min={newStartDate} value={newEndDate} onChange={(e) => setNewEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900" />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Jam Buka (opsional, WIB)</label>
+              <input
+                type="time"
+                value={newOpenTime}
+                onChange={(e) => { setNewOpenTime(e.target.value); if (newCloseTime && newCloseTime <= e.target.value) setNewCloseTime(''); }}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Jam Tutup (opsional, WIB)</label>
+              <input
+                type="time"
+                min={newOpenTime || undefined}
+                value={newCloseTime}
+                onChange={(e) => setNewCloseTime(e.target.value)}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 col-span-1 sm:col-span-2 -mt-1">
+              Kosongkan keduanya jika ujian tersedia sepanjang hari pada rentang tanggal. Berlaku sama untuk setiap hari pada rentang tanggal.
+            </p>
           </div>
 
           {/* Soal Generator Box */}

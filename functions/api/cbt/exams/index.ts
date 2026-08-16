@@ -22,7 +22,7 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
     exams.push({
       id: String(row.id), title: String(row.title), subject: String(row.subject), classTarget: String(row.class_target),
       durationMinutes: Number(row.duration_minutes), token: '', teacherName: String(row.teacher_name),
-      startDate: String(row.start_date), endDate: String(row.end_date), status: effectiveCbtStatus(row),
+      startDate: String(row.start_date), endDate: String(row.end_date), openTime: row.open_time || '', closeTime: row.close_time || '', status: effectiveCbtStatus(row),
       questions, questionCount: staff ? questions.length : Number((await env.DB.prepare('SELECT COUNT(*) AS total FROM cbt_questions WHERE exam_id=?').bind(row.id).first<any>())?.total || 0),
       attempt: attempt ? {
         id: String(attempt.id), examId: String(row.id), siswaId: data.user.id, siswaName: data.user.name, nisn: data.user.nipNisn || '',
@@ -51,8 +51,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   const status = startDate > todayWIB() ? 'upcoming' : 'active';
   const id = `cbt-${crypto.randomUUID()}`;
   const statements = [
-    env.DB.prepare(`INSERT INTO cbt_exams (id,title,subject,class_target,duration_minutes,token_hash,teacher_user_id,teacher_name,start_date,end_date,status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(id, body.title.trim(), body.subject.trim(), String(body.classTarget).slice(0, 100), body.durationMinutes, await hashCbtToken(body.token), data.user.id, data.user.name, startDate, endDate, status),
+    env.DB.prepare(`INSERT INTO cbt_exams (id,title,subject,class_target,duration_minutes,token_hash,teacher_user_id,teacher_name,start_date,end_date,open_time,close_time,status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, body.title.trim(), body.subject.trim(), String(body.classTarget).slice(0, 100), body.durationMinutes, await hashCbtToken(body.token), data.user.id, data.user.name, startDate, endDate, body.openTime || null, body.closeTime || null, status),
     ...questionStatements(env.DB, id, questions),
   ];
   await env.DB.batch(statements);
@@ -87,11 +87,11 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
   const storedStatus = body.startDate > todayWIB() ? 'upcoming' : exam.status === 'completed' ? 'completed' : 'active';
   const responseStatus = isActive === 0 ? 'inactive' : storedStatus;
   const statements = [
-    env.DB.prepare(`UPDATE cbt_exams SET title=?,subject=?,class_target=?,duration_minutes=?,start_date=?,end_date=?,status=?,updated_at=datetime('now') WHERE id=?`).bind(body.title.trim(), body.subject.trim(), body.classTarget, body.durationMinutes, body.startDate, body.endDate, storedStatus, exam.id),
+    env.DB.prepare(`UPDATE cbt_exams SET title=?,subject=?,class_target=?,duration_minutes=?,start_date=?,end_date=?,open_time=?,close_time=?,status=?,updated_at=datetime('now') WHERE id=?`).bind(body.title.trim(), body.subject.trim(), body.classTarget, body.durationMinutes, body.startDate, body.endDate, body.openTime || null, body.closeTime || null, storedStatus, exam.id),
     env.DB.prepare('DELETE FROM cbt_questions WHERE exam_id=?').bind(exam.id),
     ...questionStatements(env.DB, String(exam.id), body.questions),
   ];
-  if (body.token) statements[0] = env.DB.prepare(`UPDATE cbt_exams SET title=?,subject=?,class_target=?,duration_minutes=?,start_date=?,end_date=?,status=?,token_hash=?,updated_at=datetime('now') WHERE id=?`).bind(body.title.trim(), body.subject.trim(), body.classTarget, body.durationMinutes, body.startDate, body.endDate, storedStatus, await hashCbtToken(body.token), exam.id);
+  if (body.token) statements[0] = env.DB.prepare(`UPDATE cbt_exams SET title=?,subject=?,class_target=?,duration_minutes=?,start_date=?,end_date=?,open_time=?,close_time=?,status=?,token_hash=?,updated_at=datetime('now') WHERE id=?`).bind(body.title.trim(), body.subject.trim(), body.classTarget, body.durationMinutes, body.startDate, body.endDate, body.openTime || null, body.closeTime || null, storedStatus, await hashCbtToken(body.token), exam.id);
   try {
     await env.DB.batch(statements);
   } catch (error) {

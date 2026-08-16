@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   FileText,
   Clock,
+  Clock3,
+  CalendarDays,
   CheckCircle2,
   Key,
   Play,
@@ -16,7 +18,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import { User as UserType, CbtExam, CbtSubmission, Kelas } from '../types';
+import { User as UserType, CbtExam, CbtSubmission, CbtSummary, Kelas } from '../types';
 import { useFilter } from '../hooks/useFilter';
 import { CbtTestRunner } from './cbt/CbtTestRunner';
 import { CbtResultsTable } from './cbt/CbtResultsTable';
@@ -55,16 +57,51 @@ export function CbtSection({
   const [showReviewModal, setShowReviewModal] = useState<CbtSubmission | null>(null);
   const [attemptId, setAttemptId] = useState('');
   const [attemptExpiresAt, setAttemptExpiresAt] = useState('');
+  const [savedAnswers, setSavedAnswers] = useState<{ [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' }>({});
+  const [savedDoubtful, setSavedDoubtful] = useState<{ [questionId: string]: boolean }>({});
+  const [scheduleTab, setScheduleTab] = useState<'today' | 'all'>('today');
+  const [cbtSummary, setCbtSummary] = useState<CbtSummary[]>([]);
   const isStaff = Boolean(currentUser && ['guru', 'admin', 'super_admin'].includes(currentUser.role));
 
   useEffect(() => {
     if (!currentUser) return;
     let cancelled = false;
-    Promise.all([cbtApi.exams(), cbtApi.results()])
-      .then(([exams, results]) => { if (!cancelled) { setCbtExams(exams); setCbtSubmissions(results); } })
+    Promise.all([cbtApi.exams(), cbtApi.results(), cbtApi.summary()])
+      .then(([exams, results, summary]) => { if (!cancelled) { setCbtExams(exams); setCbtSubmissions(results); setCbtSummary(summary); } })
       .catch(error => { if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Gagal memuat CBT.'); });
     return () => { cancelled = true; };
   }, [currentUser?.id]);
+
+  const todayWIB = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+  const sortedExams = [...filteredExams].sort((a, b) => (a.startDate + a.title).localeCompare(b.startDate + b.title));
+  const examsToday = sortedExams.filter(exam => exam.startDate <= todayWIB && exam.endDate >= todayWIB);
+  const visibleExams = scheduleTab === 'today' ? examsToday : sortedExams;
+  const scheduleDays = [...new Set(examsToday.map(exam => exam.startDate))].sort();
+  const formatDate = (date: string) => {
+    try {
+      return new Date(`${date}T00:00:00Z`).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+    } catch {
+      return date;
+    }
+  };
+  const examScheduleLabel = (exam: CbtExam) => {
+    if (exam.startDate === exam.endDate) return formatDate(exam.startDate);
+    return `${formatDate(exam.startDate)} — ${formatDate(exam.endDate)}`;
+  };
+  const examTimeLabel = (exam: CbtExam) => {
+    if (!exam.openTime && !exam.closeTime) return null;
+    if (exam.openTime && exam.closeTime) return `${exam.openTime}–${exam.closeTime} WIB`;
+    return exam.openTime ? `Buka ${exam.openTime} WIB` : `Tutup ${exam.closeTime} WIB`;
+  };
+  const isExamClosedNow = (exam: CbtExam) => {
+    if (exam.status !== 'active') return true;
+    const now = new Date(Date.now() + 7 * 3600 * 1000);
+    const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    if (exam.openTime && minutes < toMin(exam.openTime)) return true;
+    if (exam.closeTime && minutes >= toMin(exam.closeTime)) return true;
+    return false;
+  };
 
   const handleStartExam = (exam: CbtExam) => {
     if (!currentUser) {
@@ -76,12 +113,19 @@ export function CbtSection({
 
   const handleTokenVerified = async (token: string) => {
     if (!selectedExamForToken) return;
-    const attempt = await cbtApi.startAttempt(selectedExamForToken.id, token);
-    setActiveExam(attempt.exam);
-    setAttemptId(attempt.attemptId);
-    setAttemptExpiresAt(attempt.expiresAt);
-    setIsTestMode(true);
-    setSelectedExamForToken(null);
+    try {
+      const attempt = await cbtApi.startAttempt(selectedExamForToken.id, token);
+      setActiveExam(attempt.exam);
+      setAttemptId(attempt.attemptId);
+      setAttemptExpiresAt(attempt.expiresAt);
+      setSavedAnswers(attempt.savedAnswers || {});
+      setSavedDoubtful(attempt.savedDoubtful || {});
+      setIsTestMode(true);
+      setSelectedExamForToken(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Gagal memulai ujian.');
+      setSelectedExamForToken(null);
+    }
   };
 
   const handleFinishSubmission = async (submission: CbtSubmission) => {
@@ -149,6 +193,9 @@ export function CbtSection({
       <CbtTestRunner
         exam={activeExam}
         currentUser={currentUser}
+        attemptId={attemptId}
+        initialAnswers={savedAnswers}
+        initialDoubtful={savedDoubtful}
         onFinish={handleFinishSubmission}
         expiresAt={attemptExpiresAt}
       />
@@ -212,11 +259,53 @@ export function CbtSection({
 
         {/* RESULTS SUMMARY TABLE (IF TOGGLED OR GURU) */}
         {showResultsTable && (
-          <CbtResultsTable
-            submissions={cbtSubmissions}
-            exams={cbtExams}
-            onReview={(sub) => setShowReviewModal(sub)}
-          />
+          <>
+            <CbtResultsTable
+              submissions={cbtSubmissions}
+              exams={cbtExams}
+              onReview={(sub) => setShowReviewModal(sub)}
+            />
+            {isStaff && cbtSummary.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-4">
+                <div className="flex flex-col items-start gap-2 pb-3 border-b border-slate-100 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-emerald-600" />
+                    <span>Rekap Nilai Siswa (Lintas Ujian)</span>
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-[720px] w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-600 font-bold uppercase border-b border-slate-200">
+                      <tr>
+                        <th className="py-3 px-4">Siswa</th>
+                        <th className="py-3 px-4">NISN</th>
+                        <th className="py-3 px-4">Ujian Dikerjakan</th>
+                        <th className="py-3 px-4">Rata-rata</th>
+                        <th className="py-3 px-4">Nilai Terbaik</th>
+                        <th className="py-3 px-4">Nilai Terendah</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                      {cbtSummary.map(sum => (
+                        <tr key={sum.siswaId} className="hover:bg-slate-50 transition-colors">
+                          <td className="py-3 px-4 font-bold text-slate-900">{sum.siswaName}</td>
+                          <td className="py-3 px-4 font-mono text-slate-500">{sum.nisn}</td>
+                          <td className="py-3 px-4 text-slate-600">{sum.examCount} ujian</td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2.5 py-1 rounded-lg font-bold ${sum.avgScore >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                              {sum.avgScore}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-emerald-700 font-bold">{sum.bestScore}</td>
+                          <td className="py-3 px-4 text-rose-600 font-bold">{sum.worstScore}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* SEARCH & EXAM LIST GRID */}
@@ -227,21 +316,53 @@ export function CbtSection({
               <span>Daftar Ujian & Kuis CBT Tersedia</span>
             </h2>
 
-            {/* Search Input */}
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                placeholder="Cari mata pelajaran / ujian..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-xs"
-              />
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Schedule tabs */}
+              <div className="flex items-center bg-slate-100 rounded-xl p-1 text-xs font-bold">
+                <button
+                  onClick={() => setScheduleTab('today')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleTab === 'today' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Hari Ini
+                </button>
+                <button
+                  onClick={() => setScheduleTab('all')}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${scheduleTab === 'all' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Semua
+                </button>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Cari mata pelajaran / ujian..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-xs"
+                />
+              </div>
             </div>
           </div>
 
+          {!isStaff && scheduleTab === 'today' && (
+            <div className="flex flex-wrap gap-2">
+              {scheduleDays.length > 0 ? scheduleDays.map(day => (
+                <span key={day} className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  {formatDate(day)}
+                </span>
+              )) : (
+                <span className="bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  Tidak ada ujian pada rentang hari ini.
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {filteredExams.map(exam => {
+            {visibleExams.map(exam => {
               const mySubmission = cbtSubmissions.find(s => s.examId === exam.id && s.siswaId === currentUser?.id);
 
               return (
@@ -274,6 +395,16 @@ export function CbtSection({
                          <span>Jumlah: <strong>{exam.questionCount ?? exam.questions.length} Soal</strong></span>
                       </div>
                       <div className="flex items-center gap-1.5 col-span-2">
+                        <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>Jadwal: <strong>{examScheduleLabel(exam)}</strong></span>
+                      </div>
+                      {examTimeLabel(exam) && (
+                        <div className="flex items-center gap-1.5 col-span-2">
+                          <Clock3 className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span>Jam: <strong>{examTimeLabel(exam)}</strong></span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 col-span-2">
                         <User className="w-4 h-4 text-slate-400 shrink-0" />
                         <span>Pengampu: {exam.teacherName}</span>
                       </div>
@@ -302,14 +433,17 @@ export function CbtSection({
                           <span>Token diberikan oleh pengawas</span>
                         </div>
 
-                        {!isStaff && exam.status === 'active' ? <button
-                          id={`start-exam-${exam.id}`}
-                          onClick={() => handleStartExam(exam)}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.02]"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                          <span>Kerjakan Ujian</span>
-                        </button> : !isStaff && <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500">{exam.status === 'upcoming' ? 'Belum Dimulai' : 'Ujian Ditutup'}</span>}
+                        {!isStaff && exam.status === 'active' ? (isExamClosedNow(exam)
+                          ? <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500">{exam.openTime && exam.closeTime ? `Belum/Tutup (${exam.openTime}–${exam.closeTime})` : 'Di luar jam ujian'}</span>
+                          : <button
+                            id={`start-exam-${exam.id}`}
+                            onClick={() => handleStartExam(exam)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.02]"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>Kerjakan Ujian</span>
+                          </button>
+                        ) : !isStaff && <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500">{exam.status === 'upcoming' ? 'Belum Dimulai' : 'Ujian Ditutup'}</span>}
                       </div>
                     )}
                     {isStaff && (

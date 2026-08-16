@@ -1,4 +1,4 @@
-import type { CbtExam, CbtQuestion, CbtSubmission } from '../types';
+import type { CbtAttempt, CbtExam, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
 import { authHeaders } from './auth';
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -16,7 +16,9 @@ export const cbtApi = {
   setExamStatus: (examId: string, status: 'active' | 'inactive' | 'completed') => api<{ id: string; status: CbtExam['status'] }>('/api/cbt/exams', { method: 'PATCH', body: JSON.stringify({ id: examId, status }) }),
   deleteExam: (examId: string) => api<{ id: string }>('/api/cbt/exams', { method: 'DELETE', body: JSON.stringify({ id: examId }) }),
   generateQuestions: (subject: string, count = 5) => api<CbtQuestion[]>('/api/cbt/generate', { method: 'POST', body: JSON.stringify({ subject, count }) }),
-  startAttempt: (examId: string, token: string) => api<{ attemptId: string; expiresAt: string; exam: CbtExam }>(`/api/cbt/exams/${encodeURIComponent(examId)}/attempts`, { method: 'POST', body: JSON.stringify({ token }) }),
+  startAttempt: (examId: string, token: string) => api<CbtAttempt>(`/api/cbt/exams/${encodeURIComponent(examId)}/attempts`, { method: 'POST', body: JSON.stringify({ token }) }),
+  saveAttempt: (attemptId: string, answers: CbtSubmission['answers'], doubtful: CbtSubmission['doubtful']) => api<{ attemptId: string; savedAt: string }>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/save`, { method: 'POST', body: JSON.stringify({ answers, doubtful }) }),
   submitAttempt: (attemptId: string, submission: CbtSubmission) => api<CbtSubmission>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/submit`, { method: 'POST', body: JSON.stringify({ answers: submission.answers, doubtful: submission.doubtful }) }),
+  summary: () => api<CbtSummary[]>('/api/cbt/summary'),
   rotateToken: (examId: string) => api<{ token: string }>(`/api/cbt/exams/${encodeURIComponent(examId)}/token`, { method: 'POST' }),
 };

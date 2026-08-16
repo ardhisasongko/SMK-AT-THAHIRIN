@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../../_lib/auth';
-import { canTakeExam, effectiveCbtStatus, ensureLegacyCbtMigrated, getExamQuestions, hashCbtToken, isCbtStudent } from '../../../../_lib/cbt';
+import { canTakeExam, cbtWindowOpen, effectiveCbtStatus, ensureLegacyCbtMigrated, getExamQuestions, hashCbtToken, isCbtStudent, parseJson } from '../../../../_lib/cbt';
 import { jsonResponse } from '../../../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../../../_lib/rate-limit';
 
@@ -16,6 +16,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   const exam = await env.DB.prepare('SELECT * FROM cbt_exams WHERE id=?').bind(String(params.id)).first<any>();
   if (!exam || !(await canTakeExam(env.DB, data.user, exam))) return jsonResponse({ success: false, error: 'Ujian tidak tersedia.' }, 404);
   if (effectiveCbtStatus(exam) !== 'active') return jsonResponse({ success: false, error: 'Ujian belum dimulai, dinonaktifkan, atau sudah berakhir.' }, 403);
+  const windowCheck = cbtWindowOpen(exam);
+  if (!windowCheck.open) return jsonResponse({ success: false, error: windowCheck.reason || 'Ujian belum dibuka.' }, 403);
   const rateKey = `cbt-token:${exam.id}:${data.user.id}`;
   if (!(await consumeRateLimit(env.DB, rateKey, 10, 15 * 60))) return jsonResponse({ success: false, error: 'Terlalu banyak percobaan token. Coba lagi beberapa menit.' }, 429);
   if (await hashCbtToken(body.token) !== exam.token_hash) return jsonResponse({ success: false, error: 'Token ujian tidak valid.' }, 403);
@@ -34,14 +36,16 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
     const id = `attempt-${crypto.randomUUID()}`;
     try {
       await env.DB.prepare(`INSERT INTO cbt_attempts (id,exam_id,student_user_id,student_name,nisn,status,started_at,expires_at) VALUES (?,?,?,?,?,'in_progress',?,?)`).bind(id, exam.id, data.user.id, data.user.name, data.user.nipNisn || '', startedAt, expiresAt).run();
-      attempt = { id, started_at: startedAt, expires_at: expiresAt, answers_json: '{}', doubtful_json: '{}' };
+      attempt = { id, started_at: startedAt, expires_at: expiresAt };
     } catch {
       attempt = await env.DB.prepare('SELECT * FROM cbt_attempts WHERE exam_id=? AND student_user_id=?').bind(exam.id, data.user.id).first<any>();
       if (!attempt || attempt.status === 'submitted') return jsonResponse({ success: false, error: 'Ujian sudah pernah diselesaikan.' }, 409);
     }
   }
+  const saved = await env.DB.prepare('SELECT answers_json,doubtful_json FROM cbt_attempt_answers WHERE attempt_id=?').bind(attempt.id).first<any>();
   return jsonResponse({ success: true, data: {
     attemptId: attempt.id, startedAt: attempt.started_at, expiresAt: attempt.expires_at,
-    exam: { id: exam.id, title: exam.title, subject: exam.subject, classTarget: exam.class_target, durationMinutes: exam.duration_minutes, token: '', teacherName: exam.teacher_name, startDate: exam.start_date, endDate: exam.end_date, status: effectiveCbtStatus(exam), questions: await getExamQuestions(env.DB, exam.id, false) },
+    savedAnswers: parseJson(saved?.answers_json, {}), savedDoubtful: parseJson(saved?.doubtful_json, {}),
+    exam: { id: exam.id, title: exam.title, subject: exam.subject, classTarget: exam.class_target, durationMinutes: exam.duration_minutes, token: '', teacherName: exam.teacher_name, startDate: exam.start_date, endDate: exam.end_date, openTime: exam.open_time || '', closeTime: exam.close_time || '', status: effectiveCbtStatus(exam), questions: await getExamQuestions(env.DB, exam.id, false) },
   } });
 };

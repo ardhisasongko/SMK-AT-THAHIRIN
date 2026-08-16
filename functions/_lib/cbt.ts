@@ -4,6 +4,7 @@ export const CBT_STAFF_ROLES = ['guru', 'admin', 'super_admin'];
 export const CBT_STUDENT_ROLES = ['siswa', 'ketua_kelas'];
 export const ANSWER_KEYS = new Set(['A', 'B', 'C', 'D', 'E']);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export async function hashCbtToken(token: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token.trim().toUpperCase()));
@@ -27,6 +28,30 @@ export function canManageCbtExam(user: AuthUser, exam: { teacher_user_id?: unkno
 
 export function todayWIB(): string {
   return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+export function nowWIBMinutes(): number {
+  const now = new Date(Date.now() + 7 * 3600 * 1000);
+  return now.getUTCHours() * 60 + now.getUTCMinutes();
+}
+
+export function timeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+export function isValidTime(value: unknown): value is string {
+  return typeof value === 'string' && TIME_PATTERN.test(value);
+}
+
+export function cbtWindowOpen(exam: { open_time?: string | null; close_time?: string | null }, nowMinutes = nowWIBMinutes()): { open: boolean; reason?: string } {
+  if (isValidTime(exam.open_time) && nowMinutes < timeToMinutes(exam.open_time)) {
+    return { open: false, reason: `Ujian belum dibuka. Dibuka pukul ${exam.open_time} WIB.` };
+  }
+  if (isValidTime(exam.close_time) && nowMinutes >= timeToMinutes(exam.close_time)) {
+    return { open: false, reason: `Ujian sudah ditutup. Ditutup pukul ${exam.close_time} WIB.` };
+  }
+  return { open: true };
 }
 
 export function effectiveCbtStatus(exam: { status: string; start_date: string; end_date: string; is_active?: number | null }): 'active' | 'upcoming' | 'inactive' | 'completed' {
@@ -58,6 +83,9 @@ export function validateCbtExamInput(body: any, tokenRequired = true): string | 
   if (tokenRequired && (typeof body.token !== 'string' || body.token.trim().length < 4 || body.token.length > 32)) return 'Token ujian harus 4-32 karakter.';
   if (!tokenRequired && body.token && (typeof body.token !== 'string' || body.token.trim().length < 4 || body.token.length > 32)) return 'Token ujian harus 4-32 karakter.';
   if (!isValidDate(body.startDate) || !isValidDate(body.endDate) || body.endDate < body.startDate) return 'Rentang tanggal ujian tidak valid.';
+  if (body.openTime && !isValidTime(body.openTime)) return 'Jam buka harus berformat HH:MM (contoh: 08:00).';
+  if (body.closeTime && !isValidTime(body.closeTime)) return 'Jam tutup harus berformat HH:MM (contoh: 11:30).';
+  if (body.openTime && body.closeTime && timeToMinutes(body.closeTime) <= timeToMinutes(body.openTime)) return 'Jam tutup harus lebih lambat dari jam buka.';
   return validateCbtQuestions(questions);
 }
 

@@ -241,6 +241,8 @@ export interface CbtExam {
   teacherName: string;
   startDate: string;
   endDate: string;
+  openTime?: string;
+  closeTime?: string;
   status: 'active' | 'upcoming' | 'inactive' | 'completed';
   questions: CbtQuestion[];
   questionCount?: number;
@@ -259,4 +261,23 @@ export interface CbtSubmission {
   wrongCount: number;
   submittedAt: string;
   timeSpentSeconds: number;
+}
+
+export interface CbtAttempt {
+  attemptId: string;
+  startedAt: string;
+  expiresAt: string;
+  savedAnswers: { [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' };
+  savedDoubtful: { [questionId: string]: boolean };
+  exam: CbtExam;
+}
+
+export interface CbtSummary {
+  siswaId: string;
+  siswaName: string;
+  nisn: string;
+  examCount: number;
+  avgScore: number;
+  bestScore: number;
+  worstScore: number;
 }

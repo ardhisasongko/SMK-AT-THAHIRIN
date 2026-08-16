@@ -1,7 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CbtTestRunner } from '../src/components/cbt/CbtTestRunner';
 import type { CbtExam, User } from '../src/types';
+
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  fetchMock.mockReset();
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ success: true, data: { attemptId: 'a1', savedAt: 'x' } }) });
+  vi.stubGlobal('fetch', fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const exam: CbtExam = {
   id: 'c1',
@@ -49,7 +61,7 @@ const user: User = {
 };
 
 function renderRunner(onFinish = vi.fn()) {
-  render(<CbtTestRunner exam={exam} currentUser={user} onFinish={onFinish} />);
+  render(<CbtTestRunner exam={exam} currentUser={user} attemptId="a1" onFinish={onFinish} />);
   return { onFinish };
 }
 
@@ -78,14 +90,14 @@ describe('CbtTestRunner', () => {
     expect(screen.getByText('Pertanyaan kedua?')).toBeInTheDocument();
   });
 
-  it('submit menghitung skor dan memanggil onFinish', () => {
+  it('submit menghitung skor dan memanggil onFinish', async () => {
     const { onFinish } = renderRunner();
     fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
     expect(screen.getByText('Selesaikan Ujian CBT?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Ya, Selesaikan Ujian' }));
 
-    expect(onFinish).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
     const sub = onFinish.mock.calls[0][0];
     expect(sub.examId).toBe('c1');
     expect(sub.siswaId).toBe('u3');

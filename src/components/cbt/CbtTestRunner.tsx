@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Clock,
   AlertTriangle,
@@ -7,30 +7,83 @@ import {
   ArrowRight,
   Check,
   User,
+  CloudUpload,
+  Cloud,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission } from '../../types';
 import { Modal } from '../ui/Modal';
+import { cbtApi } from '../../utils/cbt-api';
 
 interface CbtTestRunnerProps {
   exam: CbtExam;
   currentUser: UserType;
+  attemptId: string;
+  initialAnswers?: { [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' };
+  initialDoubtful?: { [questionId: string]: boolean };
   onFinish: (submission: CbtSubmission) => void | Promise<void>;
   expiresAt?: string;
 }
 
-export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTestRunnerProps) {
+export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {}, initialDoubtful = {}, onFinish, expiresAt }: CbtTestRunnerProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [answers, setAnswers] = useState<{ [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' }>({});
-  const [doubtful, setDoubtful] = useState<{ [questionId: string]: boolean }>({});
+  const [answers, setAnswers] = useState<{ [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' }>(initialAnswers);
+  const [doubtful, setDoubtful] = useState<{ [questionId: string]: boolean }>(initialDoubtful);
   const [timeLeft, setTimeLeft] = useState<number>(() => expiresAt ? Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)) : exam.durationMinutes * 60);
   const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef<string>(JSON.stringify({ answers: initialAnswers, doubtful: initialDoubtful }));
+
+  const persistAnswers = useCallback(async (currentAnswers: typeof answers, currentDoubtful: typeof doubtful) => {
+    const payload = JSON.stringify({ answers: currentAnswers, doubtful: currentDoubtful });
+    if (payload === lastSavedRef.current) return;
+    setSaveState('saving');
+    try {
+      await cbtApi.saveAttempt(attemptId, currentAnswers, currentDoubtful);
+      lastSavedRef.current = payload;
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+  }, [attemptId]);
+
+  const scheduleSave = useCallback((currentAnswers: typeof answers, currentDoubtful: typeof doubtful) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { void persistAnswers(currentAnswers, currentDoubtful); }, 1500);
+  }, [persistAnswers]);
+
+  useEffect(() => {
+    if (submitting) return;
+    scheduleSave(answers, doubtful);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [answers, doubtful, scheduleSave, submitting]);
+
+  useEffect(() => {
+    const flush = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      void persistAnswers(answers, doubtful);
+    };
+    const onHide = () => flush();
+    window.addEventListener('pagehide', onHide);
+    window.addEventListener('beforeunload', onHide);
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('beforeunload', onHide);
+    };
+  }, [persistAnswers, answers, doubtful]);
 
   const handleConfirmSubmitTest = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
     let correct = 0;
     let wrong = 0;
+
+    try {
+      await persistAnswers(answers, doubtful);
+    } catch {
+      // tetap lanjut submit; jawaban ikut terkirim
+    }
 
     exam.questions.forEach(q => {
       const userAnswer = answers[q.id];
@@ -64,7 +117,7 @@ export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTes
     } finally {
       setSubmitting(false);
     }
-  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting]);
+  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting, persistAnswers]);
 
   // Timer countdown
   useEffect(() => {
@@ -131,6 +184,27 @@ export function CbtTestRunner({ exam, currentUser, onFinish, expiresAt }: CbtTes
             <User className="w-4 h-4 text-emerald-400" />
             <span className="font-semibold">{currentUser.name}</span>
             <span className="text-slate-400">({currentUser.nipNisn || 'Siswa'})</span>
+          </div>
+
+          {/* Auto-save Status */}
+          <div
+            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold border transition-all ${
+              saveState === 'saved'
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                : saveState === 'error'
+                  ? 'bg-rose-500/10 text-rose-300 border-rose-500/40'
+                  : 'bg-slate-700/60 text-slate-300 border-slate-600'
+            }`}
+            title="Jawaban disimpan otomatis secara berkala"
+          >
+            {saveState === 'saved'
+              ? <Cloud className="w-3.5 h-3.5" />
+              : saveState === 'error'
+                ? <CloudUpload className="w-3.5 h-3.5" />
+                : <CloudUpload className="w-3.5 h-3.5 animate-pulse" />}
+            <span className="hidden sm:inline">
+              {saveState === 'saved' ? 'Tersimpan' : saveState === 'error' ? 'Gagal simpan' : saveState === 'saving' ? 'Menyimpan...' : 'Auto-save'}
+            </span>
           </div>
 
           {/* Countdown Timer */}
