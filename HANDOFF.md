@@ -6,11 +6,10 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
-- Deployment produksi terakhir yang diverifikasi end-to-end berada pada commit `3013ebd`; commit UI setelahnya sudah di-push tetapi deployment produksinya belum diverifikasi ulang dalam sesi ini.
+- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): kode commit `a161eba` (proyeksi relasional) sudah live dan smoke test API lulus; dokumentasi lanjutan di `c87ae10`.
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
 - Verifikasi terakhir: `npm run verify` lulus, 197/197 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan migrasi `0018` lulus di D1 lokal.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
-- Commit implementasi integrasi terbaru yang sudah di-push: `b787e62 feat(integrations): perkuat layanan eksternal`.
 - Migrasi D1 remote sudah diterapkan sampai `0018_relational_academic_data.sql` (0017 dan 0018 live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
@@ -23,6 +22,8 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `2ed1c7a fix(ui): rapikan layout mobile dan overflow`
 - `39d9c62 fix(ui): tampilkan navigasi setelah login`
 - `b787e62 feat(integrations): perkuat layanan eksternal`
+- `a161eba feat(data): proyeksi relasional akademik dan proteksi konflik`
+- `c87ae10 docs(project): catat migrasi 0017-0018 live di produksi`
 
 ## Perubahan Utama Sesi Ini
 
@@ -154,6 +155,35 @@ Migrasi `0009` membuat tabel:
 - `whatsapp_daily_stats`
 - `whatsapp_job_runs`
 
+## Aktivasi Produksi (16 Agustus 2026)
+
+### Deploy dan Migrasi Remote
+
+- Deploy produksi berhasil via `npm run pages:deploy` (deployment URL: `https://2d76353e.smk-at-tahirin.pages.dev`).
+- Sebelum migrasi, D1 remote dibuat backup ke `/tmp/opencode/backup-produksi.sql` (192 KB) dengan `wrangler d1 export`.
+- `npm run db:migrate:remote` berhasil menerapkan `0017_external_integrations.sql` dan `0018_relational_academic_data.sql` ke D1 remote (sebelumnya remote s.d. `0016`).
+
+### Pre-flight dan Pembersihan Data
+
+- Pre-flight menemukan `presensi_v1` remote berisi 17 rekaman dummy pengujian yang tidak cocok dengan roster (`siswaId` format lama `s1`–`s8`, NISN `0068123491`–`0068123498`, nama tidak cocok) plus satu duplikat `(2026-08-04, s2)`; semua akan melanggar FK migrasi 0018.
+- `siswa_v1`, `kelas_v1`, `modulAjar_v1` bersih (0 orphan, 0 duplikat).
+- Atas persetujuan pengguna, `presensi_v1` dikosongkan (`[]`); backup tetap tersedia di `/tmp/opencode/backup-produksi.sql`.
+
+### Backfill dan Verifikasi Produksi
+
+- Backfill produksi berhasil: 87 siswa, 3 kelas, 10 jadwal, 1 modul, 0 presensi, 0 orphan; semua `revision=1` dan `initialized=1`.
+- 8 trigger sinkronisasi (`sync_*_projection_*`) aktif di remote.
+- Integration gate tetap OFF: `whatsapp_settings.enabled=0`, tabel 0017 ada, outbox kosong.
+
+### Smoke Test Produksi (via API live)
+
+- Landing `200`, akses tanpa login `401`.
+- Login siswa (`0082219950`) sukses; token dikirim via `Set-Cookie: smk_session` (HttpOnly), bukan JSON body.
+- `GET` presensi/siswa/kelas membawa `revision` dan filter per-role benar (siswa hanya rekamannya).
+- `PUT` tanpa `If-Match` (klien lama) → `200` (revision naik ke 2) — kompatibilitas terjaga.
+- `PUT` dengan `If-Match` benar → `200`; `If-Match` basi → `409` dengan pesan konflik (klien dihook me-refresh).
+- Catatan: `PUT` butuh header `Origin: https://smk-at-tahirin.pages.dev` (CSRF middleware); tanpa Origin → `403`.
+
 ## Fitur WhatsApp Sekolah
 
 ### Status
@@ -194,24 +224,16 @@ Migrasi `0009` membuat tabel:
 - Sesi WhatsApp (`.wwebjs_auth`) tersimpan lokal, bukan di D1.
 - Statistik harian disimpan sebagai satu baris per tanggal.
 
-### Langkah Aktivasi Berikutnya
+### Langkah Aktivasi Berikutnya (Operator, di luar repo)
 
-1. Pastikan Google Chrome terpasang di komputer operator.
-2. Jika perlu, isi `CHROME_PATH` di `whatsapp-gateway/.env`.
-3. Jalankan:
+Google Sync dan WhatsApp tidak dapat diselesaikan hanya dengan perubahan codebase; memerlukan akun Google sekolah, nomor WhatsApp nyata, Chrome di mesin operator, dan secret yang tidak boleh ditulis di dokumentasi.
 
-   ```bash
-   cd whatsapp-gateway
-   npm start
-   ```
-
-4. Scan QR dengan nomor WhatsApp yang akan menjadi nomor pengirim.
-5. Login Super Admin di website, buka menu `WhatsApp` melalui `Lainnya`.
-6. Isi satu siswa dan satu nomor wali untuk uji terbatas; catat consent.
-7. Isi satu nomor guru untuk uji reminder.
-8. Pada tab Pengaturan, aktifkan pengiriman otomatis.
-9. Uji satu presensi dan cek tab Riwayat sebelum memasukkan seluruh nomor wali.
-10. Jika stabil, impor/input seluruh kontak secara bertahap.
+1. **Google Sync** — deploy Apps Script sebagai Web App + set Script Property `SYNC_TOKEN` di editor Apps Script; pasang secret Worker `npx wrangler secret put SYNC_TOKEN` dari `sync-worker/`; set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
+2. **Dry-run Google Sync** — jalankan dry-run manual daily/weekly, lalu non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
+3. **WhatsApp gateway** — pastikan Google Chrome terpasang di komputer operator; isi `GATEWAY_KEY` di `whatsapp-gateway/.env` (sama dengan secret Cloudflare); `npm start` di `whatsapp-gateway/`; scan QR nomor pengirim (sesi lokal `.wwebjs_auth`, tidak masuk D1); pastikan heartbeat muncul di panel.
+4. **Canary** — aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
+5. **Uji terbatas** — isi satu siswa + satu wali (catat consent) dan satu guru; aktifkan pengiriman otomatis di tab Pengaturan; uji satu presensi dan cek Riwayat sebelum impor massal.
+6. **Offline mode (opsional)** — jika dibutuhkan, tambahkan service worker sebagai proyek terpisah tanpa menyimpan respons API/sesi sensitif.
 
 Panduan gateway: `WHATSAPP_GATEWAY.md` dan `EXTERNAL_INTEGRATIONS.md`.
 
@@ -233,7 +255,7 @@ Panduan gateway: `WHATSAPP_GATEWAY.md` dan `EXTERNAL_INTEGRATIONS.md`.
 - Apps Script baru memakai Script Property `SYNC_TOKEN` dan sheet versi baru; data foto penuh D1 tidak pernah dipurge oleh Worker.
 - `GET /exec` yang menampilkan `Fungsi skrip tidak ditemukan: doGet` adalah normal karena script hanya memiliki `doPost`.
 - Pengujian POST eksternal dari terminal sebelumnya masih menghasilkan halaman Google/redirect, sedangkan pengujian manual dari editor Apps Script berhasil. Jangan menyatakan integrasi eksternal end-to-end selesai tanpa verifikasi data nyata dari Worker ke Sheet/Drive.
-- Perlu sesi berikutnya: cek apakah `smk-absensi-sync` sudah dideploy, jalankan trigger manual, lihat log Worker, dan pastikan data benar-benar masuk ke Sheet/Drive.
+- Perlu sesi berikutnya (operator): cek apakah `smk-absensi-sync` sudah dideploy, jalankan trigger manual, lihat log Worker, dan pastikan data benar-benar masuk ke Sheet/Drive.
 
 ## File Penting
 
@@ -288,17 +310,19 @@ Hasil terakhir:
 - Guest: header/dock tidak ada dan CTA login tampil. Authenticated: header/dock tampil di Beranda dan CTA login hilang.
 - Klik CTA login membuka modal; logout menghapus header/dock dan mengembalikan CTA login.
 - `npm test` dapat sesekali membuat test forum melewati timeout default 5 detik ketika mesin sibuk. Test tersebut lulus terisolasi; full suite terakhir lulus dengan `npx vitest run --testTimeout=10000`.
-- Deployment produksi untuk commit integrasi terbaru belum diverifikasi ulang; integrasi WhatsApp/Sync harus tetap OFF saat smoke test awal.
-- Gateway claim diuji ketika sistem nonaktif: HTTP 200, `enabled=false`, antrean kosong.
+- Deployment produksi terverifikasi ulang (16 Agustus 2026): deploy sukses, migrasi remote 0017-0018 sukses, backfill 87 siswa/3 kelas/10 jadwal/1 modul bersih, smoke test API lulus (revision, CAS, filter per-role, 409 konflik).
+- Integration gate WhatsApp `enabled=0` di produksi; gateway claim ketika sistem nonaktif: HTTP 200, `enabled=false`, antrean kosong.
 
-## Urutan Aman Sesi Berikutnya
+## Urutan Aman Sesi Berikutnya (Operator)
+
+Kode, migrasi, dan deploy sudah selesai (16 Agustus 2026). Langkah tersisa memerlukan mesin/akun operator dan dijalankan di luar repo:
 
 1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main`.
-2. Deploy commit terbaru (sudah live 16 Agustus 2026) dan smoke test produksi untuk landing, login/logout, semua role, CBT, Forum, Notifikasi, presensi, upload, dan `/api/integrations/status` dalam kondisi WhatsApp/Sync tetap OFF.
-3. Deploy ulang Apps Script, pasang `SYNC_TOKEN` sebagai Script Property dan Worker secret, lalu deploy sync-worker dengan `SYNC_DRY_RUN=true`.
-4. Jalankan dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
-5. Jalankan gateway dengan `GATEWAY_ENABLED=false`, scan QR nomor khusus sekolah, dan pastikan heartbeat muncul.
-6. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
+2. Google Sync: deploy Apps Script baru sebagai Web App, set Script Property `SYNC_TOKEN`, pasang secret Worker dari `sync-worker/`, set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
+3. Dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
+4. WhatsApp: pastikan Google Chrome terpasang di komputer operator; isi `GATEWAY_KEY` di `whatsapp-gateway/.env`; `npm start` di `whatsapp-gateway/`; scan QR nomor pengirim; pastikan heartbeat muncul di panel Admin.
+5. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
+6. Smoke test produksi pasca-aktivasi: landing, login/logout, semua role, CBT, Forum, Notifikasi, presensi, upload, dan `/api/integrations/status` dalam kondisi WhatsApp/Sync tetap OFF sampai langkah 2-5 selesai.
 7. Jika offline mode dibutuhkan, tambahkan service worker sebagai proyek terpisah tanpa menyimpan respons API/sesi sensitif.
 
 ## Keamanan dan Tindak Lanjut
