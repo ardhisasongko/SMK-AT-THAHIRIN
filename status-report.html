@@ -50,14 +50,14 @@
 
   <h1>📊 Laporan Status &amp; Progres Proyek</h1>
   <div class="subtitle">SMK PLUS AT THAHIRIN — Portal Pendidikan Digital | React/Vite + Cloudflare Pages Functions + D1<br>
-  Diperbarui: Sabtu, 15 Agustus 2026 | Branch: <span class="mono">main</span> | Implementasi: <span class="mono">b787e62</span></div>
+  Diperbarui: Minggu, 16 Agustus 2026 | Branch: <span class="mono">main</span> | Implementasi: <span class="mono">a161eba</span></div>
 
   <!-- ============ RINGKASAN ============ -->
   <div class="card">
     <h2>📌 Ringkasan Keseluruhan</h2>
     <div class="grid">
-      <div class="stat"><div class="num">196</div><div class="lbl">Test Lulus (aplikasi + Worker)</div></div>
-      <div class="stat"><div class="num">17</div><div class="lbl">Migrasi D1 (0017 masih lokal)</div></div>
+      <div class="stat"><div class="num">205</div><div class="lbl">Test Lulus (aplikasi + Worker)</div></div>
+      <div class="stat"><div class="num">18</div><div class="lbl">Migrasi D1 (remote s.d. 0018)</div></div>
       <div class="stat"><div class="num">5</div><div class="lbl">Role Pengguna</div></div>
       <div class="stat"><div class="num">4</div><div class="lbl">Viewport Responsif (320–1366px)</div></div>
       <div class="stat"><div class="num">0</div><div class="lbl">Overflow Document</div></div>
@@ -67,9 +67,9 @@
       <span class="badge b-ok">Lint: Lulus</span>
       <span class="badge b-ok">Typecheck: Lulus</span>
       <span class="badge b-ok">Build Produksi: Berhasil</span>
-      <span class="badge b-ok">Test: 188 aplikasi + 8 Worker</span>
+      <span class="badge b-ok">Test: 197 aplikasi + 8 Worker</span>
       <span class="badge b-ok">Responsif: Lulus</span>
-      <span class="badge b-warn">Deploy integrasi belum diverifikasi</span>
+      <span class="badge b-ok">Deploy produksi diverifikasi (16 Agt 2026)</span>
       <span class="badge b-info">Dokumentasi integrasi diperbarui</span>
     </p>
   </div>
@@ -83,18 +83,18 @@
         <tr><td>Branch aktif</td><td><span class="badge b-ok">main</span></td><td>Sinkron dengan origin/main</td></tr>
         <tr><td>Worktree audit</td><td><span class="badge b-ok">Terverifikasi</span></td><td>Hardening integrasi, dokumentasi, dan laporan siap dipublikasikan</td></tr>
         <tr><td>Basis sebelum integrasi</td><td><span class="badge b-ok">39d9c62</span></td><td><span class="mono">fix(ui): tampilkan navigasi setelah login</span></td></tr>
-        <tr><td>Deployment produksi</td><td><span class="badge b-warn">Perlu cek</span></td><td>Terakhir diverifikasi e2e di <span class="mono">3013ebd</span></td></tr>
+        <tr><td>Deployment produksi</td><td><span class="badge b-ok">Terverifikasi</span></td><td>Diverifikasi ulang 16 Agustus 2026: deploy, migrasi 0017–0018 remote, dan smoke test API lulus</td></tr>
       </tbody>
     </table>
     <h3>Commit Milestone Terakhir (7 terbaru)</h3>
     <ul class="mono" style="font-size:.82rem;">
+      <li>33ed562 docs(project): catat aktivasi produksi migrasi 0017-0018, smoke test, dan langkah operator</li>
+      <li>c87ae10 docs(project): catat migrasi 0017-0018 live di produksi</li>
+      <li>a161eba feat(data): proyeksi relasional akademik dan proteksi konflik</li>
+      <li>b787e62 feat(integrations): perkuat layanan eksternal</li>
       <li>39d9c62 fix(ui): tampilkan navigasi setelah login</li>
       <li>2ed1c7a fix(ui): rapikan layout mobile dan overflow</li>
       <li>3013ebd fix(auth): sesuaikan PBKDF2 dengan batas Cloudflare</li>
-      <li>e028e37 security(platform): perkuat sesi, rate limit, dan upload</li>
-      <li>17fc537 fix(ui): rapikan navbar dan tambah metadata SEO</li>
-      <li>11405a8 feat(platform): tuntaskan lifecycle dan integritas domain</li>
-      <li>4956096 feat(platform): tambah domain API, manajemen pengguna, dan WhatsApp</li>
     </ul>
   </div>
 
@@ -253,13 +253,13 @@
     <table>
       <thead><tr><th>Item</th><th>Prioritas</th><th>Status</th></tr></thead>
       <tbody>
-        <tr><td>Verifikasi deploy produksi commit integrasi terbaru (auto-deploy &amp; smoke test)</td><td><span class="badge b-red">Tinggi</span></td><td><span class="badge b-warn">Belum</span></td></tr>
+        <tr><td>Deploy produksi commit integrasi terbaru — selesai (16 Agt 2026): deploy, migrasi 0017–0018 remote, smoke test API lulus; sisa: smoke test UI penuh semua role</td><td><span class="badge b-red">Tinggi</span></td><td><span class="badge b-ok">Selesai sebagian</span></td></tr>
         <tr><td>Rotasi token Cloudflare (pernah terlihat di sesi lama)</td><td><span class="badge b-red">Tinggi</span></td><td><span class="badge b-warn">Belum</span></td></tr>
         <tr><td>Ganti password Super Admin produksi</td><td><span class="badge b-red">Tinggi</span></td><td><span class="badge b-warn">Belum</span></td></tr>
         <tr><td>Service worker untuk offline mode</td><td><span class="badge b-amber">Sedang</span></td><td><span class="badge b-warn">Belum</span></td></tr>
         <tr><td>Aktivasi WhatsApp gateway (Chrome + scan QR + uji 1–2 penerima)</td><td><span class="badge b-amber">Sedang</span></td><td><span class="badge b-warn">Belum</span></td></tr>
         <tr><td>Deploy &amp; verifikasi <span class="mono">sync-worker</span> (SYNC_TOKEN secret)</td><td><span class="badge b-amber">Sedang</span></td><td><span class="badge b-warn">Belum</span></td></tr>
-        <tr><td>Commit <span class="mono">HANDOFF.md</span></td><td><span class="badge b-gray">Rendah</span></td><td><span class="badge b-warn">Belum</span></td></tr>
+        <tr><td>Commit <span class="mono">HANDOFF.md</span> — sudah (33ed562)</td><td><span class="badge b-gray">Rendah</span></td><td><span class="badge b-ok">Selesai</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -269,15 +269,16 @@
     <h2>🎯 Kesimpulan Kondisi</h2>
     <p style="font-size:.95rem;">
       Inti aplikasi <strong>selesai dan terverifikasi</strong>: autentikasi aman, RBAC 5 role, CBT, absensi,
-      forum/notifikasi, manajemen pengguna, UI responsif, dan build produksi bersih (196 test lulus termasuk Worker).
-      Kode integrasi eksternal sudah A−; yang tersisa adalah <strong>aktivasi operasional bertahap</strong> (WhatsApp gateway &amp; Google Drive sync),
-      <strong>offline mode</strong>, dan <strong>verifikasi deployment terakhir</strong> di produksi — semuanya
-      tercatat jelas pada bagian Risiko di atas, dan detail eksekusi ada di <span class="mono">HANDOFF.md</span>.
+      forum/notifikasi, manajemen pengguna, UI responsif, dan build produksi bersih (205 test lulus termasuk Worker).
+      Deploy produksi &amp; migrasi D1 remote s.d. 0018 <strong>telah diverifikasi</strong> (16 Agustus 2026), termasuk smoke test API
+      revision/CAS dan filter per-role. Kode integrasi eksternal sudah A−; yang tersisa adalah
+      <strong>aktivasi operasional bertahap</strong> (WhatsApp gateway &amp; Google Drive sync) dan <strong>offline mode</strong> —
+      semuanya tercatat jelas pada bagian Risiko di atas, dan detail eksekusi ada di <span class="mono">HANDOFF.md</span>.
     </p>
   </div>
 
   <div class="footer">
-    Laporan digenerate otomatis dari codebase SMK-AT-THAHIRIN · Data per Sabtu, 15 Agustus 2026 · Sumber utama: HANDOFF.md, git log, struktur proyek
+    Laporan digenerate otomatis dari codebase SMK-AT-THAHIRIN · Data per Minggu, 16 Agustus 2026 · Sumber utama: HANDOFF.md, git log, struktur proyek
   </div>
 </div>
 </body>
