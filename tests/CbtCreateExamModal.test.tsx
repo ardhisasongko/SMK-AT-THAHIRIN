@@ -26,7 +26,7 @@ describe('CbtCreateExamModal', () => {
   it('menambahkan soal manual', () => {
     renderModal();
     expect(screen.getByText('Daftar Soal Ujian (0 Soal)')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Manual' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manual (PG)' }));
     expect(screen.getByText('Daftar Soal Ujian (1 Soal)')).toBeInTheDocument();
     expect(screen.getByText('Soal #1')).toBeInTheDocument();
   });
@@ -47,7 +47,7 @@ describe('CbtCreateExamModal', () => {
     fireEvent.change(screen.getByPlaceholderText('contoh: Penilaian Harian - Otomatisasi Kearsipan Digital'), {
       target: { value: 'Penilaian Harian Kearsipan' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Manual' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manual (PG)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Ujian CBT' }));
 
     expect(onSave).toHaveBeenCalledTimes(1);
@@ -55,5 +55,27 @@ describe('CbtCreateExamModal', () => {
     expect(saved.title).toBe('Penilaian Harian Kearsipan');
     expect(saved.questions).toHaveLength(1);
     expect(saved.teacherName).toBe('Bpk. Guru');
+  });
+
+  it('menambahkan soal essai dan wajib mengisi kunci jawaban', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const { onSave } = renderModal();
+    fireEvent.change(screen.getByPlaceholderText('contoh: Penilaian Harian - Otomatisasi Kearsipan Digital'), {
+      target: { value: 'Penilaian Harian Kearsipan' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Tambahkan Essai' }));
+    expect(screen.getByText('Daftar Soal Ujian (1 Soal)')).toBeInTheDocument();
+    expect(screen.getByText('Essai')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan Ujian CBT' }));
+    expect(alertSpy).toHaveBeenCalledWith('Setiap soal essai wajib memiliki kunci jawaban teks.');
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByPlaceholderText('contoh: arsip adalah rekaman kegiatan|rekaman informasi'), { target: { value: 'rekaman kegiatan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan Ujian CBT' }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const saved = onSave.mock.calls[0][0];
+    expect(saved.questions[0]).toMatchObject({ type: 'essai', correctAnswer: 'rekaman kegiatan', options: [] });
+    alertSpy.mockRestore();
   });
 });

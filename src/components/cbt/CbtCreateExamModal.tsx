@@ -61,6 +61,24 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
     ]);
   };
 
+  const handleAddEssayQuestion = () => {
+    const qId = `q-essai-${Date.now()}`;
+    setNewQuestions(prev => [
+      ...prev,
+      {
+        id: qId,
+        question: 'Tuliskan pertanyaan essai di sini...',
+        type: 'essai',
+        options: [],
+        correctAnswer: ''
+      }
+    ]);
+  };
+
+  const handleUpdateQuestion = (qId: string, patch: Partial<CbtQuestion>) => {
+    setNewQuestions(prev => prev.map(q => q.id === qId ? { ...q, ...patch } : q));
+  };
+
   const handleSaveExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
@@ -81,6 +99,11 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
     }
     if (newQuestions.length === 0) {
       alert('Harap tambahkan minimal 1 soal ujian.');
+      return;
+    }
+    const incompleteEssay = newQuestions.find(q => q.type === 'essai' && !(q.correctAnswer || '').trim());
+    if (incompleteEssay) {
+      alert('Setiap soal essai wajib memiliki kunci jawaban teks.');
       return;
     }
 
@@ -241,7 +264,16 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Manual</span>
+                  <span>Manual (PG)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleAddEssayQuestion}
+                  className="bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambahkan Essai</span>
                 </button>
               </div>
             </div>
@@ -255,7 +287,10 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
                 {newQuestions.map((q, idx) => (
                   <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-emerald-800">Soal #{idx + 1}</span>
+                      <span className="font-bold text-emerald-800">
+                        Soal #{idx + 1}
+                        {q.type === 'essai' && <span className="ml-2 bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded">Essai</span>}
+                      </span>
                       <button
                         type="button"
                         onClick={() => setNewQuestions(prev => prev.filter((_, i) => i !== idx))}
@@ -264,8 +299,47 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
                         Hapus
                       </button>
                     </div>
-                    <p className="font-medium text-slate-800">{q.question}</p>
-                    <p className="text-[11px] text-emerald-700 font-semibold">Kunci: {q.correctAnswer}</p>
+                    <textarea
+                      value={q.question}
+                      onChange={e => handleUpdateQuestion(q.id, { question: e.target.value })}
+                      rows={2}
+                      maxLength={2000}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 resize-y"
+                    />
+                    {q.type === 'essai' ? (
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600">Kunci Jawaban Essai (guru) — pisahkan alternatif dengan tanda |</label>
+                        <input
+                          type="text"
+                          value={q.correctAnswer || ''}
+                          onChange={e => handleUpdateQuestion(q.id, { correctAnswer: e.target.value })}
+                          maxLength={2000}
+                          placeholder="contoh: arsip adalah rekaman kegiatan|rekaman informasi"
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 mt-1"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="text-[11px] font-bold text-slate-600">Kunci:</label>
+                        <select
+                          value={q.correctAnswer}
+                          onChange={e => handleUpdateQuestion(q.id, { correctAnswer: e.target.value })}
+                          className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
+                        >
+                          {['A', 'B', 'C', 'D', 'E'].map(key => <option key={key} value={key}>{key}</option>)}
+                        </select>
+                        {q.explanation !== undefined && (
+                          <input
+                            type="text"
+                            value={q.explanation || ''}
+                            onChange={e => handleUpdateQuestion(q.id, { explanation: e.target.value })}
+                            placeholder="Pembahasan (opsional)"
+                            maxLength={2000}
+                            className="flex-1 min-w-40 p-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

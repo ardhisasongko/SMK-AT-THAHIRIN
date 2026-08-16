@@ -57,7 +57,7 @@ export function CbtSection({
   const [showReviewModal, setShowReviewModal] = useState<CbtSubmission | null>(null);
   const [attemptId, setAttemptId] = useState('');
   const [attemptExpiresAt, setAttemptExpiresAt] = useState('');
-  const [savedAnswers, setSavedAnswers] = useState<{ [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' }>({});
+  const [savedAnswers, setSavedAnswers] = useState<{ [questionId: string]: string }>({});
   const [savedDoubtful, setSavedDoubtful] = useState<{ [questionId: string]: boolean }>({});
   const [scheduleTab, setScheduleTab] = useState<'today' | 'all'>('today');
   const [cbtSummary, setCbtSummary] = useState<CbtSummary[]>([]);

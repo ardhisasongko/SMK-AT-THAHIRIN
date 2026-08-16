@@ -135,5 +135,5 @@ async function validClassTarget(db: D1Database, target: unknown): Promise<boolea
 }
 
 function questionStatements(db: D1Database, examId: string, questions: any[]) {
-  return questions.map((question, index) => db.prepare(`INSERT INTO cbt_questions (exam_id,id,position,question,options_json,correct_answer,explanation) VALUES (?,?,?,?,?,?,?)`).bind(examId, question.id.trim(), index, question.question.trim(), JSON.stringify(question.options.map((option: any) => ({ key: option.key, text: option.text.trim() }))), question.correctAnswer, question.explanation ? String(question.explanation).slice(0, 2000) : null));
+  return questions.map((question, index) => db.prepare(`INSERT INTO cbt_questions (exam_id,id,position,question,question_type,options_json,correct_answer,explanation) VALUES (?,?,?,?,?,?,?,?)`).bind(examId, question.id.trim(), index, question.question.trim(), question.type === 'essai' ? 'essai' : 'pg', JSON.stringify((question.options || []).map((option: any) => ({ key: option.key, text: option.text.trim() }))), question.type === 'essai' ? String(question.correctAnswer).trim() : question.correctAnswer, question.explanation ? String(question.explanation).slice(0, 2000) : null));
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Award } from 'lucide-react';
 import { CbtExam, CbtSubmission } from '../../types';
 import { Modal } from '../ui/Modal';
+import { isAnswerCorrect } from '../../utils/cbt-scoring';
 
 interface CbtResultReviewModalProps {
   submission: CbtSubmission;
@@ -66,7 +67,8 @@ export function CbtResultReviewModal({ submission, exam, onClose }: CbtResultRev
               <div className="space-y-4">
                 {exam.questions.map((q, i) => {
                   const userAns = submission.answers[q.id];
-                  const isCorrect = userAns === q.correctAnswer;
+                  const isCorrect = isAnswerCorrect(q, userAns);
+                  const isEssay = q.type === 'essai';
 
                   return (
                     <div key={q.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs">
@@ -80,14 +82,14 @@ export function CbtResultReviewModal({ submission, exam, onClose }: CbtResultRev
                           </span>
                         ) : (
                           <span className="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[10px] shrink-0">
-                            ✗ Salah
+                            ✗ {userAns ? 'Salah' : 'Tidak dijawab'}
                           </span>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 pt-1 text-slate-700">
-                        <p>Jawaban Siswa: <strong className={isCorrect ? 'text-emerald-700' : 'text-rose-600'}>{userAns || '-'}</strong></p>
-                        <p>Kunci Benar: <strong className="text-emerald-700">{q.correctAnswer}</strong></p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-slate-700">
+                        <p className={isEssay ? 'break-words whitespace-pre-wrap' : ''}>Jawaban Siswa: <strong className={isCorrect ? 'text-emerald-700' : 'text-rose-600'}>{userAns || '-'}</strong></p>
+                        <p className={isEssay ? 'break-words whitespace-pre-wrap' : ''}>Kunci Benar: <strong className="text-emerald-700">{isEssay ? (q.correctAnswer || '-').split('|').join(' ATAU ') : q.correctAnswer}</strong></p>
                       </div>
 
                       {q.explanation && (

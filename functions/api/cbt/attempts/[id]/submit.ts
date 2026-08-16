@@ -19,9 +19,15 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
     return jsonResponse({ success: false, error: 'Waktu ujian telah berakhir.' }, 409);
   }
   const questions = await getExamQuestions(env.DB, String(attempt.exam_id), true);
-  const validIds = new Set(questions.map(question => question.id));
+  const byId = new Map(questions.map(question => [question.id, question]));
   for (const [questionId, answer] of Object.entries(body.answers)) {
-    if (!validIds.has(questionId) || typeof answer !== 'string' || !ANSWER_KEYS.has(answer)) return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
+    const question = byId.get(questionId);
+    if (!question || typeof answer !== 'string') return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
+    if (question.type === 'essai') {
+      if (answer.length > 4000) return jsonResponse({ success: false, error: 'Jawaban essai terlalu panjang (maksimal 4000 karakter).' }, 400);
+    } else if (!ANSWER_KEYS.has(answer)) {
+      return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
+    }
   }
   const { correctCount: correct, wrongCount: wrong, score } = scoreCbtAnswers(questions, body.answers);
   const submittedAt = new Date().toISOString();

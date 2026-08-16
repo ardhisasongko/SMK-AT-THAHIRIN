@@ -6,6 +6,7 @@ import type { CbtExam, User } from '../src/types';
 const fetchMock = vi.fn();
 
 beforeEach(() => {
+  window.localStorage.clear();
   fetchMock.mockReset();
   fetchMock.mockResolvedValue({ ok: true, json: async () => ({ success: true, data: { attemptId: 'a1', savedAt: 'x' } }) });
   vi.stubGlobal('fetch', fetchMock);
@@ -90,9 +91,34 @@ describe('CbtTestRunner', () => {
     expect(screen.getByText('Pertanyaan kedua?')).toBeInTheDocument();
   });
 
-  it('submit menghitung skor dan memanggil onFinish', async () => {
+  it('menyimpan jawaban ke localStorage tanpa request jaringan per soal', () => {
+    renderRunner();
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan B2/ }));
+
+    const cached = JSON.parse(window.localStorage.getItem('cbt_answers_a1') || '{}');
+    expect(cached.answers).toEqual({ q1: 'A', q2: 'B' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('menolak submit selama ada soal belum diisi dan tidak memanggil onFinish', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const { onFinish } = renderRunner();
     fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
+
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('1 soal belum diisi'));
+    expect(screen.queryByText('Selesaikan Ujian CBT?')).not.toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('submit menghitung skor dan memanggil onFinish setelah semua soal diisi', async () => {
+    const { onFinish } = renderRunner();
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan B2/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
     expect(screen.getByText('Selesaikan Ujian CBT?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Ya, Selesaikan Ujian' }));
@@ -101,8 +127,67 @@ describe('CbtTestRunner', () => {
     const sub = onFinish.mock.calls[0][0];
     expect(sub.examId).toBe('c1');
     expect(sub.siswaId).toBe('u3');
-    expect(sub.score).toBe(50); // 1 benar dari 2 soal
-    expect(sub.correctCount).toBe(1);
-    expect(sub.wrongCount).toBe(1);
+    expect(sub.score).toBe(100); // 2 benar dari 2 soal
+    expect(sub.correctCount).toBe(2);
+    expect(sub.wrongCount).toBe(0);
+    await waitFor(() => expect(window.localStorage.getItem('cbt_answers_a1')).toBeNull());
+  });
+});
+
+describe('CbtTestRunner soal essai', () => {
+  const essayExam: CbtExam = {
+    ...exam,
+    id: 'c2',
+    questions: [
+      {
+        id: 'e1',
+        question: 'Apa itu arsip?',
+        type: 'essai',
+        options: [],
+        correctAnswer: 'rekaman kegiatan',
+      },
+      {
+        id: 'p1',
+        question: 'Arsip dinamis bersifat?',
+        options: [
+          { key: 'A', text: 'Pilihan A' },
+          { key: 'B', text: 'Pilihan B' },
+        ],
+        correctAnswer: 'A',
+      },
+    ],
+  };
+
+  function renderEssayRunner(onFinish = vi.fn()) {
+    render(<CbtTestRunner exam={essayExam} currentUser={user} attemptId="a2" onFinish={onFinish} />);
+    return { onFinish };
+  }
+
+  it('menampilkan textarea untuk soal essai dan menolak submit saat essai kosong', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const { onFinish } = renderEssayRunner();
+    expect(screen.getByText('Soal Essai')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Tulis jawaban essai Anda di sini...')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Tulis jawaban essai Anda di sini...'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('2 soal belum diisi'));
+    expect(onFinish).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('submit sukses saat PG dan essai terisi, lalu cache lokal dihapus', async () => {
+    const { onFinish } = renderEssayRunner();
+    fireEvent.change(screen.getByPlaceholderText('Tulis jawaban essai Anda di sini...'), { target: { value: 'Arsip adalah rekaman kegiatan manusia.' } });
+    fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ya, Selesaikan Ujian' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+    const sub = onFinish.mock.calls[0][0];
+    expect(sub.answers.e1).toBe('Arsip adalah rekaman kegiatan manusia.');
+    expect(sub.answers.p1).toBe('A');
+    await waitFor(() => expect(window.localStorage.getItem('cbt_answers_a2')).toBeNull());
   });
 });

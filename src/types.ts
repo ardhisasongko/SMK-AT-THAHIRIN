@@ -226,8 +226,9 @@ export interface CbtOption {
 export interface CbtQuestion {
   id: string;
   question: string;
+  type?: 'pg' | 'essai';
   options: CbtOption[];
-  correctAnswer?: 'A' | 'B' | 'C' | 'D' | 'E';
+  correctAnswer?: string;
   explanation?: string;
 }
 
@@ -254,7 +255,7 @@ export interface CbtSubmission {
   siswaId: string;
   siswaName: string;
   nisn: string;
-  answers: { [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' };
+  answers: { [questionId: string]: string };
   doubtful?: { [questionId: string]: boolean };
   score: number;
   correctCount: number;
@@ -267,7 +268,7 @@ export interface CbtAttempt {
   attemptId: string;
   startedAt: string;
   expiresAt: string;
-  savedAnswers: { [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' };
+  savedAnswers: { [questionId: string]: string };
   savedDoubtful: { [questionId: string]: boolean };
   exam: CbtExam;
 }

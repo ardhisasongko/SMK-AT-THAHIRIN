@@ -20,14 +20,20 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
     return jsonResponse({ success: false, error: 'Waktu ujian telah berakhir.' }, 409);
   }
   const questions = await getExamQuestions(env.DB, String(attempt.exam_id), true);
-  const validIds = new Set(questions.map(question => question.id));
+  const byId = new Map(questions.map(question => [question.id, question]));
   const answers = body.answers || {};
   const doubtful = body.doubtful || {};
   for (const [questionId, answer] of Object.entries(answers)) {
-    if (!validIds.has(questionId) || typeof answer !== 'string' || !ANSWER_KEYS.has(answer)) return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
+    const question = byId.get(questionId);
+    if (!question || typeof answer !== 'string') return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
+    if (question.type === 'essai') {
+      if (answer.length > 4000) return jsonResponse({ success: false, error: 'Jawaban essai terlalu panjang (maksimal 4000 karakter).' }, 400);
+    } else if (!ANSWER_KEYS.has(answer)) {
+      return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
+    }
   }
   for (const questionId of Object.keys(doubtful)) {
-    if (!validIds.has(questionId)) return jsonResponse({ success: false, error: 'Tanda ragu-ragu memuat soal yang tidak valid.' }, 400);
+    if (!byId.has(questionId)) return jsonResponse({ success: false, error: 'Tanda ragu-ragu memuat soal yang tidak valid.' }, 400);
   }
   await env.DB.prepare(`INSERT OR REPLACE INTO cbt_attempt_answers (attempt_id,answers_json,doubtful_json,saved_at) VALUES (?,?,?,datetime('now'))`).bind(attempt.id, JSON.stringify(answers), JSON.stringify(doubtful)).run();
   return jsonResponse({ success: true, data: { attemptId: String(attempt.id), savedAt: new Date().toISOString() } });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { cbtWindowOpen, isValidTime, validateCbtExamInput, timeToMinutes } from '../functions/_lib/cbt';
+import { cbtWindowOpen, isEssayAnswerCorrect, isValidTime, scoreCbtAnswers, validateCbtExamInput, timeToMinutes } from '../functions/_lib/cbt';
 import { onRequestPost as saveAttempt } from '../functions/api/cbt/attempts/[id]/save';
+import { onRequestPost as submitAttempt } from '../functions/api/cbt/attempts/[id]/submit';
 import { onRequestGet as getSummary } from '../functions/api/cbt/summary/index';
 import type { AuthUser } from '../functions/_lib/auth';
 
@@ -9,6 +10,25 @@ const student: AuthUser = {
   tanggalLahir: null, role: 'siswa', classId: 'k1', ketuaStatus: 'none', jabatan: null,
   status: 'active', mustChangePassword: false,
 };
+
+function saveDb({ attempt = null, questions = [] as any[] } = {}) {
+  const run = vi.fn(async () => ({ success: true }));
+  const all = vi.fn(async (sql?: string) => {
+    if (sql?.includes('domain_migrations')) return { results: [{ key: 'legacy_cbt_v1' }] };
+    return { results: questions };
+  });
+  const first = vi.fn(async (sql?: string) => {
+    if (sql?.includes('domain_migrations')) return { key: 'legacy_cbt_v1' };
+    if (sql?.includes('cbt_attempt_answers')) return null;
+    return attempt;
+  });
+  const prepare = vi.fn((sql: string) => ({ bind: vi.fn(() => ({ first, all, run })), all, first, run }));
+  return { prepare } as any;
+}
+
+function saveReq(body: object) {
+  return new Request('http://test/api/cbt/attempts/a1/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+}
 
 describe('CBT schedule window', () => {
   it('validates HH:MM time format', () => {
@@ -48,26 +68,73 @@ describe('CBT schedule window', () => {
   });
 });
 
+describe('CBT essai scoring', () => {
+  it('mencocokkan jawaban essai dengan kunci (substring, case-insensitive)', () => {
+    expect(isEssayAnswerCorrect('Arsip adalah rekaman kegiatan manusia.', 'rekaman kegiatan')).toBe(true);
+    expect(isEssayAnswerCorrect('ARSIP ADALAH REKAMAN KEGIATAN.', 'rekaman kegiatan')).toBe(true);
+    expect(isEssayAnswerCorrect('Arsip adalah berkas.', 'rekaman kegiatan')).toBe(false);
+    expect(isEssayAnswerCorrect('', 'rekaman kegiatan')).toBe(false);
+    expect(isEssayAnswerCorrect('   ', 'rekaman kegiatan')).toBe(false);
+  });
+
+  it('mendukung alternatif kunci dipisah |', () => {
+    expect(isEssayAnswerCorrect('Rekaman informasi yang dibuat.', 'rekaman kegiatan|rekaman informasi')).toBe(true);
+    expect(isEssayAnswerCorrect('Berkas lama yang disimpan.', 'rekaman kegiatan|rekaman informasi')).toBe(false);
+  });
+
+  it('menghitung skor campuran PG dan essai', () => {
+    const questions = [
+      { id: 'q1', type: 'pg', correctAnswer: 'A' },
+      { id: 'e1', type: 'essai', correctAnswer: 'rekaman kegiatan' },
+      { id: 'e2', type: 'essai', correctAnswer: 'surat masuk' },
+    ];
+    expect(scoreCbtAnswers(questions, { q1: 'A', e1: 'Semua rekaman kegiatan', e2: 'tidak dijawab' })).toEqual({ correctCount: 2, wrongCount: 1, score: 67 });
+    expect(scoreCbtAnswers(questions, {})).toEqual({ correctCount: 0, wrongCount: 3, score: 0 });
+  });
+
+  it('menerima soal essai pada validasi input ujian', () => {
+    const base = {
+      title: 'Ujian', subject: 'Kearsipan', durationMinutes: 30, token: 'ABCD', startDate: '2026-08-15', endDate: '2026-08-16',
+      questions: [
+        { id: 'q1', question: 'P1?', correctAnswer: 'A', options: ['A', 'B', 'C', 'D', 'E'].map(key => ({ key, text: `Opsi ${key}` })) },
+        { id: 'e1', question: 'E1?', type: 'essai', correctAnswer: 'rekaman kegiatan|rekaman informasi', options: [] },
+      ],
+    };
+    expect(validateCbtExamInput(base)).toBeNull();
+    expect(validateCbtExamInput({ ...base, questions: [{ ...base.questions[1], correctAnswer: '' }] })).toMatch(/Kunci jawaban essai/);
+    expect(validateCbtExamInput({ ...base, questions: [{ ...base.questions[1], options: [{ key: 'A', text: 'X' }] }] })).toMatch(/tidak boleh memiliki opsi/);
+  });
+
+  it('save menerima jawaban teks untuk soal essai dan menolak soal tidak dikenal', async () => {
+    const db = saveDb({
+      attempt: { id: 'a1', exam_id: 'e1', status: 'in_progress', expires_at: new Date(Date.now() + 600_000).toISOString() },
+      questions: [{ id: 'e1', question: 'E?', question_type: 'essai', correct_answer: 'rekaman kegiatan', options_json: '[]' }],
+    });
+    const ok = await saveAttempt({ env: { DB: db }, data: { user: student }, request: saveReq({ answers: { e1: 'Arsip adalah rekaman kegiatan.' } }), params: { id: 'a1' } } as any);
+    expect(ok.status).toBe(200);
+    const bad = await saveAttempt({ env: { DB: db }, data: { user: student }, request: saveReq({ answers: { e9: 'teks bebas' } }), params: { id: 'a1' } } as any);
+    expect(bad.status).toBe(400);
+  });
+
+  it('submit menghitung skor PG + essai dari server', async () => {
+    const startedAt = new Date(Date.now() - 60_000).toISOString();
+    const db = saveDb({
+      attempt: { id: 'a1', exam_id: 'e1', status: 'in_progress', started_at: startedAt, expires_at: new Date(Date.now() + 600_000).toISOString() },
+      questions: [
+        { id: 'q1', question: 'P?', question_type: 'pg', correct_answer: 'A', options_json: '[]' },
+        { id: 'e1', question: 'E?', question_type: 'essai', correct_answer: 'rekaman kegiatan', options_json: '[]' },
+      ],
+    });
+    const req = new Request('http://test/api/cbt/attempts/a1/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answers: { q1: 'A', e1: 'Arsip adalah rekaman kegiatan.' }, doubtful: {} }) });
+    const response = await submitAttempt({ env: { DB: db }, data: { user: student }, request: req, params: { id: 'a1' } } as any);
+    expect(response.status).toBe(200);
+    const json = await response.json() as any;
+    expect(json.data.score).toBe(100);
+    expect(json.data.correctCount).toBe(2);
+  });
+});
+
 describe('CBT attempt auto-save API', () => {
-  function saveDb({ attempt = null, questions = [] as any[] } = {}) {
-    const run = vi.fn(async () => ({ success: true }));
-    const all = vi.fn(async (sql?: string) => {
-      if (sql?.includes('domain_migrations')) return { results: [{ key: 'legacy_cbt_v1' }] };
-      return { results: questions };
-    });
-    const first = vi.fn(async (sql?: string) => {
-      if (sql?.includes('domain_migrations')) return { key: 'legacy_cbt_v1' };
-      if (sql?.includes('cbt_attempt_answers')) return null;
-      return attempt;
-    });
-    const prepare = vi.fn((sql: string) => ({ bind: vi.fn(() => ({ first, all, run })), all, first, run }));
-    return { prepare } as any;
-  }
-
-  function saveReq(body: object) {
-    return new Request('http://test/api/cbt/attempts/a1/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  }
-
   it('persists valid answers for in-progress attempt', async () => {
     const db = saveDb({
       attempt: { id: 'a1', exam_id: 'e1', status: 'in_progress', expires_at: new Date(Date.now() + 600_000).toISOString() },

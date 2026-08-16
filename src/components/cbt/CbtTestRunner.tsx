@@ -9,31 +9,67 @@ import {
   User,
   CloudUpload,
   Cloud,
+  HardDrive,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission } from '../../types';
 import { Modal } from '../ui/Modal';
 import { cbtApi } from '../../utils/cbt-api';
+import { isQuestionAnswered } from '../../utils/cbt-scoring';
 
 interface CbtTestRunnerProps {
   exam: CbtExam;
   currentUser: UserType;
   attemptId: string;
-  initialAnswers?: { [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' };
+  initialAnswers?: { [questionId: string]: string };
   initialDoubtful?: { [questionId: string]: boolean };
   onFinish: (submission: CbtSubmission) => void | Promise<void>;
   expiresAt?: string;
 }
 
+const CHECKPOINT_INTERVAL_MS = 10 * 60 * 1000;
+
+function readLocalCache(attemptId: string): { answers: { [questionId: string]: string }; doubtful: { [questionId: string]: boolean } } {
+  try {
+    const raw = window.localStorage.getItem(`cbt_answers_${attemptId}`);
+    if (!raw) return { answers: {}, doubtful: {} };
+    const parsed = JSON.parse(raw);
+    return {
+      answers: parsed && typeof parsed.answers === 'object' ? parsed.answers : {},
+      doubtful: parsed && typeof parsed.doubtful === 'object' ? parsed.doubtful : {},
+    };
+  } catch {
+    return { answers: {}, doubtful: {} };
+  }
+}
+
+function writeLocalCache(attemptId: string, answers: { [questionId: string]: string }, doubtful: { [questionId: string]: boolean }) {
+  try {
+    window.localStorage.setItem(`cbt_answers_${attemptId}`, JSON.stringify({ answers, doubtful, updatedAt: Date.now() }));
+  } catch {
+    // kuota penuh / mode pribadi: abaikan, jawaban tetap aman via checkpoint server
+  }
+}
+
+function clearLocalCache(attemptId: string) {
+  try {
+    window.localStorage.removeItem(`cbt_answers_${attemptId}`);
+  } catch {
+    // abaikan
+  }
+}
+
 export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {}, initialDoubtful = {}, onFinish, expiresAt }: CbtTestRunnerProps) {
+  const localCache = readLocalCache(attemptId);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [answers, setAnswers] = useState<{ [questionId: string]: 'A' | 'B' | 'C' | 'D' | 'E' }>(initialAnswers);
-  const [doubtful, setDoubtful] = useState<{ [questionId: string]: boolean }>(initialDoubtful);
+  const [answers, setAnswers] = useState<{ [questionId: string]: string }>({ ...initialAnswers, ...localCache.answers });
+  const [doubtful, setDoubtful] = useState<{ [questionId: string]: boolean }>({ ...initialDoubtful, ...localCache.doubtful });
   const [timeLeft, setTimeLeft] = useState<number>(() => expiresAt ? Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)) : exam.durationMinutes * 60);
   const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedRef = useRef<string>(JSON.stringify({ answers: initialAnswers, doubtful: initialDoubtful }));
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const lastSavedRef = useRef<string>(JSON.stringify({ answers: { ...initialAnswers, ...localCache.answers }, doubtful: { ...initialDoubtful, ...localCache.doubtful } }));
+  const finishedRef = useRef(false);
 
   const persistAnswers = useCallback(async (currentAnswers: typeof answers, currentDoubtful: typeof doubtful) => {
     const payload = JSON.stringify({ answers: currentAnswers, doubtful: currentDoubtful });
@@ -43,25 +79,27 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
       await cbtApi.saveAttempt(attemptId, currentAnswers, currentDoubtful);
       lastSavedRef.current = payload;
       setSaveState('saved');
+      setLastSyncedAt(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }));
     } catch {
       setSaveState('error');
     }
   }, [attemptId]);
 
-  const scheduleSave = useCallback((currentAnswers: typeof answers, currentDoubtful: typeof doubtful) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => { void persistAnswers(currentAnswers, currentDoubtful); }, 1500);
-  }, [persistAnswers]);
-
+  // Simpan instan ke localStorage setiap jawaban berubah (tanpa jaringan)
   useEffect(() => {
-    if (submitting) return;
-    scheduleSave(answers, doubtful);
-    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [answers, doubtful, scheduleSave, submitting]);
+    if (submitting || finishedRef.current) return;
+    writeLocalCache(attemptId, answers, doubtful);
+  }, [answers, doubtful, attemptId, submitting]);
+
+  // Checkpoint ke server tiap 10 menit sebagai cadangan
+  useEffect(() => {
+    if (submitting || finishedRef.current) return;
+    const interval = setInterval(() => { void persistAnswers(answers, doubtful); }, CHECKPOINT_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [persistAnswers, answers, doubtful, submitting]);
 
   useEffect(() => {
     const flush = () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       void persistAnswers(answers, doubtful);
     };
     const onHide = () => flush();
@@ -73,7 +111,14 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
     };
   }, [persistAnswers, answers, doubtful]);
 
-  const handleConfirmSubmitTest = useCallback(async () => {
+  const missingCount = exam.questions.filter(q => !isQuestionAnswered(q, answers[q.id])).length;
+  const missingNumbers = exam.questions
+    .map((q, idx) => ({ q, idx }))
+    .filter(({ q }) => !isQuestionAnswered(q, answers[q.id]))
+    .map(({ idx }) => idx + 1);
+
+  // Saat waktu habis, submit dipaksa meski belum lengkap agar jawaban yang ada tidak hilang.
+  const handleConfirmSubmitTest = useCallback(async (force = false) => {
     if (submitting) return;
     setSubmitting(true);
     let correct = 0;
@@ -87,7 +132,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
     exam.questions.forEach(q => {
       const userAnswer = answers[q.id];
-      if (userAnswer === q.correctAnswer) {
+      if (userAnswer && (q.type === 'essai' ? true : userAnswer === q.correctAnswer)) {
         correct++;
       } else {
         wrong++;
@@ -114,10 +159,23 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
     try {
       await onFinish(submission);
+      finishedRef.current = true;
+      clearLocalCache(attemptId);
     } finally {
       setSubmitting(false);
     }
-  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting, persistAnswers]);
+  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting, persistAnswers, attemptId]);
+
+  const handleFinishClick = () => {
+    if (submitting) return;
+    if (missingCount > 0) {
+      alert(`Masih ada ${missingCount} soal belum diisi: nomor ${missingNumbers.slice(0, 12).join(', ')}${missingNumbers.length > 12 ? ', ...' : ''}. Semua soal wajib dijawab sebelum ujian dikirim.`);
+      const firstMissing = missingNumbers[0] - 1;
+      if (firstMissing >= 0) setCurrentQuestionIndex(firstMissing);
+      return;
+    }
+    setShowFinishModal(true);
+  };
 
   // Timer countdown
   useEffect(() => {
@@ -128,7 +186,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
         if (prev <= 1) {
           clearInterval(timer);
           alert('Waktu ujian telah habis! Sistem secara otomatis mengirimkan jawaban Anda.');
-          handleConfirmSubmitTest();
+          void handleConfirmSubmitTest(true);
           return 0;
         }
         return prev - 1;
@@ -151,6 +209,13 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
     }));
   };
 
+  const handleEssayChange = (questionId: string, value: string) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
   const handleToggleDoubtful = (questionId: string) => {
     setDoubtful(prev => ({
       ...prev,
@@ -159,8 +224,9 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
   };
 
   const currentQ = exam.questions[currentQuestionIndex];
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = exam.questions.filter(q => isQuestionAnswered(q, answers[q.id])).length;
   const doubtfulCount = Object.values(doubtful).filter(Boolean).length;
+  const isEssay = currentQ.type === 'essai';
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 flex flex-col font-sans select-none overflow-hidden">
@@ -189,21 +255,21 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
           {/* Auto-save Status */}
           <div
             className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold border transition-all ${
-              saveState === 'saved'
-                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                : saveState === 'error'
-                  ? 'bg-rose-500/10 text-rose-300 border-rose-500/40'
+              saveState === 'error'
+                ? 'bg-rose-500/10 text-rose-300 border-rose-500/40'
+                : saveState === 'saved'
+                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                   : 'bg-slate-700/60 text-slate-300 border-slate-600'
             }`}
-            title="Jawaban disimpan otomatis secara berkala"
+            title="Jawaban tersimpan di HP dan disinkronkan ke server tiap 10 menit"
           >
-            {saveState === 'saved'
-              ? <Cloud className="w-3.5 h-3.5" />
-              : saveState === 'error'
-                ? <CloudUpload className="w-3.5 h-3.5" />
-                : <CloudUpload className="w-3.5 h-3.5 animate-pulse" />}
+            {saveState === 'error'
+              ? <CloudUpload className="w-3.5 h-3.5" />
+              : saveState === 'saved'
+                ? <Cloud className="w-3.5 h-3.5" />
+                : <HardDrive className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">
-              {saveState === 'saved' ? 'Tersimpan' : saveState === 'error' ? 'Gagal simpan' : saveState === 'saving' ? 'Menyimpan...' : 'Auto-save'}
+              {saveState === 'error' ? 'Sinkron gagal' : saveState === 'saving' ? 'Sinkron...' : saveState === 'saved' ? `Tersinkron ${lastSyncedAt}` : 'Tersimpan di HP'}
             </span>
           </div>
 
@@ -219,7 +285,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
           <button
             id="cbt-finish-btn"
-            onClick={() => setShowFinishModal(true)}
+            onClick={handleFinishClick}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
           >
             <Send className="w-4 h-4" />
@@ -262,37 +328,58 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
             {/* Question Text */}
             <div className="mb-6">
+              {isEssay && (
+                <span className="inline-block mb-2 bg-sky-600/20 text-sky-300 border border-sky-600/40 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                  Soal Essai
+                </span>
+              )}
               <p className="text-base sm:text-lg text-slate-100 font-medium leading-relaxed">
                 {currentQ.question}
               </p>
             </div>
 
-            {/* Options List */}
-            <div className="space-y-3 max-w-3xl">
-              {currentQ.options.map((opt) => {
-                const isSelected = answers[currentQ.id] === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => handleSelectOption(currentQ.id, opt.key)}
-                    className={`w-full text-left p-4 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-md ring-2 ring-emerald-500/30'
-                        : 'bg-slate-800/80 border-slate-700/80 text-slate-200 hover:bg-slate-800 hover:border-slate-600'
-                    }`}
-                  >
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border transition-all ${
-                      isSelected
-                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
-                        : 'bg-slate-700 text-slate-300 border-slate-600'
-                    }`}>
-                      {opt.key}
-                    </span>
-                    <span className="text-sm sm:text-base pt-1 leading-normal">{opt.text}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Options List (PG) atau Textarea (Essai) */}
+            {isEssay ? (
+              <div className="max-w-3xl">
+                <textarea
+                  value={answers[currentQ.id] || ''}
+                  onChange={e => handleEssayChange(currentQ.id, e.target.value)}
+                  placeholder="Tulis jawaban essai Anda di sini..."
+                  rows={7}
+                  maxLength={4000}
+                  className="w-full p-4 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-100 text-sm sm:text-base leading-relaxed focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none resize-y"
+                />
+                <div className="mt-1 text-right text-[11px] text-slate-400">
+                  {(answers[currentQ.id] || '').length} / 4000 karakter
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 max-w-3xl">
+                {currentQ.options.map((opt) => {
+                  const isSelected = answers[currentQ.id] === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => handleSelectOption(currentQ.id, opt.key)}
+                      className={`w-full text-left p-4 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-md ring-2 ring-emerald-500/30'
+                          : 'bg-slate-800/80 border-slate-700/80 text-slate-200 hover:bg-slate-800 hover:border-slate-600'
+                      }`}
+                    >
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 border transition-all ${
+                        isSelected
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm'
+                          : 'bg-slate-700 text-slate-300 border-slate-600'
+                      }`}>
+                        {opt.key}
+                      </span>
+                      <span className="text-sm sm:text-base pt-1 leading-normal">{opt.text}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Bottom Controls */}
@@ -320,7 +407,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
               </button>
             ) : (
               <button
-                onClick={() => setShowFinishModal(true)}
+                onClick={handleFinishClick}
                 className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md"
               >
                 <span>Selesaikan Ujian</span>
@@ -341,7 +428,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
             {/* Grid Number Buttons */}
             <div className="grid grid-cols-5 gap-2 max-h-64 md:max-h-96 overflow-y-auto p-1">
               {exam.questions.map((q, idx) => {
-                const isAnswered = !!answers[q.id];
+                const isAnswered = isQuestionAnswered(q, answers[q.id]);
                 const isDoubt = !!doubtful[q.id];
                 const isCurrent = idx === currentQuestionIndex;
 
@@ -414,9 +501,15 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
             </div>
             <div className="flex justify-between">
               <span>Belum Dijawab:</span>
-              <strong className="text-rose-400">{exam.questions.length - answeredCount}</strong>
+              <strong className="text-rose-400">{missingCount}</strong>
             </div>
           </div>
+
+          {missingCount > 0 && (
+            <p className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">
+              Waktu habis: {missingCount} soal kosong akan ikut terkirim dan dinilai salah.
+            </p>
+          )}
 
           <p className="text-xs text-slate-300 leading-relaxed">
             Apakah Anda yakin ingin menyelesaikan ujian ini? Setelah dikirim, Anda tidak dapat mengubah jawaban lagi.

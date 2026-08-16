@@ -69,8 +69,28 @@ export function parseJson<T>(value: unknown, fallback: T): T {
   }
 }
 
-export function scoreCbtAnswers(questions: Array<{ id: string; correctAnswer?: string }>, answers: Record<string, string>) {
-  const correctCount = questions.filter(question => answers[question.id] === question.correctAnswer).length;
+export function normalizeText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Essai dinilai benar bila jawaban siswa (dinormalisasi) mengandung salah satu
+// alternatif kunci (dipisah "|") sebagai substring.
+export function isEssayAnswerCorrect(answer: string, key: string): boolean {
+  const normalizedAnswer = normalizeText(answer);
+  if (!normalizedAnswer) return false;
+  return key.split('|').some(part => {
+    const normalizedPart = normalizeText(part);
+    return normalizedPart !== '' && normalizedAnswer.includes(normalizedPart);
+  });
+}
+
+export function scoreCbtAnswers(questions: Array<{ id: string; type?: string; correctAnswer?: string }>, answers: Record<string, string>) {
+  const correctCount = questions.filter(question => {
+    const answer = answers[question.id];
+    if (typeof answer !== 'string' || !answer.trim()) return false;
+    if (question.type === 'essai') return isEssayAnswerCorrect(answer, question.correctAnswer || '');
+    return answer === question.correctAnswer;
+  }).length;
   const wrongCount = questions.length - correctCount;
   return { correctCount, wrongCount, score: questions.length ? Math.round(correctCount / questions.length * 100) : 0 };
 }
@@ -98,7 +118,13 @@ export function validateCbtQuestions(questions: unknown): string | null {
     const id = typeof question?.id === 'string' ? question.id.trim() : '';
     if (!id || id.length > 100 || questionIds.has(id)) return 'Setiap soal harus memiliki ID unik maksimal 100 karakter.';
     questionIds.add(id);
-    if (typeof question.question !== 'string' || !question.question.trim() || question.question.length > 2000 || !ANSWER_KEYS.has(question.correctAnswer)) return 'Pertanyaan atau kunci jawaban tidak valid.';
+    if (typeof question.question !== 'string' || !question.question.trim() || question.question.length > 2000) return 'Pertanyaan tidak valid.';
+    if (question.type === 'essai') {
+      if (typeof question.correctAnswer !== 'string' || !question.correctAnswer.trim() || question.correctAnswer.length > 2000) return 'Kunci jawaban essai wajib diisi (maksimal 2000 karakter).';
+      if (Array.isArray(question.options) && question.options.length > 0) return 'Soal essai tidak boleh memiliki opsi pilihan ganda.';
+      continue;
+    }
+    if (!ANSWER_KEYS.has(question.correctAnswer)) return 'Kunci jawaban pilihan ganda tidak valid.';
     if (!Array.isArray(question.options) || question.options.length !== ANSWER_KEYS.size) return 'Setiap soal wajib memiliki opsi A-E lengkap.';
     const optionKeys = new Set<string>();
     for (const option of question.options) {
@@ -118,13 +144,14 @@ function isValidDate(value: unknown): value is string {
 
 export async function getExamQuestions(db: D1Database, examId: string, includeAnswers: boolean): Promise<any[]> {
   const { results } = await db.prepare(
-    'SELECT id, question, options_json, correct_answer, explanation FROM cbt_questions WHERE exam_id = ? ORDER BY position'
+    'SELECT id, question, question_type, options_json, correct_answer, explanation FROM cbt_questions WHERE exam_id = ? ORDER BY position'
   ).bind(examId).all();
   return results.map((row: any) => ({
     id: String(row.id),
     question: String(row.question),
+    type: String(row.question_type || 'pg') as 'pg' | 'essai',
     options: parseJson(row.options_json, []),
-    ...(includeAnswers ? { correctAnswer: String(row.correct_answer), explanation: row.explanation ? String(row.explanation) : undefined } : {}),
+    ...(includeAnswers ? { correctAnswer: row.correct_answer != null ? String(row.correct_answer) : undefined, explanation: row.explanation ? String(row.explanation) : undefined } : {}),
   }));
 }
 
