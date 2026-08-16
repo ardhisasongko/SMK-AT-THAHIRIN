@@ -11,7 +11,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Verifikasi terakhir: `npm run verify` lulus, 197/197 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan migrasi `0018` lulus di D1 lokal.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
 - Commit implementasi integrasi terbaru yang sudah di-push: `b787e62 feat(integrations): perkuat layanan eksternal`.
-- Migrasi D1 remote masih diterapkan sampai `0016_security_hardening.sql`; migrasi `0017_external_integrations.sql` dan `0018_relational_academic_data.sql` sudah lulus di D1 lokal tetapi belum diterapkan ke remote.
+- Migrasi D1 remote sudah diterapkan sampai `0018_relational_academic_data.sql` (0017 dan 0018 live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
 ### Commit Milestone Terbaru
@@ -140,7 +140,7 @@ Migrasi berikut sudah berhasil diterapkan ke D1 remote:
 - `0015_domain_integrity.sql`
 - `0016_security_hardening.sql`
 
-Migrasi berikut baru diterapkan dan diverifikasi di D1 lokal; belum remote:
+Migrasi berikut sudah diterapkan dan diverifikasi di D1 remote (16 Agustus 2026):
 
 - `0017_external_integrations.sql`
 - `0018_relational_academic_data.sql`
@@ -281,8 +281,7 @@ Hasil terakhir:
 - TypeScript lulus.
 - Typecheck sync-worker lulus.
 - Production build lulus.
-- Migrasi D1 remote sampai `0016` berhasil.
-- Migrasi `0017` dan `0018` berhasil secara lokal dan belum diterapkan ke remote.
+- Migrasi D1 remote sampai `0018` berhasil (0016 sebelumnya; 0017–0018 diterapkan 16 Agustus 2026).
 - Roundtrip 87 siswa produksi melalui proyeksi relasional terverifikasi presisi (tidak ada field hilang/berubah).
 - Wrangler sync-worker dry-run lulus.
 - Browser guest/authenticated pada 320, 375, 768, dan 1366 px tidak memiliki document overflow.
@@ -295,13 +294,12 @@ Hasil terakhir:
 ## Urutan Aman Sesi Berikutnya
 
 1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main`.
-2. Pastikan commit integrasi terbaru sudah terdeploy di Cloudflare Pages, lalu terapkan `0017_external_integrations.sql` dan `0018_relational_academic_data.sql` ke D1 remote.
-3. Smoke test produksi untuk landing, login/logout, semua role, CBT, Forum, Notifikasi, presensi, upload, dan `/api/integrations/status` dalam kondisi WhatsApp/Sync tetap OFF.
-4. Deploy ulang Apps Script, pasang `SYNC_TOKEN` sebagai Script Property dan Worker secret, lalu deploy sync-worker dengan `SYNC_DRY_RUN=true`.
-5. Jalankan dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
-6. Jalankan gateway dengan `GATEWAY_ENABLED=false`, scan QR nomor khusus sekolah, dan pastikan heartbeat muncul.
-7. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
-8. Jika offline mode dibutuhkan, tambahkan service worker sebagai proyek terpisah tanpa menyimpan respons API/sesi sensitif.
+2. Deploy commit terbaru (sudah live 16 Agustus 2026) dan smoke test produksi untuk landing, login/logout, semua role, CBT, Forum, Notifikasi, presensi, upload, dan `/api/integrations/status` dalam kondisi WhatsApp/Sync tetap OFF.
+3. Deploy ulang Apps Script, pasang `SYNC_TOKEN` sebagai Script Property dan Worker secret, lalu deploy sync-worker dengan `SYNC_DRY_RUN=true`.
+4. Jalankan dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
+5. Jalankan gateway dengan `GATEWAY_ENABLED=false`, scan QR nomor khusus sekolah, dan pastikan heartbeat muncul.
+6. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
+7. Jika offline mode dibutuhkan, tambahkan service worker sebagai proyek terpisah tanpa menyimpan respons API/sesi sensitif.
 
 ## Keamanan dan Tindak Lanjut
 

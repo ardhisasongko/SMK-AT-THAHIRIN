@@ -61,7 +61,7 @@
       <div class="stat"><div class="num">15.4k</div><div class="lbl">Baris kode (src+functions+tests+migrations)</div></div>
       <div class="stat"><div class="num">25</div><div class="lbl">Komponen TSX</div></div>
       <div class="stat"><div class="num">31</div><div class="lbl">Endpoint API</div></div>
-      <div class="stat"><div class="num">18</div><div class="lbl">Migrasi D1 (16 remote + 2 lokal)</div></div>
+      <div class="stat"><div class="num">18</div><div class="lbl">Migrasi D1 (remote s.d. 0018)</div></div>
       <div class="stat"><div class="num">40</div><div class="lbl">File test termasuk Worker</div></div>
       <div class="stat"><div class="num">205</div><div class="lbl">Test lulus total (100%)</div></div>
     </div>
@@ -71,7 +71,7 @@
       <span class="badge b-ok">Test: 197 aplikasi + 8 Worker</span>
       <span class="badge b-ok">Responsif: Lulus (320–1366px)</span>
       <span class="badge b-ok">Migrasi lokal s.d. 0018</span>
-      <span class="badge b-warn">Migrasi remote masih s.d. 0016</span>
+      <span class="badge b-ok">Migrasi remote s.d. 0018</span>
       <span class="badge b-warn">Deploy integrasi belum diverifikasi</span>
     </div>
     <div class="verdict" style="margin-top:14px">
@@ -110,7 +110,7 @@
       <tbody>
         <tr><td>Frontend (React SPA)</td><td class="mono">src/ (9.724 baris)</td><td>9.724</td><td>Komponen besar tapi konsisten pakai <span class="mono">usePersistedCollection</span>, <span class="mono">useFilter</span></td></tr>
         <tr><td>Backend (Pages Functions)</td><td class="mono">functions/ (2.790 baris)</td><td>2.790</td><td>30 endpoint; logika inti dipisah di <span class="mono">functions/_lib/</span></td></tr>
-        <tr><td>Database (D1)</td><td class="mono">migrations/</td><td>18 migrasi</td><td>16 remote; 0017–0018 sudah lulus lokal</td></tr>
+        <tr><td>Database (D1)</td><td class="mono">migrations/</td><td>18 migrasi</td><td>remote s.d. 0018 (diterapkan 16 Agustus 2026)</td></tr>
         <tr><td>Tests</td><td class="mono">tests/ (2.525 baris)</td><td>2.525</td><td>Unit + integration (jsdom + Testing Library)</td></tr>
         <tr><td>Eksternal</td><td class="mono">whatsapp-gateway/, sync-worker/, google-apps-script/</td><td>—</td><td>Terpisah dari aplikasi utama (menunggu aktivasi)</td></tr>
       </tbody>
@@ -199,7 +199,7 @@
   <!-- ===== DATABASE ===== -->
   <div class="card">
     <h2>🗄️ Database (Cloudflare D1)</h2>
-    <p><span class="badge b-ok">18 migrasi</span> <span class="badge b-ok">local s.d. 0018</span> <span class="badge b-warn">remote s.d. 0016</span> <span class="badge b-info">SQLite-compatible</span></p>
+    <p><span class="badge b-ok">18 migrasi</span> <span class="badge b-ok">remote s.d. 0018</span> <span class="badge b-info">SQLite-compatible</span></p>
     <h3>Model Penyimpanan (dua lapis)</h3>
     <table>
       <thead><tr><th>Model</th><th>Tabel</th><th>Penilaian</th></tr></thead>
@@ -289,7 +289,7 @@
         <tr><td><span class="badge b-red">Tinggi</span></td><td>Terapkan migrasi 0017 remote lalu smoke test integrasi tetap OFF</td><td>Menyediakan gate/heartbeat tanpa risiko pengiriman</td></tr>
         <tr><td><span class="badge b-amber">Sedang</span></td><td>Deploy Apps Script + sync-worker dalam dry-run, lalu verifikasi tiga daily dan satu weekly</td><td>Bukti idempotensi dan sinkronisasi nyata</td></tr>
         <tr><td><span class="badge b-amber">Sedang</span></td><td>Uji canary WhatsApp 1–2 penerima selama 7–14 hari; gunakan nomor khusus sekolah</td><td>Menaikkan nilai operasional integrasi menjadi A</td></tr>
-        <tr><td><span class="badge b-amber">Sedang</span></td><td>Terapkan migrasi 0018 remote (proyeksi relasional) setelah deploy, lalu verifikasi smoke test</td><td>Mengaktifkan query relasional &amp; proteksi konflik di produksi</td></tr>
+        <tr><td><span class="badge b-amber">Sedang</span></td><td>Lanjutkan aktivasi operasional: deploy Apps Script + sync-worker dry-run, canary WhatsApp 7–14 hari</td><td>Menaikkan nilai operasional integrasi menjadi A</td></tr>
         <tr><td><span class="badge b-amber">Sedang</span></td><td>Refactor komponen besar (&gt;500 baris) jadi sub-komponen/hook</td><td>Menjaga maintainability jangka panjang</td></tr>
         <tr><td><span class="badge b-gray">Rendah</span></td><td>Tambahkan service worker (cache asset, jangan cache API/sesi) dan coverage threshold</td><td>Offline mode &amp; jaring pengaman kualitas</td></tr>
       </tbody>
