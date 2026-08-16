@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulasi CBT — SMK PLUS AT THAHIRIN</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f1f5f9; color: #1e293b; line-height: 1.65; padding: 28px 20px; }
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; color: #0f172a; margin-bottom: 6px; }
+  h2 { font-size: 1.1rem; color: #0f172a; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  h3 { font-size: .92rem; color: #334155; margin: 16px 0 8px; }
+  .subtitle { color: #64748b; margin-bottom: 22px; font-size: .88rem; }
+  .card { background: #fff; border-radius: 12px; padding: 22px 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center; }
+  .stat .num { font-size: 1.4rem; font-weight: 700; color: #0f766e; }
+  .stat .lbl { font-size: .73rem; color: #64748b; margin-top: 2px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+  .b-ok { background: #dcfce7; color: #166534; }
+  .b-warn { background: #fef9c3; color: #854d0e; }
+  .b-info { background: #dbeafe; color: #1e40af; }
+  .b-teal { background: #ccfbf1; color: #0f766e; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .85rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+  th { background: #f8fafc; font-weight: 600; color: #475569; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .84em; }
+  .ok { color: #16a34a; font-weight: 700; }
+  .no { color: #dc2626; font-weight: 700; }
+  .arrow { color: #94a3b8; font-size: 1.2rem; }
+  /* ===== diagram alur ===== */
+  .flow { display: flex; flex-direction: column; gap: 0; margin-top: 10px; }
+  .flow-row { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: stretch; }
+  .actor { font-size: .75rem; font-weight: 700; text-align: center; padding: 10px 6px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+  .actor .who { font-size: .68rem; font-weight: 600; opacity: .8; }
+  .a-teacher { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+  .a-student { background: #fce7f3; color: #9d174d; border: 1px solid #fbcfe8; }
+  .a-server { background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; }
+  .step { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: .84rem; position: relative; }
+  .step .no { display: inline-block; background: #0f766e; color: #fff; border-radius: 999px; width: 20px; height: 20px; line-height: 20px; text-align: center; font-size: .7rem; font-weight: 700; margin-right: 8px; }
+  .step b { color: #0f172a; }
+  .step .sub { display: block; color: #64748b; font-size: .78rem; margin-top: 3px; }
+  .flow-connector { text-align: center; font-size: 1.05rem; color: #64748b; padding: 2px 0; line-height: 1; }
+  .v-line { width: 2px; height: 18px; background: #cbd5e1; margin: 0 auto; }
+  /* ===== pita alur data ===== */
+  .dataflow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; padding: 14px; background: #f0fdfa; border: 1px dashed #99f6e4; border-radius: 12px; }
+  .dataflow .node { background: #fff; border: 1px solid #ccfbf1; border-radius: 8px; padding: 6px 12px; font-size: .76rem; text-align: center; }
+  .dataflow .node b { display: block; color: #0f766e; font-size: .8rem; }
+  .dataflow .arrow { color: #14b8a6; }
+  .note { font-size: .78rem; color: #94a3b8; margin-top: 6px; }
+  .footer { text-align: center; color: #94a3b8; font-size: .78rem; margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+  @media print { .card { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🧪 Simulasi CBT Live — 1 Guru, 1 Siswa, 1 Mata Pelajaran</h1>
+  <div class="subtitle">SMK PLUS AT THAHIRIN — Portal Pendidikan Digital<br>
+  Simulasi nyata di produksi <span class="mono">smk-at-tahirin.pages.dev</span> · 16 Agustus 2026 · Mata Pelajaran: <b>Kearsipan</b> · Alur: guru buat ujian → siswa kerjakan → skor otomatis → rekap guru</div>
+
+  <!-- ===== PELAKU ===== -->
+  <div class="card">
+    <h2>👥 Pelaku Simulasi</h2>
+    <div class="grid">
+      <div class="stat"><div class="num" style="font-size:1.05rem">AYI SAEPUL ANWAR</div><div class="lbl">Guru — pembuat ujian &amp; penilai</div></div>
+      <div class="stat"><div class="num" style="font-size:1.05rem">GHINA NAILA</div><div class="lbl">Siswa — peserta ujian (NISN 0082219950)</div></div>
+      <div class="stat"><div class="num" style="font-size:1.05rem">Kearsipan</div><div class="lbl">Mata pelajaran ujian</div></div>
+    </div>
+  </div>
+
+  <!-- ===== DIAGRAM ALUR ===== -->
+  <div class="card">
+    <h2>🔄 Diagram Alur (Konsep)</h2>
+    <div class="flow">
+      <div class="flow-row">
+        <div class="actor a-teacher"><span class="who">GURU</span>👨‍🏫<br>AYI SAEPUL ANWAR</div>
+        <div class="step"><span class="no">1</span><b>Login &amp; buat ujian</b> — 3 soal (2 PG + 1 essai), token <span class="mono">SIMUL01</span>, durasi 10 menit<span class="sub">Soal &amp; kunci jawaban dikirim ke server dan tersimpan di D1.</span></div>
+      </div>
+      <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
+      <div class="flow-row">
+        <div class="actor a-teacher">📤<br><span class="who">GURU</span></div>
+        <div class="step"><span class="no">2</span><b>Bagikan token</b> — siswa diberi token ujian (kode rahasia)<span class="sub">Tanpa token, ujian tidak bisa dibuka oleh siswa.</span></div>
+      </div>
+      <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
+      <div class="flow-row">
+        <div class="actor a-student"><span class="who">SISWA</span>👩‍🎓<br>GHINA NAILA</div>
+        <div class="step"><span class="no">3</span><b>Login &amp; masukkan token</b> — siswa membuka ujian, server mencatat attempt baru<span class="sub">Jawaban kosong otomatis ter-<i>restore</i> bila HP sempat tertutup (cache localStorage).</span></div>
+      </div>
+      <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
+      <div class="flow-row">
+        <div class="actor a-student">✍️<br><span class="who">SISWA</span></div>
+        <div class="step"><span class="no">4</span><b>Mengerjakan soal</b> — jawaban langsung tersimpan di <b>localStorage HP</b> (instan, aman walau sinyal buruk)<span class="sub">Checkpoint tiap <b>10 menit</b> mengirim jawaban ke server (hemat kuota free tier Workers/D1).</span></div>
+      </div>
+      <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
+      <div class="flow-row">
+        <div class="actor a-student">✅<br><span class="who">SISWA</span></div>
+        <div class="step"><span class="no">5</span><b>Submit</b> — semua soal <b>wajib terisi</b>; bila waktu habis, jawaban dipaksa submit<span class="sub">Server menilai otomatis: PG dicocokkan persis, essai dibandingkan dengan kunci (boleh memuat kata kunci / alternatif dipisah |).</span></div>
+      </div>
+      <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
+      <div class="flow-row">
+        <div class="actor a-teacher">📊<br><span class="who">GURU</span></div>
+        <div class="step"><span class="no">6</span><b>Lihat rekap nilai</b> — skor, jumlah benar/salah, dan jawaban tiap siswa muncul otomatis<span class="sub">Guru tidak perlu koreksi manual.</span></div>
+      </div>
+    </div>
+
+    <h3>Pita Penyimpanan Jawaban (kunci konsep hemat free tier)</h3>
+    <div class="dataflow">
+      <div class="node"><b>📱 HP Siswa</b>localStorage<br><span class="mono">cbt_answers_…</span></div>
+      <span class="arrow">⚡ tiap jawab</span>
+      <div class="node"><b>🗄️ Server D1</b>checkpoint tiap 10 menit</div>
+      <span class="arrow">⬆ flush saat submit</span>
+      <div class="node"><b>🧮 Scoring</b>PG exact · essai substring</div>
+      <span class="arrow">📊</span>
+      <div class="node"><b>👨‍🏫 Rekap Guru</b>skor otomatis</div>
+    </div>
+    <p class="note">Jawaban disimpan 2 lapis: cepat di HP (anti data-loss) dan di server (anti hilang perangkat). Beban tulis D1 turun drastis — dari ±70.000 menjadi ±1.740 request/hari untuk 5 hari × 4 mapel × 87 siswa.</p>
+  </div>
+
+  <!-- ===== HASIL SIMULASI NYATA ===== -->
+  <div class="card">
+    <h2>📋 Hasil Simulasi Nyata (Produksi)</h2>
+    <table>
+      <thead><tr><th>Soal</th><th>Jenis</th><th>Kunci Jawaban</th><th>Jawaban Siswa</th><th>Penilaian</th></tr></thead>
+      <tbody>
+        <tr><td>Arsip dinamis yang masih sering dipakai disebut arsip…</td><td><span class="badge b-info">PG</span></td><td class="mono">A — Aktif</td><td class="mono">A — Aktif</td><td><span class="ok">✅ Benar</span></td></tr>
+        <tr><td>Indeks pada arsip berfungsi untuk…</td><td><span class="badge b-info">PG</span></td><td class="mono">C — Memudahkan pencarian</td><td class="mono">B — Mencetak arsip</td><td><span class="no">❌ Salah</span></td></tr>
+        <tr><td>Jelaskan apa yang dimaksud arsip vital!</td><td><span class="badge b-teal">Essai</span></td><td class="mono">arsip yang tidak dapat diperbaharui | tidak dapat diganti | hilang rusak</td><td class="mono">"Arsip vital adalah arsip yang tidak dapat diganti apabila hilang atau rusak."</td><td><span class="ok">✅ Benar</span> — memuat kata kunci "tidak dapat diganti"</td></tr>
+      </tbody>
+    </table>
+    <div class="grid" style="margin-top:14px">
+      <div class="stat"><div class="num">67</div><div class="lbl">Skor akhir (2/3 benar)</div></div>
+      <div class="stat"><div class="num" style="color:#16a34a">2</div><div class="lbl">Benar</div></div>
+      <div class="stat"><div class="num" style="color:#dc2626">1</div><div class="lbl">Salah</div></div>
+      <div class="stat"><div class="num">10 mnt</div><div class="lbl">Durasi ujian (siswa selesai 2 detik)</div></div>
+      <div class="stat"><div class="num">SIMUL01</div><div class="lbl">Token ujian</div></div>
+    </div>
+    <div style="margin-top:12px">
+      <span class="badge b-ok">Ujian dibuat: 201</span>
+      <span class="badge b-ok">Attempt siswa: berhasil</span>
+      <span class="badge b-ok">Save bertahap: tersimpan</span>
+      <span class="badge b-ok">Submit &amp; skor otomatis: 67</span>
+      <span class="badge b-ok">Rekap guru: tampil</span>
+    </div>
+    <p class="note">Semua langkah di atas dieksekusi langsung terhadap produksi (bukan mock): login guru AYI SAEPUL ANWAR, login siswa GHINA NAILA, pembuatan ujian, pengerjaan, dan penarikan rekap. Data simulasi sudah dibersihkan setelah verifikasi.</p>
+  </div>
+
+  <!-- ===== KESIMPULAN ===== -->
+  <div class="card">
+    <h2>🧭 Kesimpulan Konsep</h2>
+    <ul>
+      <li><b>Guru</b>: cukup membuat ujian + membagikan token → seluruh koreksi &amp; rekap otomatis, termasuk soal essai (cocokkan kunci).</li>
+      <li><b>Siswa</b>: jawaban aman 2 lapis (HP + server); HP tertutup/pindah tab tidak menghilangkan jawaban; waktu habis tidak menghapus jawaban.</li>
+      <li><b>Server</b>: menilai otomatis, menyimpan skor per siswa, dan hemat kuota free tier berkat sinkronisasi bertahap.</li>
+      <li><b>Kesiapan</b>: alur ujian harian nyata (1 ujian, 1 mapel, 1 siswa) telah terbukti berjalan di link live.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    Laporan simulasi CBT · SMK PLUS AT THAHIRIN · 16 Agustus 2026 · Data diambil dari simulasi nyata di produksi, lalu dibersihkan
+  </div>
+</div>
+</body>
+</html>
