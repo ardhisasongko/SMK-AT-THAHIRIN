@@ -123,6 +123,36 @@ describe('CBT summary API', () => {
     ]);
   });
 
+  it('scopes summary to teacher own exams and student own attempts', async () => {
+    const rows = [
+      { siswaId: 'u1', siswaName: 'Siswa Satu', nisn: '123', examCount: 2, avgScore: 80, bestScore: 90, worstScore: 70 },
+    ];
+    const bound: unknown[][] = [];
+    const all = vi.fn(async (sql?: string) => {
+      if (sql?.includes('domain_migrations')) return { results: [{ key: 'legacy_cbt_v1' }] };
+      return { results: rows };
+    });
+    const first = vi.fn(async () => ({ key: 'legacy_cbt_v1' }));
+    const prepare = vi.fn((sql: string) => ({
+      bind: vi.fn((...args: unknown[]) => {
+        bound.push(args);
+        return { first, all };
+      }),
+      all,
+      first,
+    }));
+    const db = { prepare } as any;
+
+    const guru = { ...student, id: 'g1', name: 'Pak Guru', role: 'guru' } as AuthUser;
+    const guruResponse = await getSummary({ env: { DB: db }, data: { user: guru } } as any);
+    expect(guruResponse.status).toBe(200);
+    expect(bound[bound.length - 1]).toEqual(['g1', 'Pak Guru']);
+
+    const siswaResponse = await getSummary({ env: { DB: db }, data: { user: student } } as any);
+    expect(siswaResponse.status).toBe(200);
+    expect(bound[bound.length - 1]).toEqual([student.id]);
+  });
+
   it('requires authentication', async () => {
     const db = { prepare: vi.fn() } as any;
     const response = await getSummary({ env: { DB: db }, data: { user: null } } as any);

@@ -6,11 +6,11 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
-- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): kode commit `a161eba` (proyeksi relasional) sudah live dan smoke test API lulus; dokumentasi lanjutan di `c87ae10`.
+- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): kode commit `7a59177` (fitur CBT jadwal/auto-save/rekap) sudah live dan smoke test API lulus; migrasi `0019` live di D1 remote.
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run verify` lulus, 197/197 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan migrasi `0018` lulus di D1 lokal.
+- Verifikasi terakhir: `npm run lint` lulus, 208/208 test aplikasi lulus, production build berhasil, dan migrasi `0019` lulus di D1 lokal.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
-- Migrasi D1 remote sudah diterapkan sampai `0018_relational_academic_data.sql` (0017 dan 0018 live di produksi 16 Agustus 2026).
+- Migrasi D1 remote sudah diterapkan sampai `0019_cbt_schedule_autosave.sql` (live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
 ### Commit Milestone Terbaru
@@ -24,8 +24,17 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `b787e62 feat(integrations): perkuat layanan eksternal`
 - `a161eba feat(data): proyeksi relasional akademik dan proteksi konflik`
 - `c87ae10 docs(project): catat migrasi 0017-0018 live di produksi`
+- `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
 
 ## Perubahan Utama Sesi Ini
+
+### Fitur CBT untuk Ujian 5 Hari × 4 Mapel
+
+- **Jadwal per hari**: siswa melihat tab `Hari Ini` (ujian yang aktif hari itu) dan `Semua`; chip tanggal per hari; kartu menampilkan jadwal tanggal dan jam ujian.
+- **Jam buka/tutup ujian**: guru dapat mengisi `open_time`/`close_time` (HH:MM WIB) per ujian di `CbtCreateExamModal`; validasi format dan `close > open`. Server menolak mulai attempt di luar jam (403 dengan alasan eksplisit); tombol `Kerjakan Ujian` dinonaktifkan di luar jam dengan label jam.
+- **Auto-save jawaban**: tabel `cbt_attempt_answers` (PK `attempt_id`, FK ON DELETE CASCADE) + endpoint `POST /api/cbt/attempts/:id/save` (siswa, attempt miliknya, status `in_progress`, grace 30 detik dari `expires_at`, validasi soal/opsi). Runner menyimpan debounce 1,5 detik + flush saat `pagehide`/`beforeunload` + sebelum submit, dengan indikator Tersimpan/Menyimpan/Gagal. Jawaban tersimpan dikembalikan saat resume attempt.
+- **Rekap nilai lintas ujian**: `GET /api/cbt/summary` agregat `examCount/avgScore/bestScore/worstScore` per siswa; scope admin semua, guru ujian miliknya, siswa miliknya; tabel `Rekap Nilai Siswa (Lintas Ujian)` di CbtSection.
+- Fix bug: bind query summary untuk siswa/guru memakai spread argumen (tidak lagi mengirim `undefined` yang menyebabkan error 1101 di produksi); test scope siswa/guru ditambahkan.
 
 ### Lanjutan Audit Domain
 
@@ -155,6 +164,13 @@ Migrasi `0009` membuat tabel:
 - `whatsapp_daily_stats`
 - `whatsapp_job_runs`
 
+## Aktivasi Produksi CBT (16 Agustus 2026)
+
+- Deploy produksi berhasil via `npm run pages:deploy` (deployment URL: `https://f8fe1529.smk-at-tahirin.pages.dev`).
+- Sebelum migrasi, D1 remote di-backup ke `/tmp/opencode/backup-produksi-cbt-0019.sql` (301 KB).
+- `npm run db:migrate:remote` berhasil menerapkan `0019_cbt_schedule_autosave.sql` ke D1 remote; verifikasi `PRAGMA table_info(cbt_exams)` menunjukkan kolom `open_time`/`close_time` dan tabel `cbt_attempt_answers` ada; data ujian (2) dan attempt (1) tetap utuh.
+- Smoke test produksi: login siswa (`0082219950`) sukses, `GET /api/cbt/exams` OK, `GET /api/cbt/summary` → `{"success":true,"data":[]}` (siswa belum punya attempt submitted), `POST /api/cbt/attempts/:id/save` menolak tanpa `Origin` (CSRF, benar) dan mengembalikan `Percobaan ujian tidak ditemukan.` untuk attempt palsu (validasi benar).
+
 ## Aktivasi Produksi (16 Agustus 2026)
 
 ### Deploy dan Migrasi Remote
@@ -279,6 +295,11 @@ Panduan gateway: `WHATSAPP_GATEWAY.md` dan `EXTERNAL_INTEGRATIONS.md`.
 - `.github/workflows/verify.yml`: CI aplikasi utama dan sync-worker.
 - `migrations/0017_external_integrations.sql`: integration gate, delivery metadata, consent event, reminder, dan event revision WhatsApp.
 - `migrations/0018_relational_academic_data.sql`: proyeksi relasional akademik, index, trigger sinkronisasi, dan revision.
+- `migrations/0019_cbt_schedule_autosave.sql`: jam buka/tutup ujian CBT (`open_time`/`close_time`) dan tabel auto-save jawaban `cbt_attempt_answers`.
+- `functions/api/cbt/summary/index.ts`: rekap nilai lintas ujian per siswa dengan scope per role.
+- `functions/api/cbt/attempts/[id]/save.ts`: endpoint auto-save/resume jawaban attempt.
+- `src/components/CbtSection.tsx`, `src/components/cbt/CbtCreateExamModal.tsx`, `src/components/cbt/CbtTestRunner.tsx`: jadwal harian, jam buka/tutup, auto-save, dan rekap nilai.
+- `tests/cbt-schedule-autosave.test.ts`: test window jam, validasi, save API, dan summary API.
 - `functions/_lib/relational-data.ts`: validasi ketat, pembacaan proyeksi, dan tulis CAS untuk koleksi akademik.
 - `tests/relational-academic-data.test.ts`: test migrasi/backfill/trigger/konflik/privasi.
 - `imported/kredensial-akun.txt`: kredensial awal produksi; file sensitif, jangan dipublikasikan.
@@ -298,12 +319,12 @@ npx wrangler deploy --dry-run # dari sync-worker/
 Hasil terakhir:
 
 - 39 test files aplikasi lulus.
-- 197 tests aplikasi lulus.
+- 208 tests aplikasi lulus.
 - 8 tests sync-worker lulus.
 - TypeScript lulus.
 - Typecheck sync-worker lulus.
 - Production build lulus.
-- Migrasi D1 remote sampai `0018` berhasil (0016 sebelumnya; 0017–0018 diterapkan 16 Agustus 2026).
+- Migrasi D1 remote sampai `0019` berhasil (0017–0018 diterapkan 16 Agustus 2026; 0019 live 16 Agustus 2026 bersama fitur CBT jadwal/auto-save/rekap).
 - Roundtrip 87 siswa produksi melalui proyeksi relasional terverifikasi presisi (tidak ada field hilang/berubah).
 - Wrangler sync-worker dry-run lulus.
 - Browser guest/authenticated pada 320, 375, 768, dan 1366 px tidak memiliki document overflow.
@@ -311,6 +332,7 @@ Hasil terakhir:
 - Klik CTA login membuka modal; logout menghapus header/dock dan mengembalikan CTA login.
 - `npm test` dapat sesekali membuat test forum melewati timeout default 5 detik ketika mesin sibuk. Test tersebut lulus terisolasi; full suite terakhir lulus dengan `npx vitest run --testTimeout=10000`.
 - Deployment produksi terverifikasi ulang (16 Agustus 2026): deploy sukses, migrasi remote 0017-0018 sukses, backfill 87 siswa/3 kelas/10 jadwal/1 modul bersih, smoke test API lulus (revision, CAS, filter per-role, 409 konflik).
+- Deployment CBT (16 Agustus 2026): commit `7a59177` + migrasi `0019` live, smoke test `/api/cbt/exams`, `/api/cbt/summary`, dan auto-save lulus.
 - Integration gate WhatsApp `enabled=0` di produksi; gateway claim ketika sistem nonaktif: HTTP 200, `enabled=false`, antrean kosong.
 
 ## Urutan Aman Sesi Berikutnya (Operator)

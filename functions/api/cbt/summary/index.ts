@@ -29,7 +29,7 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
   const statement = isAdmin
     ? env.DB.prepare(`${baseSelect} GROUP BY attempts.student_user_id ORDER BY attempts.student_name ASC`)
     : env.DB.prepare(`${baseSelect}${scope} GROUP BY attempts.student_user_id ORDER BY attempts.student_name ASC`)
-      .bind(isTeacher ? data.user.id : data.user.id, isTeacher ? data.user.name : undefined);
+      .bind(...(isTeacher ? [data.user.id, data.user.name] : [data.user.id]));
 
   const { results } = await statement.all();
   return jsonResponse({
