@@ -10,6 +10,7 @@ interface ApiResult<T> {
   success?: boolean;
   data?: T | null;
   error?: string;
+  revision?: number;
 }
 
 async function readResult<T>(res: Response): Promise<ApiResult<T>> {
@@ -36,6 +37,7 @@ export function usePersistedCollection<T>(
   const [ready, setReady] = useState(false);
   const readyRef = useRef(false);
   const dataRef = useRef(data);
+  const revisionRef = useRef<number>();
   const authUserId = loadAuthSession()?.user.id || null;
 
   const refresh = useCallback(async (): Promise<T> => {
@@ -48,6 +50,7 @@ export function usePersistedCollection<T>(
     if (!res.ok || !json.success || json.data === null || json.data === undefined) {
       throw new Error(json.error || `Gagal memuat data (HTTP ${res.status}).`);
     }
+    revisionRef.current = typeof json.revision === 'number' ? json.revision : undefined;
     dataRef.current = json.data;
     setData(json.data);
     return json.data;
@@ -58,19 +61,27 @@ export function usePersistedCollection<T>(
     const next = typeof action === 'function'
       ? (action as (previous: T) => T)(dataRef.current)
       : action;
+    const revision = revisionRef.current;
     const res = await fetch(`/api/data/${key}`, {
       method: 'PUT',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: authHeaders({
+        'Content-Type': 'application/json',
+        ...(revision === undefined ? {} : { 'If-Match': String(revision) }),
+      }),
       body: JSON.stringify(next),
     });
     const json = await readResult<T>(res);
     if (!res.ok || !json.success || json.data === null || json.data === undefined) {
+      if (res.status === 409) {
+        await refresh().catch(() => undefined);
+      }
       throw new Error(json.error || `Penyimpanan gagal (HTTP ${res.status}).`);
     }
+    revisionRef.current = typeof json.revision === 'number' ? json.revision : revisionRef.current;
     dataRef.current = json.data;
     setData(json.data);
     return json.data;
-  }, [key, authUserId]);
+  }, [key, authUserId, refresh]);
 
   // Load dari API; refetch saat token berubah (login/logout)
   useEffect(() => {
@@ -78,6 +89,8 @@ export function usePersistedCollection<T>(
     setReady(false);
     readyRef.current = false;
     setData(fallback);
+    dataRef.current = fallback;
+    revisionRef.current = undefined;
 
     if (!authUserId) {
       dataRef.current = fallback;
@@ -93,7 +106,8 @@ export function usePersistedCollection<T>(
           headers: authHeaders(),
         });
         if (res.ok) {
-          const json = await res.json() as { success?: boolean; data?: T | null };
+          const json = await res.json() as ApiResult<T>;
+          revisionRef.current = typeof json.revision === 'number' ? json.revision : undefined;
           if (json?.success && json.data !== null && json.data !== undefined) {
             dataRef.current = json.data as T;
             if (!cancelled) setData(json.data as T);
@@ -102,8 +116,17 @@ export function usePersistedCollection<T>(
             dataRef.current = fallback;
             fetch(`/api/data/${key}`, {
               method: 'PUT',
-              headers: authHeaders({ 'Content-Type': 'application/json' }),
+              headers: authHeaders({
+                'Content-Type': 'application/json',
+                ...(revisionRef.current === undefined ? {} : { 'If-Match': String(revisionRef.current) }),
+              }),
               body: JSON.stringify(fallback),
+            }).then(async seedResponse => {
+              const seedResult = await readResult<T>(seedResponse);
+              if (!seedResponse.ok || !seedResult.success) {
+                throw new Error(seedResult.error || `Gagal seed data (HTTP ${seedResponse.status}).`);
+              }
+              if (typeof seedResult.revision === 'number') revisionRef.current = seedResult.revision;
             }).catch(err => console.warn(`[persist:${key}] gagal seed:`, err));
           }
         }

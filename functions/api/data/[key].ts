@@ -12,6 +12,13 @@
 //   DELETE /api/data/:key         -> delete a collection (admin only)
 
 import { canEditClass, type AuthUser } from '../../_lib/auth';
+import {
+  CollectionDataError,
+  RELATIONAL_COLLECTIONS,
+  readRelationalCollection,
+  validateCollection,
+  writeRelationalCollection,
+} from '../../_lib/relational-data';
 import { jsonResponse } from '../../_lib/response';
 import { attendanceMessage, enqueueMessage } from '../../_lib/whatsapp';
 
@@ -70,12 +77,15 @@ export function isBeforeCutoffWIB(): boolean {
 }
 
 async function getCurrent(db: D1Database, key: string): Promise<unknown> {
+  if (RELATIONAL_COLLECTIONS.has(key)) {
+    return (await readRelationalCollection(db, key as any)).data;
+  }
   const row = await db.prepare('SELECT value FROM app_data WHERE key = ?').bind(key).first();
   if (!row) return null;
   try {
     return JSON.parse(String(row.value));
   } catch {
-    return null;
+    throw new CollectionDataError(`Data ${key} rusak dan tidak dapat diproses.`);
   }
 }
 
@@ -88,6 +98,26 @@ async function save(db: D1Database, key: string, value: unknown): Promise<void> 
     )
     .bind(key, JSON.stringify(value), now)
     .run();
+}
+
+function filterCollectionForUser(value: unknown, key: string, user: AuthUser): unknown {
+  if (!Array.isArray(value) || (user.role !== 'siswa' && user.role !== 'ketua_kelas')) return value;
+  if (key === 'siswa_v1' || key === 'presensi_v1') {
+    if (user.role === 'ketua_kelas') return value.filter((item: any) => item.classId === user.classId);
+    return value.filter((item: any) => item.nisn === user.nipNisn);
+  }
+  if (key === 'cbtSubmissions_v1') {
+    return value.filter((item: any) => item.studentId === user.id || item.siswaId === user.id);
+  }
+  return value;
+}
+
+function requestedRevision(request: Request): { revision?: number; error?: string } {
+  const raw = request.headers.get('If-Match') ?? request.headers.get('X-Collection-Revision');
+  if (raw == null || raw.trim() === '') return {};
+  const normalized = raw.trim().replace(/^W\//, '').replace(/^"|"$/g, '');
+  if (!/^\d+$/.test(normalized)) return { error: 'Revision koleksi tidak valid.' };
+  return { revision: Number(normalized) };
 }
 
 /** Siswa hanya boleh edit record sendiri (cek NISN) sebelum jam 08:00 WIB. */
@@ -320,19 +350,17 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
   if (['cbtExams_v1', 'cbtSubmissions_v1', 'forumTopics_v1', 'notifications_v1'].includes(k)) {
     return jsonResponse({ success: false, error: 'Koleksi telah dipindahkan ke API domain.' }, 410);
   }
-  const value = await getCurrent(db, k);
-  if (Array.isArray(value) && (data.user.role === 'siswa' || data.user.role === 'ketua_kelas')) {
-    if (k === 'siswa_v1' || k === 'presensi_v1') {
-      if (data.user.role === 'ketua_kelas') {
-        return jsonResponse({ success: true, data: value.filter((item: any) => item.classId === data.user!.classId) });
-      }
-      return jsonResponse({ success: true, data: value.filter((item: any) => item.nisn === data.user!.nipNisn) });
+  try {
+    if (RELATIONAL_COLLECTIONS.has(k)) {
+      const result = await readRelationalCollection(db, k as any);
+      return jsonResponse({ success: true, data: filterCollectionForUser(result.data, k, data.user), revision: result.revision });
     }
-    if (k === 'cbtSubmissions_v1') {
-      return jsonResponse({ success: true, data: value.filter((item: any) => item.studentId === data.user!.id || item.siswaId === data.user!.id) });
-    }
+    const value = await getCurrent(db, k);
+    return jsonResponse({ success: true, data: filterCollectionForUser(value, k, data.user) });
+  } catch (error) {
+    console.error(`Gagal membaca koleksi ${k}:`, error);
+    return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data koleksi tidak dapat diproses.' }, 500);
   }
-  return jsonResponse({ success: true, data: value });
 };
 
 export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, params, request, data }) => {
@@ -360,13 +388,39 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
     return jsonResponse({ success: false, error: 'Body harus berupa JSON.' }, 400);
   }
 
+  const requested = requestedRevision(request);
+  if (requested.error) return jsonResponse({ success: false, error: requested.error }, 400);
+
+  if (RELATIONAL_COLLECTIONS.has(k)) {
+    try {
+      validateCollection(k, body);
+    } catch (error) {
+      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data koleksi tidak valid.' }, 400);
+    }
+  }
+
   if (isPresensiKey(k)) {
-    const previous = (await getCurrent(env.DB, k)) as any[] || [];
-    const checked = await validateAndPatchPresensi(env.DB, data.user, body);
+    let previous: any[];
+    let checked: Awaited<ReturnType<typeof validateAndPatchPresensi>>;
+    try {
+      previous = (await getCurrent(env.DB, k)) as any[] || [];
+      checked = await validateAndPatchPresensi(env.DB, data.user, body);
+    } catch (error) {
+      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data presensi tidak dapat diproses.' }, 500);
+    }
     if (!checked.ok) {
       return jsonResponse({ success: false, error: checked.error }, checked.status);
     }
-    await save(env.DB, k, checked.result);
+    let write;
+    try {
+      write = await writeRelationalCollection(env.DB, k, checked.result, requested.revision);
+    } catch (error) {
+      if (error instanceof CollectionDataError) return jsonResponse({ success: false, error: error.message }, 400);
+      throw error;
+    }
+    if (write.conflict) {
+      return jsonResponse({ success: false, error: 'Data telah berubah di perangkat lain. Muat ulang sebelum menyimpan.', revision: write.revision }, 409);
+    }
     try {
       for (const log of checked.logs || []) {
         await writePresensiLog(env.DB, log.tanggal, log.siswaId, log.siswaName, log.field, log.oldValue, log.newValue, data.user);
@@ -379,19 +433,31 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
     } catch (error) {
       console.error('Presensi tersimpan, tetapi antrean notifikasi gagal:', error);
     }
-    return jsonResponse({ success: true, data: checked.result, changed: checked.changedCount });
+    return jsonResponse({
+      success: true,
+      data: filterCollectionForUser(checked.result, k, data.user),
+      changed: checked.changedCount,
+      revision: write.revision,
+    });
   }
 
   if (k === 'siswa_v1') {
-    const inserted = await env.DB.prepare(
-      "INSERT OR IGNORE INTO app_data (key, value, updated_at) VALUES ('siswa_v1', ?, unixepoch())"
-    ).bind(JSON.stringify(body)).run();
-    if (Number(inserted.meta?.changes || 0) === 0) {
+    const existing = await env.DB.prepare("SELECT 1 AS present FROM app_data WHERE key='siswa_v1'").first();
+    if (existing) {
       return jsonResponse({ success: false, error: 'Roster siswa dikelola melalui Manajemen Pengguna agar perubahan akun tetap sinkron.' }, 409);
     }
-    return jsonResponse({ success: true, data: body });
+    const write = await writeRelationalCollection(env.DB, k, body, requested.revision);
+    if (write.conflict) return jsonResponse({ success: false, error: 'Data telah berubah di perangkat lain.', revision: write.revision }, 409);
+    return jsonResponse({ success: true, data: body, revision: write.revision });
   }
 
+  if (RELATIONAL_COLLECTIONS.has(k)) {
+    const write = await writeRelationalCollection(env.DB, k as any, body, requested.revision);
+    if (write.conflict) {
+      return jsonResponse({ success: false, error: 'Data telah berubah di perangkat lain. Muat ulang sebelum menyimpan.', revision: write.revision }, 409);
+    }
+    return jsonResponse({ success: true, data: body, revision: write.revision });
+  }
   await save(env.DB, k, body);
   return jsonResponse({ success: true, data: body });
 };
@@ -403,8 +469,12 @@ export const onRequestDelete: PagesFunction<Env, any, AuthData> = async ({ env, 
   }
   const { key } = params as { key?: string };
   if (!key) return jsonResponse({ success: false, error: 'Key tidak ditemukan.' }, 400);
+  if (!KNOWN_COLLECTIONS.has(String(key))) return jsonResponse({ success: false, error: 'Koleksi tidak dikenal.' }, 404);
   if (['cbtExams_v1', 'cbtSubmissions_v1', 'forumTopics_v1', 'notifications_v1'].includes(String(key))) {
     return jsonResponse({ success: false, error: 'Koleksi domain tidak dapat dihapus melalui API generik.' }, 410);
+  }
+  if (RELATIONAL_COLLECTIONS.has(String(key))) {
+    return jsonResponse({ success: false, error: 'Koleksi akademik tidak dapat dihapus; simpan array kosong bila diperlukan.' }, 409);
   }
   await env.DB.prepare("DELETE FROM app_data WHERE key = ?").bind(String(key)).run();
   return jsonResponse({ success: true });

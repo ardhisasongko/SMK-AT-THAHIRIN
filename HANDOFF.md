@@ -1,6 +1,6 @@
 # HANDOFF - Status Proyek
 
-Tanggal pembaruan: Sabtu, 15 Agustus 2026
+Tanggal pembaruan: Minggu, 16 Agustus 2026
 Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
@@ -8,10 +8,10 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
 - Deployment produksi terakhir yang diverifikasi end-to-end berada pada commit `3013ebd`; commit UI setelahnya sudah di-push tetapi deployment produksinya belum diverifikasi ulang dalam sesi ini.
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run verify` lulus, 188/188 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan browser responsif lulus.
+- Verifikasi terakhir: `npm run verify` lulus, 197/197 test aplikasi + 8/8 test sync-worker lulus, production build berhasil, dan migrasi `0018` lulus di D1 lokal.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
 - Commit implementasi integrasi terbaru yang sudah di-push: `b787e62 feat(integrations): perkuat layanan eksternal`.
-- Migrasi D1 remote masih diterapkan sampai `0016_security_hardening.sql`; migrasi `0017_external_integrations.sql` sudah lulus di D1 lokal tetapi belum diterapkan ke remote.
+- Migrasi D1 remote masih diterapkan sampai `0016_security_hardening.sql`; migrasi `0017_external_integrations.sql` dan `0018_relational_academic_data.sql` sudah lulus di D1 lokal tetapi belum diterapkan ke remote.
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
 ### Commit Milestone Terbaru
@@ -113,7 +113,17 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Rate limiter memakai UPSERT atomik dan membersihkan window lama secara bertahap.
 - Lampiran Forum dan email simulasi tidak lagi ditampilkan sebagai fitur aktif.
 - Header autentikasi generate AI sudah konsisten dan code splitting sudah diterapkan.
-- Test domain/API/UI ditambah; total saat ini 188 test dalam 38 file, ditambah 8 test sync-worker.
+- Test domain/API/UI ditambah; total saat ini 197 test dalam 39 file, ditambah 8 test sync-worker.
+
+## Peningkatan Database Relasional (Migrasi 0018)
+
+- Koleksi akademik `kelas_v1`, `siswa_v1`, `presensi_v1`, dan `modulAjar_v1` kini memiliki proyeksi relasional (`school_classes`, `class_schedule_items`, `students`, `attendance_records`, `teaching_modules`) dengan index, constraint NOT NULL, FK, CHECK JSON, dan soft-delete (`active`) agar referensi historis tetap valid.
+- `academic_collection_revisions` menyimpan nomor revisi; GET mengembalikan `revision`, PUT mendukung optimistic concurrency via header `If-Match`/`X-Collection-Revision` dan menolak tulis usang dengan HTTP 409 (client dihook me-refresh otomatis).
+- Validasi ketat per koleksi di `functions/_lib/relational-data.ts`: tolak ID/NISN/key presensi duplikat, format tanggal/waktu/status salah, dan struktur modul rusak; data korup tidak lagi diam-diam di-seed.
+- Trigger `AFTER INSERT/UPDATE` pada `app_data` menyinkronkan proyeksi + revision secara atomik untuk SEMUA penulis lama (roster, user management, API generik) — kontrak API tidak berubah.
+- Respons PUT presensi kini difilter per role (siswa hanya rekamannya, ketua kelas hanya kelasnya) — menutup kebocoran data sekolah pada respons.
+- Migrasi additive/idempotent dengan backfill; fallback aman ke `app_data` bila tabel proyeksi belum ada (mis. deploy sebelum migrasi remote).
+- Terverifikasi: 9 test baru lulus, roundtrip 87 siswa produksi presisi, dan penulisan CAS di D1 lokal (konflik, tulis lama, tulis tanpa header).
 
 ## Migrasi D1
 
@@ -133,6 +143,7 @@ Migrasi berikut sudah berhasil diterapkan ke D1 remote:
 Migrasi berikut baru diterapkan dan diverifikasi di D1 lokal; belum remote:
 
 - `0017_external_integrations.sql`
+- `0018_relational_academic_data.sql`
 
 Migrasi `0009` membuat tabel:
 
@@ -245,6 +256,9 @@ Panduan gateway: `WHATSAPP_GATEWAY.md` dan `EXTERNAL_INTEGRATIONS.md`.
 - `EXTERNAL_INTEGRATIONS.md`: prosedur rollout, canary, monitoring, dan rollback integrasi.
 - `.github/workflows/verify.yml`: CI aplikasi utama dan sync-worker.
 - `migrations/0017_external_integrations.sql`: integration gate, delivery metadata, consent event, reminder, dan event revision WhatsApp.
+- `migrations/0018_relational_academic_data.sql`: proyeksi relasional akademik, index, trigger sinkronisasi, dan revision.
+- `functions/_lib/relational-data.ts`: validasi ketat, pembacaan proyeksi, dan tulis CAS untuk koleksi akademik.
+- `tests/relational-academic-data.test.ts`: test migrasi/backfill/trigger/konflik/privasi.
 - `imported/kredensial-akun.txt`: kredensial awal produksi; file sensitif, jangan dipublikasikan.
 
 ## Verifikasi Terakhir
@@ -261,14 +275,15 @@ npx wrangler deploy --dry-run # dari sync-worker/
 
 Hasil terakhir:
 
-- 38 test files aplikasi lulus.
-- 188 tests aplikasi lulus.
+- 39 test files aplikasi lulus.
+- 197 tests aplikasi lulus.
 - 8 tests sync-worker lulus.
 - TypeScript lulus.
 - Typecheck sync-worker lulus.
 - Production build lulus.
 - Migrasi D1 remote sampai `0016` berhasil.
-- Migrasi `0017` berhasil secara lokal dan belum diterapkan ke remote.
+- Migrasi `0017` dan `0018` berhasil secara lokal dan belum diterapkan ke remote.
+- Roundtrip 87 siswa produksi melalui proyeksi relasional terverifikasi presisi (tidak ada field hilang/berubah).
 - Wrangler sync-worker dry-run lulus.
 - Browser guest/authenticated pada 320, 375, 768, dan 1366 px tidak memiliki document overflow.
 - Guest: header/dock tidak ada dan CTA login tampil. Authenticated: header/dock tampil di Beranda dan CTA login hilang.
@@ -280,7 +295,7 @@ Hasil terakhir:
 ## Urutan Aman Sesi Berikutnya
 
 1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main`.
-2. Pastikan commit integrasi terbaru sudah terdeploy di Cloudflare Pages, lalu terapkan `0017_external_integrations.sql` ke D1 remote.
+2. Pastikan commit integrasi terbaru sudah terdeploy di Cloudflare Pages, lalu terapkan `0017_external_integrations.sql` dan `0018_relational_academic_data.sql` ke D1 remote.
 3. Smoke test produksi untuk landing, login/logout, semua role, CBT, Forum, Notifikasi, presensi, upload, dan `/api/integrations/status` dalam kondisi WhatsApp/Sync tetap OFF.
 4. Deploy ulang Apps Script, pasang `SYNC_TOKEN` sebagai Script Property dan Worker secret, lalu deploy sync-worker dengan `SYNC_DRY_RUN=true`.
 5. Jalankan dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
