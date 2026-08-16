@@ -59,7 +59,7 @@
 
   <h1>🧪 Simulasi CBT Live — 1 Guru, 1 Siswa, 1 Mata Pelajaran</h1>
   <div class="subtitle">SMK PLUS AT THAHIRIN — Portal Pendidikan Digital<br>
-  Simulasi nyata di produksi <span class="mono">smk-at-tahirin.pages.dev</span> · 16 Agustus 2026 · Mata Pelajaran: <b>Kearsipan</b> · Alur: guru buat ujian → siswa kerjakan → skor otomatis → rekap guru</div>
+  Simulasi nyata di produksi <span class="mono">smk-at-tahirin.pages.dev</span> · 16 Agustus 2026 · Mata Pelajaran: <b>Kearsipan</b> · Alur: guru buat ujian → siswa kerjakan → skor otomatis → rekap guru · 2 jenis ujian: <b>Latihan</b> &amp; <b>Ujian Resmi</b></div>
 
   <!-- ===== PELAKU ===== -->
   <div class="card">
@@ -97,7 +97,7 @@
       <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
       <div class="flow-row">
         <div class="actor a-student">✅<br><span class="who">SISWA</span></div>
-        <div class="step"><span class="no">5</span><b>Submit</b> — semua soal <b>wajib terisi</b>; bila waktu habis, jawaban dipaksa submit<span class="sub">Server menilai otomatis: PG dicocokkan persis, essai dibandingkan dengan kunci (boleh memuat kata kunci / alternatif dipisah |).</span></div>
+        <div class="step"><span class="no">5</span><b>Submit</b> — semua soal <b>wajib terisi</b>; bila waktu habis, jawaban dipaksa submit<span class="sub">Ujian Resmi baru bisa dikirim setelah <b>waktu minimal pengerjaan</b> (default 80% durasi — anti jawaban asal-asalan); ujian <b>Latihan</b> bebas dikirim kapan saja. Server menilai otomatis: PG dicocokkan persis, essai dibandingkan dengan kunci (boleh memuat kata kunci / alternatif dipisah |).</span></div>
       </div>
       <div class="flow-connector"><div class="v-line"></div><span class="arrow">↓</span></div>
       <div class="flow-row">
@@ -147,11 +147,33 @@
     <p class="note">Semua langkah di atas dieksekusi langsung terhadap produksi (bukan mock): login guru AYI SAEPUL ANWAR, login siswa GHINA NAILA, pembuatan ujian, pengerjaan, dan penarikan rekap. Data simulasi sudah dibersihkan setelah verifikasi.</p>
   </div>
 
+  <!-- ===== FITUR WAKTU MINIMAL ===== -->
+  <div class="card">
+    <h2>⏱️ Waktu Minimal Pengerjaan (Anti Jawaban Asal-Asalan)</h2>
+    <p style="font-size:.85rem; color:#475569; margin-bottom:8px">Siswa yang "menembak" jawaban lalu menyerah dalam hitungan detik membuat nilai tidak bermakna. Solusinya: <b>dua jenis ujian</b> — <span class="badge b-info">Latihan</span> (ulangan harian / kuis, bebas kirim kapan saja) dan <span class="badge b-warn">Ujian Resmi</span> (UAS / UTS / PTS, submit ditahan sampai waktu minimal, default 80% durasi, bisa diubah guru per-ujian). Penahanan dilakukan <b>dua lapis</b>: tombol terkunci + countdown di layar siswa, dan penolakan <span class="mono">409</span> di server — tidak bisa dibypass dari browser.</p>
+    <table>
+      <thead><tr><th>Skenario (nyata di produksi)</th><th>Hasil</th></tr></thead>
+      <tbody>
+        <tr><td>Ujian resmi (durasi 5 mnt, min 4 mnt) — siswa kirim 2 detik setelah mulai</td><td><span class="no">Ditolak 409</span> — "tunggu sekitar 4 menit lagi"</td></tr>
+        <tr><td>Ujian resmi yang sama — kirim setelah 5 menit pengerjaan</td><td><span class="ok">Diterima 200</span> — skor 100</td></tr>
+        <tr><td>Ujian latihan — kirim instan 2 detik</td><td><span class="ok">Diterima 200</span> — skor 100</td></tr>
+        <tr><td>Tombol kirim siswa saat belum boleh kirim</td><td><span class="ok">Terkunci</span> — menampilkan "Kirim dibuka dalam 02:30"</td></tr>
+        <tr><td>Kartu ujian di daftar</td><td><span class="ok">Badge</span> — "Ujian Resmi · min. kirim 4 mnt" / "Latihan"</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px">
+      <span class="badge b-ok">Migrasi 0022 (exam_type + min_submit_minutes)</span>
+      <span class="badge b-ok">235 test lolos</span>
+      <span class="badge b-ok">Lint &amp; build bersih</span>
+      <span class="badge b-ok">Deploy live</span>
+    </div>
+  </div>
+
   <!-- ===== KESIMPULAN ===== -->
   <div class="card">
     <h2>🧭 Kesimpulan Konsep</h2>
     <ul>
-      <li><b>Guru</b>: cukup membuat ujian + membagikan token → seluruh koreksi &amp; rekap otomatis, termasuk soal essai (cocokkan kunci).</li>
+      <li><b>Guru</b>: cukup membuat ujian + membagikan token → seluruh koreksi &amp; rekap otomatis, termasuk soal essai (cocokkan kunci); bisa menetapkan ujian <b>Latihan</b> atau <b>Ujian Resmi</b> dengan waktu minimal kirim.</li>
       <li><b>Siswa</b>: jawaban aman 2 lapis (HP + server); HP tertutup/pindah tab tidak menghilangkan jawaban; waktu habis tidak menghapus jawaban.</li>
       <li><b>Server</b>: menilai otomatis, menyimpan skor per siswa, dan hemat kuota free tier berkat sinkronisasi bertahap.</li>
       <li><b>Kesiapan</b>: alur ujian harian nyata (1 ujian, 1 mapel, 1 siswa) telah terbukti berjalan di link live.</li>
