@@ -24,6 +24,8 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
   const [newEndDate, setNewEndDate] = useState(initialExam?.endDate || today);
   const [newOpenTime, setNewOpenTime] = useState(initialExam?.openTime || '');
   const [newCloseTime, setNewCloseTime] = useState(initialExam?.closeTime || '');
+  const [newExamType, setNewExamType] = useState<'latihan' | 'ujian'>(initialExam?.examType || 'latihan');
+  const [newMinSubmit, setNewMinSubmit] = useState<number | null>(initialExam?.minSubmitMinutes ?? null);
   const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>(initialExam?.questions || []);
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
 
@@ -93,6 +95,13 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       alert('Tanggal akhir tidak boleh sebelum tanggal mulai.');
       return;
     }
+    if (newExamType === 'ujian') {
+      const minSubmit = newMinSubmit ?? Math.round(newDuration * 0.8);
+      if (minSubmit < 1 || minSubmit > newDuration) {
+        alert('Waktu minimal kirim harus antara 1 sampai durasi ujian (menit).');
+        return;
+      }
+    }
     if (newOpenTime && newCloseTime && newCloseTime <= newOpenTime) {
       alert('Jam tutup harus lebih lambat dari jam buka.');
       return;
@@ -119,6 +128,8 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       endDate: newEndDate,
       openTime: newOpenTime || undefined,
       closeTime: newCloseTime || undefined,
+      examType: newExamType,
+      minSubmitMinutes: newExamType === 'ujian' ? (newMinSubmit ?? Math.round(newDuration * 0.8)) : undefined,
       status: initialExam?.status || 'active',
       questions: newQuestions
     };
@@ -238,6 +249,47 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
             <p className="text-[11px] text-slate-400 col-span-1 sm:col-span-2 -mt-1">
               Kosongkan keduanya jika ujian tersedia sepanjang hari pada rentang tanggal. Berlaku sama untuk setiap hari pada rentang tanggal.
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="cbt-exam-type" className="block font-bold text-slate-700 mb-1">Jenis Ujian</label>
+              <select
+                id="cbt-exam-type"
+                value={newExamType}
+                onChange={(e) => {
+                  const type = e.target.value as 'latihan' | 'ujian';
+                  setNewExamType(type);
+                  if (type === 'ujian' && newMinSubmit === null) setNewMinSubmit(Math.round(newDuration * 0.8));
+                  if (type === 'latihan') setNewMinSubmit(null);
+                }}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900"
+              >
+                <option value="latihan">Latihan (ulangan harian / kuis)</option>
+                <option value="ujian">Ujian Resmi (UAS / UTS / PTS)</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="cbt-min-submit" className="block font-bold text-slate-700 mb-1">
+                {newExamType === 'ujian' ? `Waktu Minimal Kirim (menit) — default ${Math.round(newDuration * 0.8)}` : 'Waktu Minimal Kirim (menit)'}
+              </label>
+              <input
+                id="cbt-min-submit"
+                type="number"
+                min={1}
+                max={newDuration}
+                disabled={newExamType === 'latihan'}
+                placeholder={newExamType === 'ujian' ? `default: ${Math.round(newDuration * 0.8)}` : 'Hanya untuk ujian resmi'}
+                value={newExamType === 'ujian' && newMinSubmit !== null ? newMinSubmit : ''}
+                onChange={(e) => setNewMinSubmit(e.target.value ? Number(e.target.value) : null)}
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 disabled:opacity-50"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                {newExamType === 'ujian'
+                  ? `Siswa baru bisa mengirim ujian setelah ${newMinSubmit ?? Math.round(newDuration * 0.8)} menit pengerjaan (anti jawaban asal-asalan).`
+                  : 'Ujian latihan bebas dikirim kapan saja.'}
+              </p>
+            </div>
           </div>
 
           {/* Soal Generator Box */}

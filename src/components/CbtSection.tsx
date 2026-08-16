@@ -392,6 +392,9 @@ export function CbtSection({
                       <span className="max-w-full break-words bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
                         {exam.subject}
                       </span>
+                      <span className={`max-w-full break-words text-[11px] font-bold px-2.5 py-1 rounded-lg ${exam.examType === 'ujian' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}`}>
+                        {exam.examType === 'ujian' ? `Ujian Resmi${exam.minSubmitMinutes ? ` · min. kirim ${exam.minSubmitMinutes} mnt` : ''}` : 'Latihan'}
+                      </span>
                       <span className="max-w-full break-words bg-slate-100 text-slate-600 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1">
                         <Users className="w-3 h-3 text-slate-500" />
                          {exam.classTarget === 'all' || exam.classTarget === 'Semua Kelas MPLB' ? 'Semua Kelas' : kelasList.find(kelas => kelas.id === exam.classTarget)?.name || exam.classTarget}

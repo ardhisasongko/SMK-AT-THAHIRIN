@@ -95,6 +95,14 @@ export function scoreCbtAnswers(questions: Array<{ id: string; type?: string; co
   return { correctCount, wrongCount, score: questions.length ? Math.round(correctCount / questions.length * 100) : 0 };
 }
 
+export function resolveMinSubmitSeconds(exam: { exam_type?: unknown; min_submit_minutes?: unknown; duration_minutes?: unknown }): number {
+  if (String(exam?.exam_type || 'latihan') !== 'ujian') return 0;
+  const duration = Number(exam?.duration_minutes || 0);
+  const min = exam?.min_submit_minutes != null ? Number(exam.min_submit_minutes) : Math.round(duration * 0.8);
+  if (!Number.isFinite(min) || min < 1) return 0;
+  return Math.min(Math.round(min), Math.max(duration, 1)) * 60;
+}
+
 export function validateCbtExamInput(body: any, tokenRequired = true): string | null {
   const questions = Array.isArray(body?.questions) ? body.questions : [];
   if (typeof body?.title !== 'string' || !body.title.trim() || body.title.length > 200) return 'Judul ujian wajib diisi dan maksimal 200 karakter.';
@@ -103,6 +111,10 @@ export function validateCbtExamInput(body: any, tokenRequired = true): string | 
   if (tokenRequired && (typeof body.token !== 'string' || body.token.trim().length < 4 || body.token.length > 32)) return 'Token ujian harus 4-32 karakter.';
   if (!tokenRequired && body.token && (typeof body.token !== 'string' || body.token.trim().length < 4 || body.token.length > 32)) return 'Token ujian harus 4-32 karakter.';
   if (!isValidDate(body.startDate) || !isValidDate(body.endDate) || body.endDate < body.startDate) return 'Rentang tanggal ujian tidak valid.';
+  if (body.examType !== undefined && body.examType !== null && body.examType !== 'latihan' && body.examType !== 'ujian') return 'Jenis ujian harus "latihan" atau "ujian".';
+  if (body.minSubmitMinutes !== undefined && body.minSubmitMinutes !== null) {
+    if (!Number.isInteger(body.minSubmitMinutes) || body.minSubmitMinutes < 1 || body.minSubmitMinutes > body.durationMinutes) return 'Waktu minimal kirim harus 1 sampai durasi ujian (menit).';
+  }
   if (body.openTime && !isValidTime(body.openTime)) return 'Jam buka harus berformat HH:MM (contoh: 08:00).';
   if (body.closeTime && !isValidTime(body.closeTime)) return 'Jam tutup harus berformat HH:MM (contoh: 11:30).';
   if (body.openTime && body.closeTime && timeToMinutes(body.closeTime) <= timeToMinutes(body.openTime)) return 'Jam tutup harus lebih lambat dari jam buka.';

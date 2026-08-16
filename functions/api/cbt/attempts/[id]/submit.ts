@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../../_lib/auth';
-import { ANSWER_KEYS, getExamQuestions, isCbtStudent, parseJson, scoreCbtAnswers } from '../../../../_lib/cbt';
+import { ANSWER_KEYS, getExamQuestions, isCbtStudent, parseJson, resolveMinSubmitSeconds, scoreCbtAnswers } from '../../../../_lib/cbt';
 import { jsonResponse } from '../../../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -17,6 +17,16 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   if (Date.now() > new Date(attempt.expires_at).getTime() + 30_000) {
     await env.DB.prepare("UPDATE cbt_attempts SET status='expired' WHERE id=? AND status='in_progress'").bind(attempt.id).run();
     return jsonResponse({ success: false, error: 'Waktu ujian telah berakhir.' }, 409);
+  }
+  const exam = await env.DB.prepare('SELECT exam_type, min_submit_minutes, duration_minutes FROM cbt_exams WHERE id=?').bind(String(attempt.exam_id)).first<any>();
+  const minSubmitSeconds = resolveMinSubmitSeconds(exam);
+  if (minSubmitSeconds > 0) {
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(attempt.started_at).getTime()) / 1000));
+    if (elapsedSeconds < minSubmitSeconds) {
+      const waitSeconds = minSubmitSeconds - elapsedSeconds;
+      const waitMinutes = Math.ceil(waitSeconds / 60);
+      return jsonResponse({ success: false, error: `Ujian resmi belum boleh dikirim. Minimal pengerjaan ${Math.round(minSubmitSeconds / 60)} menit; tunggu sekitar ${waitMinutes} menit lagi.` }, 409);
+    }
   }
   const questions = await getExamQuestions(env.DB, String(attempt.exam_id), true);
   const byId = new Map(questions.map(question => [question.id, question]));

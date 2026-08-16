@@ -245,6 +245,8 @@ export interface CbtExam {
   openTime?: string;
   closeTime?: string;
   status: 'active' | 'upcoming' | 'inactive' | 'completed';
+  examType?: 'latihan' | 'ujian';
+  minSubmitMinutes?: number;
   questions: CbtQuestion[];
   questionCount?: number;
 }

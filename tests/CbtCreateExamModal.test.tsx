@@ -78,4 +78,20 @@ describe('CbtCreateExamModal', () => {
     expect(saved.questions[0]).toMatchObject({ type: 'essai', correctAnswer: 'rekaman kegiatan', options: [] });
     alertSpy.mockRestore();
   });
+
+  it('ujian resmi (UAS/UTS) otomatis mengisi waktu minimal kirim 80% durasi', () => {
+    const { onSave } = renderModal();
+    fireEvent.change(screen.getByPlaceholderText('contoh: Penilaian Harian - Otomatisasi Kearsipan Digital'), {
+      target: { value: 'PTS Kearsipan' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Manual (PG)' }));
+    fireEvent.change(screen.getByLabelText('Jenis Ujian'), { target: { value: 'ujian' } });
+    expect(screen.getByLabelText(/Waktu Minimal Kirim/)).toHaveValue(24); // 80% dari durasi default 30 menit
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan Ujian CBT' }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    const saved = onSave.mock.calls[0][0];
+    expect(saved.examType).toBe('ujian');
+    expect(saved.minSubmitMinutes).toBe(24);
+  });
 });

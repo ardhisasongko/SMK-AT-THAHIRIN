@@ -117,6 +117,12 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
     .filter(({ q }) => !isQuestionAnswered(q, answers[q.id]))
     .map(({ idx }) => idx + 1);
 
+  // Ujian resmi: siswa tidak boleh mengirim sebelum waktu minimal pengerjaan (anti jawaban asal-asalan).
+  const minSubmitSeconds = exam.examType === 'ujian' && exam.minSubmitMinutes ? Math.min(exam.minSubmitMinutes, exam.durationMinutes) * 60 : 0;
+  const elapsedSeconds = Math.max(0, exam.durationMinutes * 60 - timeLeft);
+  const canSubmitYet = minSubmitSeconds === 0 || elapsedSeconds >= minSubmitSeconds;
+  const minSubmitWaitSeconds = Math.max(0, minSubmitSeconds - elapsedSeconds);
+
   // Saat waktu habis, submit dipaksa meski belum lengkap agar jawaban yang ada tidak hilang.
   const handleConfirmSubmitTest = useCallback(async (force = false) => {
     if (submitting) return;
@@ -168,6 +174,10 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
   const handleFinishClick = () => {
     if (submitting) return;
+    if (!canSubmitYet) {
+      alert(`Ujian resmi belum boleh dikirim. Minimal pengerjaan ${exam.minSubmitMinutes} menit — masih tersisa ${formatTime(minSubmitWaitSeconds)}. Jawaban Anda tetap aman tersimpan.`);
+      return;
+    }
     if (missingCount > 0) {
       alert(`Masih ada ${missingCount} soal belum diisi: nomor ${missingNumbers.slice(0, 12).join(', ')}${missingNumbers.length > 12 ? ', ...' : ''}. Semua soal wajib dijawab sebelum ujian dikirim.`);
       const firstMissing = missingNumbers[0] - 1;
@@ -283,13 +293,21 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
             <span>{formatTime(timeLeft)}</span>
           </div>
 
+          {minSubmitSeconds > 0 && !canSubmitYet && (
+            <span className="hidden sm:block bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
+              Kirim dibuka dalam {formatTime(minSubmitWaitSeconds)}
+            </span>
+          )}
+
           <button
             id="cbt-finish-btn"
             onClick={handleFinishClick}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+            disabled={!canSubmitYet}
+            title={canSubmitYet ? undefined : `Ujian dapat dikirim setelah ${exam.minSubmitMinutes} menit`}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm px-2 sm:px-4 py-2 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
           >
             <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">Selesaikan</span>
+            <span className="hidden sm:inline">{canSubmitYet ? 'Selesaikan' : formatTime(minSubmitWaitSeconds)}</span>
           </button>
         </div>
       </header>
@@ -408,9 +426,11 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
             ) : (
               <button
                 onClick={handleFinishClick}
-                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md"
+                disabled={!canSubmitYet}
+                title={canSubmitYet ? undefined : `Ujian dapat dikirim setelah ${exam.minSubmitMinutes} menit`}
+                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-600"
               >
-                <span>Selesaikan Ujian</span>
+                <span>{canSubmitYet ? 'Selesaikan Ujian' : `Kirim dibuka dalam ${formatTime(minSubmitWaitSeconds)}`}</span>
                 <Check className="w-4 h-4" />
               </button>
             )}

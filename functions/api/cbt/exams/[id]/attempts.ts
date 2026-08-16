@@ -46,6 +46,6 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   return jsonResponse({ success: true, data: {
     attemptId: attempt.id, startedAt: attempt.started_at, expiresAt: attempt.expires_at,
     savedAnswers: parseJson(saved?.answers_json, {}), savedDoubtful: parseJson(saved?.doubtful_json, {}),
-    exam: { id: exam.id, title: exam.title, subject: exam.subject, classTarget: exam.class_target, durationMinutes: exam.duration_minutes, token: '', teacherName: exam.teacher_name, startDate: exam.start_date, endDate: exam.end_date, openTime: exam.open_time || '', closeTime: exam.close_time || '', status: effectiveCbtStatus(exam), questions: await getExamQuestions(env.DB, exam.id, false) },
+    exam: { id: exam.id, title: exam.title, subject: exam.subject, classTarget: exam.class_target, durationMinutes: exam.duration_minutes, token: '', teacherName: exam.teacher_name, startDate: exam.start_date, endDate: exam.end_date, openTime: exam.open_time || '', closeTime: exam.close_time || '', examType: exam.exam_type, minSubmitMinutes: exam.min_submit_minutes ?? undefined, status: effectiveCbtStatus(exam), questions: await getExamQuestions(env.DB, exam.id, false) },
   } });
 };

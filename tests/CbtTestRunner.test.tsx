@@ -134,6 +134,39 @@ describe('CbtTestRunner', () => {
   });
 });
 
+describe('CbtTestRunner ujian resmi (waktu minimal kirim)', () => {
+  it('menonaktifkan tombol kirim sebelum waktu minimal pengerjaan', () => {
+    const ujianExam: CbtExam = { ...exam, examType: 'ujian', minSubmitMinutes: exam.durationMinutes };
+    const onFinish = vi.fn();
+    render(<CbtTestRunner exam={ujianExam} currentUser={user} attemptId="a1" onFinish={onFinish} />);
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan B2/ }));
+
+    const bottomBtn = screen.getByRole('button', { name: /Kirim dibuka dalam/ });
+    expect(bottomBtn).toBeDisabled();
+    fireEvent.click(bottomBtn);
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(screen.queryByText('Selesaikan Ujian CBT?')).not.toBeInTheDocument();
+  });
+
+  it('memblokir klik Selesaikan di header sebelum waktu minimal', () => {
+    const ujianExam: CbtExam = { ...exam, examType: 'ujian', minSubmitMinutes: exam.durationMinutes };
+    render(<CbtTestRunner exam={ujianExam} currentUser={user} attemptId="a1" onFinish={vi.fn()} />);
+    const headerBtn = screen.getByRole('button', { name: /^[0-9]+:[0-9]{2}$/ });
+    expect(headerBtn).toBeDisabled();
+  });
+
+  it('tetap bisa mengirim kapan saja untuk ujian latihan', () => {
+    renderRunner();
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Selanjutnya/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Pilihan B2/ }));
+    const btn = screen.getByRole('button', { name: 'Selesaikan Ujian' });
+    expect(btn).not.toBeDisabled();
+  });
+});
+
 describe('CbtTestRunner soal essai', () => {
   const essayExam: CbtExam = {
     ...exam,
