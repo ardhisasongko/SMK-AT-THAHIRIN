@@ -6,11 +6,11 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
-- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): kode commit `7a59177` (fitur CBT jadwal/auto-save/rekap) sudah live dan smoke test API lulus; migrasi `0019` live di D1 remote.
+- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): kode commit `dcdae6a` (soal essai + penyimpanan jawaban hemat free tier) sudah live dan smoke test end-to-end lulus; migrasi `0021` live di D1 remote.
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run lint` lulus, 208/208 test aplikasi lulus, production build berhasil, dan migrasi `0019` lulus di D1 lokal.
+- Verifikasi terakhir: `npm run lint` lulus, 219/219 test aplikasi lulus, production build berhasil, dan migrasi `0021` lulus di D1 lokal.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
-- Migrasi D1 remote sudah diterapkan sampai `0019_cbt_schedule_autosave.sql` (live di produksi 16 Agustus 2026).
+- Migrasi D1 remote sudah diterapkan sampai `0021_cbt_questions_no_check.sql` (live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
 ### Commit Milestone Terbaru
@@ -25,6 +25,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `a161eba feat(data): proyeksi relasional akademik dan proteksi konflik`
 - `c87ae10 docs(project): catat migrasi 0017-0018 live di produksi`
 - `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
+- `dcdae6a feat(cbt): soal essai (textarea + kunci otomatis) dan hemat free tier — jawaban simpan di localStorage, sinkron server tiap 10 menit, wajib semua soal terisi sebelum submit`
 
 ## Perubahan Utama Sesi Ini
 
