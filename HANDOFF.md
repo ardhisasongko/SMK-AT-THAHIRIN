@@ -6,29 +6,57 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
-- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): kode commit `dcdae6a` (soal essai + penyimpanan jawaban hemat free tier) sudah live dan smoke test end-to-end lulus; migrasi `0021` live di D1 remote.
+- Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): fitur **waktu minimal pengerjaan ujian resmi** live (deploy `9476e578`, commit `f7c52ff`); smoke test produksi lulus (409/200, latihan bebas kirim, UI tombol terkunci).
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run lint` lulus, 219/219 test aplikasi lulus, production build berhasil, dan migrasi `0021` lulus di D1 lokal.
+- Verifikasi terakhir: `npm run lint` lulus, **235/235 test** lulus, production build berhasil, migrasi `0022` lulus di D1 lokal + remote.
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
-- Migrasi D1 remote sudah diterapkan sampai `0021_cbt_questions_no_check.sql` (live di produksi 16 Agustus 2026).
+- Migrasi D1 remote sudah diterapkan sampai `0022_cbt_exam_type.sql` (live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
 ### Commit Milestone Terbaru
 
-- `11405a8 feat(platform): tuntaskan lifecycle dan integritas domain`
-- `17fc537 fix(ui): rapikan navbar dan tambah metadata SEO`
-- `e028e37 security(platform): perkuat sesi, rate limit, dan upload`
-- `3013ebd fix(auth): sesuaikan PBKDF2 dengan batas Cloudflare`
-- `2ed1c7a fix(ui): rapikan layout mobile dan overflow`
-- `39d9c62 fix(ui): tampilkan navigasi setelah login`
-- `b787e62 feat(integrations): perkuat layanan eksternal`
-- `a161eba feat(data): proyeksi relasional akademik dan proteksi konflik`
-- `c87ae10 docs(project): catat migrasi 0017-0018 live di produksi`
-- `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
+- `e2decfd docs(cbt): update diagram alur ke simulasi skala besar (UAS 45 soal & latihan 30 soal)`
+- `91be39a docs(cbt): simulasi skala besar UAS 45 soal & latihan 30 soal`
+- `c6eebbe docs(cbt): catat fitur waktu minimal pengerjaan di laporan simulasi`
+- `f7c52ff feat(cbt): waktu minimal pengerjaan ujian resmi (anti jawaban asal-asalan)`
+- `53d8c1a feat(cbt): tab "Nilai Saya" untuk siswa — riwayat ujian, skor, benar/salah, detail jawaban (UI-only); diverifikasi e2e di produksi via Playwright`
+- `f520861 docs(project): laporan simulasi CBT live 1 guru-1 siswa (diagram alur + hasil nyata)`
+- `bd28517 docs(project): update assessment-report.html (statistik, 21 migrasi, 227 test, essai e2e, catatan 1101)`
+- `8752339 fix(cbt): akar masalah 1101 — CHECK constraint correct_answer A-E menolak kunci essai; rebuild via migrasi 0021`
 - `dcdae6a feat(cbt): soal essai (textarea + kunci otomatis) dan hemat free tier — jawaban simpan di localStorage, sinkron server tiap 10 menit, wajib semua soal terisi sebelum submit`
-- `(berikutnya) feat(cbt): tab "Nilai Saya" untuk siswa — riwayat ujian, skor, benar/salah, detail jawaban (UI-only, tanpa ubah backend); diverifikasi e2e di produksi via Playwright`
+- `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
+- `11405a8 feat(platform): tuntaskan lifecycle dan integritas domain`
 
 ## Perubahan Utama Sesi Ini
+
+### Waktu Minimal Pengerjaan (Anti Jawaban Asal-Asalan) — Live
+
+- **2 jenis ujian**: `exam_type` `latihan` (ulangan harian/kuis, bebas kirim kapan saja) vs `ujian` (UAS/UTS/PTS, submit ditahan sampai waktu minimal). Kolom baru di `cbt_exams`: `exam_type` (default `'latihan'`) dan `min_submit_minutes` (default 80% durasi via `resolveMinSubmitSeconds`, dibatasi ≤ durasi).
+- **Enforce 2 lapis**: server `submit.ts` menolak 409 `Ujian resmi belum boleh dikirim. Minimal pengerjaan X menit; tunggu sekitar Y menit lagi.` (tidak bisa di-bypass browser); frontend `CbtTestRunner` men-disable tombol kirim + countdown `Kirim dibuka dalam MM:SS` + pill di kartu soal terakhir.
+- **UI guru** (`CbtCreateExamModal`): select "Jenis Ujian" + input "Waktu Minimal Kirim (menit)" (diset otomatis 80% saat pilih ujian resmi, validasi 1..durasi); badge kartu ujian `Ujian Resmi · min. kirim X mnt` vs `Latihan` di `CbtSection`.
+- **API**: GET `exams` dan POST `exams/[id]/attempts` mengembalikan `examType`/`minSubmitMinutes`. PATCH/POST `exams` menyimpan kedua kolom.
+- **Migrasi**: `0022_cbt_exam_type.sql` (2 ALTER TABLE) — sudah diterapkan lokal + remote (backup `/tmp/opencode/backup-produksi-cbt-0022-20260816-142040.sql`).
+- **Bug ditemukan saat smoke test**: `attempts.ts` awalnya tidak meneruskan `exam_type` ke runner → tombol tidak terkunci; diperbaiki dan diverifikasi Playwright produksi (tombol `Kirim dibuka dalam 02:30` disabled).
+- **Test**: 235/235 lulus; 13 test baru (`tests/cbt-min-submit.test.ts` + runner + modal).
+- Catatan: ujian latihan/permanen lama tanpa `exam_type` dianggap latihan (kompatibel).
+
+### Tab "Nilai Saya" untuk Siswa
+
+- `src/components/cbt/CbtMyResults.tsx`: tabel riwayat nilai siswa (ujian, skor, benar/salah, tanggal) + modal detail jawaban; tab hanya muncul untuk siswa di `CbtSection`.
+- `tests/CbtMyResults.test.tsx` (3 test). Verifikasi Playwright produksi: login siswa GHINA NAILA (NISN `0082219950`, password = NISN), tabel menampilkan Latihan Kearsipan 67/100 (2 benar, 1 salah), modal detail terbuka; akun guru tidak terpengaruh.
+
+### Akar Masalah Error 1101 (Essai) — Selesai
+
+- Penyebab: CHECK constraint `correct_answer IN ('A','B','C','D','E')` dari migrasi 0010 menolak kunci jawaban teks essai → `SQLITE_CONSTRAINT` → Worker 1101.
+- Fix: `0021_cbt_questions_no_check.sql` rebuild `cbt_questions` tanpa CHECK + restore index & trigger `prevent_cbt_question_*`. Live lokal + remote (backup `/tmp/opencode/backup-produksi-cbt-0021.sql`); POST essai 201, E2E skor 100.
+
+### Simulasi Skala Besar di Produksi (Laporan: `cbt-simulasi.html`)
+
+- **UAS Kearsipan (Simulasi 45 Soal)** — aktif di produksi: `examType` ujian, 45 soal (40 PG + 5 essai), durasi 90 menit, min. kirim 30 menit, token `UAS01`.
+- **Latihan Kearsipan (Simulasi 30 Soal)** — aktif: `examType` latihan, 30 soal (25 PG + 5 essai), durasi 60 menit, token `LAT02`. Konten soal berbeda dari UAS.
+- Simulasi nyata: siswa GHINA NAILA mengerjakan 45 soal → submit awal ditolak **409** → setelah min berlalu **200 skor 100** (45/45 benar, pengerjaan 2.117 detik); latihan 30 soal submit instan **200 skor 100**. Attempt simulasi dibersihkan (rekap guru bersih); ujian dibiarkan aktif atas persetujuan user.
+- `cbt-simulasi.html`: kartu hasil simulasi pertama (3 soal, skor 67), kartu "Waktu Minimal Pengerjaan", kartu "Simulasi Skala Besar", dan diagram alur sudah diupdate ke skala besar (step 1 = 2 ujian, step 5 = min-submit).
+- **PERHATIAN**: `cbt-simulasi.html` pernah ditimpa dari luar sesi (isi versi lama + teks `saa` nyangkut di `<head>`, format prettier). Diduga editor dengan prettier-on-save menimpa dari salinan lama. Sudah direstore via `git checkout`. Jangan simpan file ini dari editor yang masih membuka versi lama.
 
 ### Fitur CBT untuk Ujian 5 Hari × 4 Mapel
 
@@ -156,6 +184,10 @@ Migrasi berikut sudah diterapkan dan diverifikasi di D1 remote (16 Agustus 2026)
 
 - `0017_external_integrations.sql`
 - `0018_relational_academic_data.sql`
+- `0019_cbt_schedule_autosave.sql`
+- `0020_cbt_essay_questions.sql`
+- `0021_cbt_questions_no_check.sql` — fix CHECK constraint 1101 (essai)
+- `0022_cbt_exam_type.sql` — `exam_type` + `min_submit_minutes` (fitur waktu minimal pengerjaan)
 
 Migrasi `0009` membuat tabel:
 
@@ -320,13 +352,15 @@ npx wrangler deploy --dry-run # dari sync-worker/
 
 Hasil terakhir:
 
-- 39 test files aplikasi lulus.
-- 208 tests aplikasi lulus.
+- 42 test files aplikasi lulus.
+- 235 tests aplikasi lulus (termasuk 13 baru: min-submit server/runner/modal + Nilai Saya).
 - 8 tests sync-worker lulus.
 - TypeScript lulus.
 - Typecheck sync-worker lulus.
 - Production build lulus.
-- Migrasi D1 remote sampai `0019` berhasil (0017–0018 diterapkan 16 Agustus 2026; 0019 live 16 Agustus 2026 bersama fitur CBT jadwal/auto-save/rekap).
+- Migrasi D1 remote sampai `0022` berhasil (0021–0022 live 16 Agustus 2026; backup di `/tmp/opencode/backup-produksi-cbt-0021.sql` dan `backup-produksi-cbt-0022-*.sql`).
+- Smoke test produksi fitur min-submit (16 Agustus 2026): ujian resmi submit awal → 409; setelah min → 200 skor 100; latihan submit instan → 200; Playwright: tombol `Kirim dibuka dalam 02:30` disabled; badge kartu `Ujian Resmi · min. kirim 4 mnt`.
+- Simulasi skala besar produksi: UAS 45 soal (40 PG + 5 essai) skor 100, latihan 30 soal (25 PG + 5 essai) skor 100; attempt simulasi dibersihkan.
 - Roundtrip 87 siswa produksi melalui proyeksi relasional terverifikasi presisi (tidak ada field hilang/berubah).
 - Wrangler sync-worker dry-run lulus.
 - Browser guest/authenticated pada 320, 375, 768, dan 1366 px tidak memiliki document overflow.
@@ -341,8 +375,10 @@ Hasil terakhir:
 
 Kode, migrasi, dan deploy sudah selesai (16 Agustus 2026). Langkah tersisa memerlukan mesin/akun operator dan dijalankan di luar repo:
 
-1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main`.
-2. Google Sync: deploy Apps Script baru sebagai Web App, set Script Property `SYNC_TOKEN`, pasang secret Worker dari `sync-worker/`, set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
+1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main` (HEAD: `e2decfd`).
+2. Ujian aktif di produksi yang perlu diketahui: `UAS Kearsipan (Simulasi 45 Soal)` (token `UAS01`, ujian resmi, min. kirim 30 mnt) dan `Latihan Kearsipan (Simulasi 30 Soal)` (token `LAT02`) — keduanya aktif 16 Agustus 2026 (rentang satu hari, harus diperbarui tanggal/endDate bila mau dipakai di hari lain), plus `Latihan Kearsipan` permanen (token `LATIH01`, 3 soal).
+3. Hati-hati dengan editor/prettier-on-save yang bisa menimpa `cbt-simulasi.html` dari salinan lama (pernah terjadi; restore via `git checkout -- cbt-simulasi.html`).
+4. Google Sync: deploy Apps Script baru sebagai Web App, set Script Property `SYNC_TOKEN`, pasang secret Worker dari `sync-worker/`, set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
 3. Dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
 4. WhatsApp: pastikan Google Chrome terpasang di komputer operator; isi `GATEWAY_KEY` di `whatsapp-gateway/.env`; `npm start` di `whatsapp-gateway/`; scan QR nomor pengirim; pastikan heartbeat muncul di panel Admin.
 5. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
