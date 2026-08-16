@@ -52,32 +52,34 @@
 
   <h1>📋 Penilaian Codebase Lengkap</h1>
   <div class="subtitle">SMK PLUS AT THAHIRIN — Portal Pendidikan Digital<br>
-  Audit nyata setelah hardening integrasi &amp; peningkatan database: lint, 197 test aplikasi + 8 test Worker, build, dan migrasi 0018 lokal dijalankan ulang 16 Agustus 2026 · Implementasi <span class="mono">a161eba</span> · Branch <span class="mono">main</span></div>
+  Audit nyata setelah hardening integrasi &amp; peningkatan database: lint, 219 test aplikasi + 8 test Worker, build, dan migrasi 0021 lokal dijalankan ulang 16 Agustus 2026 · Implementasi <span class="mono">8752339</span> · Branch <span class="mono">main</span></div>
 
   <!-- ===== RINGKASAN ===== -->
   <div class="card">
     <h2>📊 Ringkasan Eksekutif</h2>
     <div class="grid">
-      <div class="stat"><div class="num">15.4k</div><div class="lbl">Baris kode (src+functions+tests+migrations)</div></div>
+      <div class="stat"><div class="num">18.3k</div><div class="lbl">Baris kode (src+functions+tests+migrations)</div></div>
       <div class="stat"><div class="num">25</div><div class="lbl">Komponen TSX</div></div>
       <div class="stat"><div class="num">31</div><div class="lbl">Endpoint API</div></div>
-      <div class="stat"><div class="num">18</div><div class="lbl">Migrasi D1 (remote s.d. 0018)</div></div>
+      <div class="stat"><div class="num">21</div><div class="lbl">Migrasi D1 (remote s.d. 0021)</div></div>
       <div class="stat"><div class="num">40</div><div class="lbl">File test termasuk Worker</div></div>
-      <div class="stat"><div class="num">205</div><div class="lbl">Test lulus total (100%)</div></div>
+      <div class="stat"><div class="num">227</div><div class="lbl">Test lulus total (100%)</div></div>
     </div>
     <div style="margin-top:12px">
       <span class="badge b-ok">Lint / tsc: Lulus</span>
       <span class="badge b-ok">Build produksi: Berhasil</span>
-      <span class="badge b-ok">Test: 197 aplikasi + 8 Worker</span>
+      <span class="badge b-ok">Test: 219 aplikasi + 8 Worker</span>
       <span class="badge b-ok">Responsif: Lulus (320–1366px)</span>
-      <span class="badge b-ok">Migrasi lokal s.d. 0018</span>
-      <span class="badge b-ok">Migrasi remote s.d. 0018</span>
-      <span class="badge b-ok">Deploy produksi diverifikasi (16 Agt 2026)</span>
+      <span class="badge b-ok">Migrasi lokal s.d. 0021</span>
+      <span class="badge b-ok">Migrasi remote s.d. 0021</span>
+      <span class="badge b-ok">CBT essai + penyimpanan lokal live &amp; teruji e2e</span>
     </div>
     <div class="verdict" style="margin-top:14px">
       <strong>Kesimpulan singkat:</strong> Proyek dalam kondisi <strong class="score score-s">sehat dan production-ready untuk inti akademik</strong>.
       Arsitektur sederhana namun disiplin (SPA + Pages Functions + D1), keamanan autentikasi di atas rata-rata (PBKDF2 + token hashed + rate limit),
-      dan cakupan test yang baik. Kesiapan kode integrasi eksternal sudah A−; yang tertinggal adalah <em>aktivasi operasional bertahap</em> (dry-run Google Sync, heartbeat/canary WhatsApp) dan <em>offline mode</em>.
+      dan cakupan test yang baik. CBT kini mendukung soal <em>essai</em> (penilaian otomatis dari kunci) dan penyimpanan jawaban hemat free tier
+      (localStorage di HP + sinkron server tiap 10 menit, wajib semua soal terisi sebelum submit). Kesiapan kode integrasi eksternal A−;
+      yang tertinggal adalah <em>aktivasi operasional bertahap</em> (dry-run Google Sync, heartbeat/canary WhatsApp) dan <em>offline mode</em> penuh.
     </div>
   </div>
 
@@ -88,13 +90,13 @@
       <thead><tr><th>Aspek</th><th style="width:22%">Nilai</th><th style="width:26%">Progres</th><th>Komentar Singkat</th></tr></thead>
       <tbody>
         <tr><td>Arsitektur &amp; Struktur</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>Pemisahan jelas: components / utils / hooks / data, functions/_lib, migrations. Monorepo ringan.</td></tr>
-        <tr><td>Frontend</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>Responsif penuh, RBAC di UI, code splitting manual. Kekurangan: file komponen sangat besar.</td></tr>
+        <tr><td>Frontend</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>Responsif penuh, RBAC di UI, code splitting manual, CBT dengan penyimpanan jawaban localStorage (anti data-loss). Kekurangan: file komponen sangat besar.</td></tr>
         <tr><td>Backend / API</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>Middleware global kuat (auth, size limit, rate limit), validasi server ketat, ownership check CBT.</td></tr>
         <tr><td>Database</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>Proyeksi relasional (kelas/siswa/presensi/modul) + index + optimistic concurrency (revision). <span class="mono">app_data</span> tetap sebagai permukaan tulis via trigger.</td></tr>
         <tr><td>Keamanan</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>PBKDF2 (constant-time), token di-hash di DB, sesi 7 hari, rate limit atomik, origin check.</td></tr>
-        <tr><td>Pengujian</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>197 test aplikasi + 8 test Worker lulus; CI dan Wrangler dry-run ditambahkan.</td></tr>
+        <tr><td>Pengujian</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>219 test aplikasi + 8 test Worker lulus; CI dan Wrangler dry-run ditambahkan.</td></tr>
         <tr><td>Integrasi Eksternal</td><td><span class="score score-s">A− (8.5/10 kode)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>Fail-safe, idempoten, termonitor, dan punya rollback. Nilai operasional A menunggu deploy serta canary 7–14 hari.</td></tr>
-        <tr><td>PWA / Offline</td><td><span class="score score-w">C− (4/10)</span></td><td><div class="bar"><span class="bar-fill c-red" style="width:40%"></span></div></td><td>Installable sudah, tapi belum ada service worker → tidak offline.</td></tr>
+        <tr><td>PWA / Offline</td><td><span class="score score-w">C− (4/10)</span></td><td><div class="bar"><span class="bar-fill c-red" style="width:40%"></span></div></td><td>Installable sudah, tapi belum ada service worker → tidak offline penuh; jawaban CBT kini aman di localStorage (sinkron tiap 10 menit) sebagai mitigasi parsial.</td></tr>
         <tr><td>Dokumentasi</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>HANDOFF, panduan gateway, rollout, canary, monitoring, dan rollback sudah tersedia.</td></tr>
       </tbody>
     </table>
@@ -109,9 +111,9 @@
       <thead><tr><th>Lapisan</th><th>Lokasi</th><th>Jumlah Baris</th><th>Penilaian</th></tr></thead>
       <tbody>
         <tr><td>Frontend (React SPA)</td><td class="mono">src/ (9.724 baris)</td><td>9.724</td><td>Komponen besar tapi konsisten pakai <span class="mono">usePersistedCollection</span>, <span class="mono">useFilter</span></td></tr>
-        <tr><td>Backend (Pages Functions)</td><td class="mono">functions/ (2.790 baris)</td><td>2.790</td><td>30 endpoint; logika inti dipisah di <span class="mono">functions/_lib/</span></td></tr>
-        <tr><td>Database (D1)</td><td class="mono">migrations/</td><td>18 migrasi</td><td>remote s.d. 0018 (diterapkan 16 Agustus 2026)</td></tr>
-        <tr><td>Tests</td><td class="mono">tests/ (2.525 baris)</td><td>2.525</td><td>Unit + integration (jsdom + Testing Library)</td></tr>
+        <tr><td>Backend (Pages Functions)</td><td class="mono">functions/ (3.769 baris)</td><td>3.769</td><td>30 endpoint; logika inti dipisah di <span class="mono">functions/_lib/</span> (termasuk <span class="mono">cbt.ts</span> scoring essai)</td></tr>
+        <tr><td>Database (D1)</td><td class="mono">migrations/</td><td>21 migrasi</td><td>remote s.d. 0021 (diterapkan 16 Agustus 2026)</td></tr>
+        <tr><td>Tests</td><td class="mono">tests/ (3.506 baris)</td><td>3.506</td><td>Unit + integration (jsdom + Testing Library)</td></tr>
         <tr><td>Eksternal</td><td class="mono">whatsapp-gateway/, sync-worker/, google-apps-script/</td><td>—</td><td>Terpisah dari aplikasi utama (menunggu aktivasi)</td></tr>
       </tbody>
     </table>
@@ -156,7 +158,7 @@
         <tr><td class="mono">auth.ts (186)</td><td>PBKDF2 hash, sesi token (di-hash SHA-256 di DB), RBAC helper</td><td><span class="badge b-ok">Sangat baik</span> — constant-time compare, TTL 7 hari, migrasi token otomatis</td></tr>
         <tr><td class="mono">_middleware.ts (76)</td><td>Auth, batas ukuran body (128KB–5MB per path), rate limit mutasi 120/60s, ganti-password paksa</td><td><span class="badge b-ok">Sangat baik</span> — pertahanan terpusat di satu titik</td></tr>
         <tr><td class="mono">rate-limit.ts (30)</td><td>Rate limiter UPSERT atomik + pembersihan window</td><td><span class="badge b-ok">Baik</span> — tanpa state eksternal</td></tr>
-        <tr><td class="mono">cbt.ts (153)</td><td>Lifecycle ujian, ownership, validasi</td><td><span class="badge b-ok">Baik</span> — guru hanya akses ujian miliknya</td></tr>
+        <tr><td class="mono">cbt.ts (153)</td><td>Lifecycle ujian, ownership, validasi, scoring (PG &amp; essai otomatis dari kunci)</td><td><span class="badge b-ok">Baik</span> — guru hanya akses ujian miliknya</td></tr>
         <tr><td class="mono">whatsapp.ts (67)</td><td>Normalisasi nomor, template pesan, enqueue/dedupe</td><td><span class="badge b-ok">Baik</span> — dedupe unik, jadwal Alpa per cutoff</td></tr>
         <tr><td class="mono">student-roster.ts (86)</td><td>Sinkronisasi roster ↔ akun user</td><td><span class="badge b-ok">Baik</span></td></tr>
         <tr><td class="mono">gemini.ts (68)</td><td>Generate soal/modul via AI</td><td><span class="badge b-info">Perlu verifikasi</span> — endpoint generate belum diuji e2e di produksi</td></tr>
@@ -180,7 +182,7 @@
         <tr><td>Auth</td><td class="mono">/api/auth/login · logout · me · change-password</td><td><span class="badge b-ok">Teruji</span></td></tr>
         <tr><td>Data generik</td><td class="mono">/api/data/:key (GET/PUT/DELETE) · presensi_log</td><td><span class="badge b-ok">Teruji</span></td></tr>
         <tr><td>Users</td><td class="mono">/api/users · ketua · nisn · reset-password · audit</td><td><span class="badge b-ok">Teruji</span></td></tr>
-        <tr><td>CBT</td><td class="mono">/api/cbt/exams · attempts · results · generate</td><td><span class="badge b-ok">Teruji</span> <span class="badge b-warn">generate: perlu verifikasi</span></td></tr>
+        <tr><td>CBT</td><td class="mono">/api/cbt/exams · attempts · results · generate</td><td><span class="badge b-ok">Teruji</span> <span class="badge b-ok">essai + localStorage: teruji e2e di produksi</span> <span class="badge b-warn">generate: perlu verifikasi</span></td></tr>
         <tr><td>Forum &amp; Notif</td><td class="mono">/api/forum/topics(+/like/replies/moderation) · /api/notifications(+/read/read-all)</td><td><span class="badge b-ok">Teruji</span></td></tr>
         <tr><td>Modul Ajar</td><td class="mono">/api/modul-ajar/generate</td><td><span class="badge b-warn">Perlu verifikasi</span></td></tr>
         <tr><td>WhatsApp</td><td class="mono">/api/whatsapp/contacts · teachers · settings · history · gateway</td><td><span class="badge b-ok">Uji respons OK</span></td></tr>
@@ -199,13 +201,14 @@
   <!-- ===== DATABASE ===== -->
   <div class="card">
     <h2>🗄️ Database (Cloudflare D1)</h2>
-    <p><span class="badge b-ok">18 migrasi</span> <span class="badge b-ok">remote s.d. 0018</span> <span class="badge b-info">SQLite-compatible</span></p>
+    <p><span class="badge b-ok">21 migrasi</span> <span class="badge b-ok">remote s.d. 0021</span> <span class="badge b-info">SQLite-compatible</span></p>
     <h3>Model Penyimpanan (dua lapis)</h3>
     <table>
       <thead><tr><th>Model</th><th>Tabel</th><th>Penilaian</th></tr></thead>
       <tbody>
         <tr><td>Relasional (auth, domain)</td><td class="mono">users · sessions · presensi_log · guardian_contacts · whatsapp_settings · whatsapp_outbox · whatsapp_daily_stats · whatsapp_job_runs · teacher_whatsapp_settings · rate_limits</td><td><span class="badge b-ok">Baik</span> — normal, ada constraint &amp; index</td></tr>
         <tr><td>Relasional (proyeksi akademik)</td><td class="mono">school_classes · class_schedule_items · students · attendance_records · teaching_modules · academic_collection_revisions</td><td><span class="badge b-ok">Baru</span> — migrasi 0018: index query umum, unique NISN aktif, composite key presensi, soft-delete (active) menjaga referensi historis</td></tr>
+        <tr><td>Relasional (CBT)</td><td class="mono">cbt_exams · cbt_questions · cbt_attempts</td><td><span class="badge b-ok">Baik</span> — 0020 menambah <span class="mono">question_type</span> (pg/essai); 0021 membangun ulang <span class="mono">cbt_questions</span> tanpa CHECK <span class="mono">correct_answer A–E</span> agar kunci essai (teks) dapat disimpan; trigger &amp; index direstore</td></tr>
         <tr><td>JSON-blob (permukaan tulis legacy)</td><td class="mono">app_data: kelas_v1 · siswa_v1 · presensi_v1 · modulAjar_v1</td><td><span class="badge b-warn">Kompatibilitas</span> — penulis lama (roster, user management) tetap menulis di sini; trigger menyinkronkan proyeksi + revision secara atomik</td></tr>
       </tbody>
     </table>
@@ -251,11 +254,11 @@
     <h2>🧪 Pengujian (Dijalankan Ulang untuk Laporan Ini)</h2>
     <div class="grid">
       <div class="stat"><div class="num">40</div><div class="lbl">File test termasuk Worker</div></div>
-      <div class="stat"><div class="num">205</div><div class="lbl">Test lulus total</div></div>
+      <div class="stat"><div class="num">227</div><div class="lbl">Test lulus total</div></div>
       <div class="stat"><div class="num">100%</div><div class="lbl">Pass rate</div></div>
-      <div class="stat"><div class="num">128s</div><div class="lbl">Durasi aplikasi + Worker</div></div>
+      <div class="stat"><div class="num">152s</div><div class="lbl">Durasi aplikasi + Worker</div></div>
     </div>
-    <p style="margin-top:10px;font-size:.85rem;">Area teruji: auth hardening, session, rate-limit, CBT domain &amp; API, presensi (incl. data-loss &amp; hak kelas), import Excel, user management, WhatsApp, forum/notifikasi, SEO, geo, foto, middleware, proyeksi relasional &amp; concurrency.</p>
+    <p style="margin-top:10px;font-size:.85rem;">Area teruji: auth hardening, session, rate-limit, CBT domain &amp; API (termasuk soal essai, validasi per-tipe, scoring otomatis, dan penyimpanan lokal di <span class="mono">CbtTestRunner</span>), presensi (incl. data-loss &amp; hak kelas), import Excel, user management, WhatsApp, forum/notifikasi, SEO, geo, foto, middleware, proyeksi relasional &amp; concurrency.</p>
     <ul style="margin-top:6px">
       <li class="cross">1 test forum (community-sections) flaky pada timeout default 5s saat mesin sibuk → lulus stabil dengan <span class="mono">--testTimeout=10000</span>.</li>
       <li class="cross">Belum ada coverage report / threshold — <span class="mono">test:coverage</span> tersedia tapi belum dijalankan.</li>
@@ -285,7 +288,7 @@
       <thead><tr><th>Prioritas</th><th>Item</th><th>Dampak</th></tr></thead>
       <tbody>
         <tr><td><span class="badge b-red">Tinggi</span></td><td>Rotasi token Cloudflare &amp; ganti password Super Admin produksi</td><td>Menutup eksposur kredensial lama</td></tr>
-        <tr><td><span class="badge b-red">Tinggi</span></td><td>Smoke test produksi penuh pasca-aktivasi (semua role, CBT, Forum, presensi, upload) dengan integrasi tetap OFF</td><td>Memastikan fitur terbaru benar-benar live di produksi</td></tr>
+        <tr><td><span class="badge b-amber">Sedang</span></td><td>Smoke test produksi sisa role: forum, presensi, upload, WhatsApp (CBT sudah lulus 16 Agt: login guru, ujian PG+essai, alur siswa, skor otomatis)</td><td>Memastikan seluruh fitur live di produksi</td></tr>
         <tr><td><span class="badge b-amber">Sedang</span></td><td>Deploy Apps Script + sync-worker dalam dry-run, lalu verifikasi tiga daily dan satu weekly</td><td>Bukti idempotensi dan sinkronisasi nyata</td></tr>
         <tr><td><span class="badge b-amber">Sedang</span></td><td>Uji canary WhatsApp 1–2 penerima selama 7–14 hari; gunakan nomor khusus sekolah</td><td>Menaikkan nilai operasional integrasi menjadi A</td></tr>
         <tr><td><span class="badge b-amber">Sedang</span></td><td>Refactor komponen besar (&gt;500 baris) jadi sub-komponen/hook</td><td>Menjaga maintainability jangka panjang</td></tr>
@@ -298,9 +301,12 @@
     <h2>📌 Catatan Akhir Auditor</h2>
     <p style="font-size:.9rem;">
       Penilaian ini berbasis <strong>pembacaan langsung kode</strong> (App.tsx, middleware, auth.ts, rate-limit, data/[key].ts, relational-data.ts, usePersistedCollection, navItems, migrations, vite.config)
-      plus <strong>verifikasi ulang</strong>: <span class="mono">npm run verify</span> → 39 file/197 test aplikasi + 8 test sync-worker, 100% lulus;
-      <span class="mono">npx vite build</span> → sukses, migrasi 0018 lulus lokal, dan roundtrip 87 siswa produksi terverifikasi.
-      Migrasi 0017–0018 telah diterapkan ke D1 remote, deploy produksi &amp; smoke test API lulus (revision, CAS 409, filter per-role).
+      plus <strong>verifikasi ulang</strong>: <span class="mono">npm run verify</span> → 40 file/219 test aplikasi + 8 test sync-worker, 100% lulus;
+      <span class="mono">npx vite build</span> → sukses, migrasi 0021 lulus lokal, dan roundtrip 87 siswa produksi terverifikasi.
+      Migrasi 0017–0021 telah diterapkan ke D1 remote (backup sebelum 0021: <span class="mono">/tmp/opencode/backup-produksi-cbt-0021.sql</span>).
+      Smoke test produksi 16 Agustus 2026: deploy pasca-<span class="mono">dcdae6a</span> lulus — kendala error 1101 saat POST ujian berisi essai
+      ditemukan &amp; diperbaiki via migrasi 0021 (CHECK <span class="mono">correct_answer A–E</span> lama menolak kunci teks); ujian campuran PG+essai → 201,
+      alur siswa start→save→submit menghasilkan <strong>skor 100 otomatis</strong>; data uji dibersihkan dari produksi.
       Aktivasi provider nyata (QR WhatsApp, deploy Apps Script) tetap menunggu langkah operator.
     </p>
   </div>
