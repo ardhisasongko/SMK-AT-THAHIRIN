@@ -52,26 +52,26 @@
 
   <h1>📋 Penilaian Codebase Lengkap</h1>
   <div class="subtitle">SMK PLUS AT THAHIRIN — Portal Pendidikan Digital<br>
-  Audit nyata setelah fitur CBT lanjutan (min-submit, Nilai Saya, simulasi skala besar): lint, 235 test aplikasi + 8 test Worker, build, dan migrasi 0022 lokal dijalankan ulang 16 Agustus 2026 · Implementasi <span class="mono">18541bb</span> · Branch <span class="mono">main</span></div>
+  Audit nyata setelah fitur CBT lanjutan (min-submit, Nilai Saya, simulasi skala besar), analitik guru, PWA offline, template PTS/UAS massal, ekspor nilai &amp; rapor, migrasi relasional 0023 dan hardening D1 0024: lint, 271 test aplikasi + 8 test Worker, build, dan migrasi s.d. 0024 lokal+remote dijalankan ulang 17 Agustus 2026 · Implementasi <span class="mono">cfd78c7</span> · Branch <span class="mono">main</span></div>
 
   <!-- ===== RINGKASAN ===== -->
   <div class="card">
     <h2>📊 Ringkasan Eksekutif</h2>
     <div class="grid">
-      <div class="stat"><div class="num">18.7k</div><div class="lbl">Baris kode (src+functions+tests+migrations)</div></div>
+      <div class="stat"><div class="num">16.6k</div><div class="lbl">Baris kode (src+functions+tests+migrations+scripts+sync)</div></div>
       <div class="stat"><div class="num">25</div><div class="lbl">Komponen TSX</div></div>
       <div class="stat"><div class="num">31</div><div class="lbl">Endpoint API</div></div>
-      <div class="stat"><div class="num">22</div><div class="lbl">Migrasi D1 (remote s.d. 0022)</div></div>
-      <div class="stat"><div class="num">43</div><div class="lbl">File test termasuk Worker</div></div>
-      <div class="stat"><div class="num">243</div><div class="lbl">Test lulus total (100%)</div></div>
+      <div class="stat"><div class="num">24</div><div class="lbl">Migrasi D1 (remote s.d. 0024)</div></div>
+      <div class="stat"><div class="num">49</div><div class="lbl">File test termasuk Worker</div></div>
+      <div class="stat"><div class="num">279</div><div class="lbl">Test lulus total (100%)</div></div>
     </div>
     <div style="margin-top:12px">
       <span class="badge b-ok">Lint / tsc: Lulus</span>
       <span class="badge b-ok">Build produksi: Berhasil</span>
-      <span class="badge b-ok">Test: 235 aplikasi + 8 Worker</span>
+      <span class="badge b-ok">Test: 271 aplikasi + 8 Worker</span>
       <span class="badge b-ok">Responsif: Lulus (320–1366px)</span>
-      <span class="badge b-ok">Migrasi lokal s.d. 0022</span>
-      <span class="badge b-ok">Migrasi remote s.d. 0022</span>
+      <span class="badge b-ok">Migrasi lokal s.d. 0024</span>
+      <span class="badge b-ok">Migrasi remote s.d. 0024</span>
       <span class="badge b-ok">CBT essai + min-submit live &amp; teruji e2e</span>
     </div>
     <div class="verdict" style="margin-top:14px">
@@ -94,7 +94,7 @@
         <tr><td>Backend / API</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>Middleware global kuat (auth, size limit, rate limit), validasi server ketat, ownership check CBT.</td></tr>
         <tr><td>Database</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>Proyeksi relasional (kelas/siswa/presensi/modul) + index + optimistic concurrency (revision). <span class="mono">app_data</span> tetap sebagai permukaan tulis via trigger.</td></tr>
         <tr><td>Keamanan</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>PBKDF2 (constant-time), token di-hash di DB, sesi 7 hari, rate limit atomik, origin check.</td></tr>
-        <tr><td>Pengujian</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>235 test aplikasi + 8 test Worker lulus; CI dan Wrangler dry-run ditambahkan.</td></tr>
+        <tr><td>Pengujian</td><td><span class="score score-s">A− (8.5/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>271 test aplikasi + 8 test Worker lulus; CI dan Wrangler dry-run ditambahkan.</td></tr>
         <tr><td>Integrasi Eksternal</td><td><span class="score score-s">A− (8.5/10 kode)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:85%"></span></div></td><td>Fail-safe, idempoten, termonitor, dan punya rollback. Nilai operasional A menunggu deploy serta canary 7–14 hari.</td></tr>
         <tr><td>PWA / Offline</td><td><span class="score score-w">C− (4/10)</span></td><td><div class="bar"><span class="bar-fill c-red" style="width:40%"></span></div></td><td>Installable sudah, tapi belum ada service worker → tidak offline penuh; jawaban CBT kini aman di localStorage (sinkron tiap 10 menit) sebagai mitigasi parsial.</td></tr>
         <tr><td>Dokumentasi</td><td><span class="score score-s">A (9/10)</span></td><td><div class="bar"><span class="bar-fill c-teal" style="width:90%"></span></div></td><td>HANDOFF, panduan gateway, rollout, canary, monitoring, dan rollback sudah tersedia.</td></tr>
@@ -112,8 +112,8 @@
       <tbody>
         <tr><td>Frontend (React SPA)</td><td class="mono">src/ (10.351 baris)</td><td>10.351</td><td>Komponen besar tapi konsisten pakai <span class="mono">usePersistedCollection</span>, <span class="mono">useFilter</span></td></tr>
         <tr><td>Backend (Pages Functions)</td><td class="mono">functions/ (3.801 baris)</td><td>3.801</td><td>30 endpoint; logika inti dipisah di <span class="mono">functions/_lib/</span> (termasuk <span class="mono">cbt.ts</span> scoring essai + <span class="mono">resolveMinSubmitSeconds</span>)</td></tr>
-        <tr><td>Database (D1)</td><td class="mono">migrations/</td><td>22 migrasi</td><td>remote s.d. 0022 (diterapkan 16 Agustus 2026)</td></tr>
-        <tr><td>Tests</td><td class="mono">tests/ (3.719 baris)</td><td>3.719</td><td>Unit + integration (jsdom + Testing Library)</td></tr>
+        <tr><td>Database (D1)</td><td class="mono">migrations/</td><td>24 migrasi</td><td>remote s.d. 0024 (diterapkan 17 Agustus 2026)</td></tr>
+        <tr><td>Tests</td><td class="mono">tests/ (4.324 baris)</td><td>4.324</td><td>Unit + integration (jsdom + Testing Library)</td></tr>
         <tr><td>Eksternal</td><td class="mono">whatsapp-gateway/, sync-worker/, google-apps-script/</td><td>—</td><td>Terpisah dari aplikasi utama (menunggu aktivasi)</td></tr>
       </tbody>
     </table>
@@ -201,13 +201,13 @@
   <!-- ===== DATABASE ===== -->
   <div class="card">
     <h2>🗄️ Database (Cloudflare D1)</h2>
-    <p><span class="badge b-ok">22 migrasi</span> <span class="badge b-ok">remote s.d. 0022</span> <span class="badge b-info">SQLite-compatible</span></p>
+    <p><span class="badge b-ok">24 migrasi</span> <span class="badge b-ok">remote s.d. 0024</span> <span class="badge b-info">SQLite-compatible</span></p>
     <h3>Model Penyimpanan (dua lapis)</h3>
     <table>
       <thead><tr><th>Model</th><th>Tabel</th><th>Penilaian</th></tr></thead>
       <tbody>
         <tr><td>Relasional (auth, domain)</td><td class="mono">users · sessions · presensi_log · guardian_contacts · whatsapp_settings · whatsapp_outbox · whatsapp_daily_stats · whatsapp_job_runs · teacher_whatsapp_settings · rate_limits</td><td><span class="badge b-ok">Baik</span> — normal, ada constraint &amp; index</td></tr>
-        <tr><td>Relasional (proyeksi akademik)</td><td class="mono">school_classes · class_schedule_items · students · attendance_records · teaching_modules · academic_collection_revisions</td><td><span class="badge b-ok">Baru</span> — migrasi 0018: index query umum, unique NISN aktif, composite key presensi, soft-delete (active) menjaga referensi historis</td></tr>
+        <tr><td>Relasional (proyeksi akademik)</td><td class="mono">school_classes · class_schedule_items · students · attendance_records · teaching_modules · academic_collection_revisions</td><td><span class="badge b-ok">Baru</span> — migrasi 0018: index query umum, unique NISN aktif, composite key presensi, soft-delete (active); <b>0023 menutup lapisan tulis <span class="mono">app_data</span></b> (proyeksi = sumber kebenaran, trigger sync di-drop, tulis batch atomik + mirror)</td></tr>
         <tr><td>Relasional (CBT)</td><td class="mono">cbt_exams · cbt_questions · cbt_attempts</td><td><span class="badge b-ok">Baik</span> — 0020 menambah <span class="mono">question_type</span> (pg/essai); 0021 membangun ulang <span class="mono">cbt_questions</span> tanpa CHECK <span class="mono">correct_answer A–E</span> agar kunci essai (teks) dapat disimpan; 0022 menambah <span class="mono">exam_type</span> (latihan/ujian) + <span class="mono">min_submit_minutes</span> untuk waktu minimal pengerjaan ujian resmi; trigger &amp; index direstore</td></tr>
         <tr><td>JSON-blob (permukaan tulis legacy)</td><td class="mono">app_data: kelas_v1 · siswa_v1 · presensi_v1 · modulAjar_v1</td><td><span class="badge b-warn">Kompatibilitas</span> — penulis lama (roster, user management) tetap menulis di sini; trigger menyinkronkan proyeksi + revision secara atomik</td></tr>
       </tbody>
@@ -224,7 +224,7 @@
     <ul>
       <li class="cross">Tulis tetap lewat <span class="mono">app_data</span> JSON (trigger memproyeksikan) → proyeksi dihitung ulang penuh per tulis; untuk presensi besar pertimbangkan tulis langsung ke tabel.</li>
       <li class="cross">Kolom <span class="mono">any</span> di beberapa handler → kehilangan type-safety; sarankan tipe hasil query.</li>
-      <li class="cross">Belum ada backup/jadwal ekspor D1 otomatis; migrasi 0018 remote menunggu operator.</li>
+      <li class="cross">Belum ada backup/jadwal ekspor D1 otomatis (backup manual per migrasi disimpan di /tmp/opencode).</li>
     </ul>
   </div>
 
@@ -253,12 +253,12 @@
   <div class="card">
     <h2>🧪 Pengujian (Dijalankan Ulang untuk Laporan Ini)</h2>
     <div class="grid">
-      <div class="stat"><div class="num">43</div><div class="lbl">File test termasuk Worker</div></div>
-      <div class="stat"><div class="num">243</div><div class="lbl">Test lulus total</div></div>
+      <div class="stat"><div class="num">49</div><div class="lbl">File test termasuk Worker</div></div>
+      <div class="stat"><div class="num">279</div><div class="lbl">Test lulus total</div></div>
       <div class="stat"><div class="num">100%</div><div class="lbl">Pass rate</div></div>
       <div class="stat"><div class="num">193s</div><div class="lbl">Durasi aplikasi + Worker</div></div>
     </div>
-    <p style="margin-top:10px;font-size:.85rem;">Area teruji: auth hardening, session, rate-limit, CBT domain &amp; API (termasuk soal essai, validasi per-tipe, scoring otomatis, penyimpanan lokal di <span class="mono">CbtTestRunner</span>, waktu minimal pengerjaan ujian resmi, dan riwayat nilai siswa), presensi (incl. data-loss &amp; hak kelas), import Excel, user management, WhatsApp, forum/notifikasi, SEO, geo, foto, middleware, proyeksi relasional &amp; concurrency.</p>
+    <p style="margin-top:10px;font-size:.85rem;">Area teruji: auth hardening, session, rate-limit, CBT domain &amp; API (soal essai, scoring, min-submit, riwayat nilai, analitik guru, ekspor nilai), presensi, import Excel, user management, PWA/offline, rapor siswa, WhatsApp, forum/notifikasi, SEO, geo, foto, middleware, proyeksi relasional (0023: tulis dua lapisan, FK guard, CAS revision) &amp; concurrency.</p>
     <ul style="margin-top:6px">
       <li class="cross">1 test forum (community-sections) flaky pada timeout default 5s saat mesin sibuk → lulus stabil dengan <span class="mono">--testTimeout=10000</span>.</li>
       <li class="cross">Belum ada coverage report / threshold — <span class="mono">test:coverage</span> tersedia tapi belum dijalankan.</li>
@@ -301,17 +301,16 @@
     <h2>📌 Catatan Akhir Auditor</h2>
     <p style="font-size:.9rem;">
       Penilaian ini berbasis <strong>pembacaan langsung kode</strong> (App.tsx, middleware, auth.ts, rate-limit, data/[key].ts, relational-data.ts, usePersistedCollection, navItems, migrations, vite.config)
-      plus <strong>verifikasi ulang</strong>: <span class="mono">npx vitest run --testTimeout=10000</span> → 42 file/235 test aplikasi + 8 test sync-worker, 100% lulus;
-      <span class="mono">npx vite build</span> → sukses, migrasi 0022 lulus lokal, dan roundtrip 87 siswa produksi terverifikasi.
-      Migrasi 0017–0022 telah diterapkan ke D1 remote (backup sebelum 0021: <span class="mono">/tmp/opencode/backup-produksi-cbt-0021.sql</span>; sebelum 0022: <span class="mono">backup-produksi-cbt-0022-20260816-142040.sql</span>).
-      Smoke test produksi 16 Agustus 2026: fitur min-submit terverifikasi — ujian resmi submit awal ditolak <strong>409</strong> lalu diterima 200 setelah waktu minimal, latihan bebas kirim, tombol runner terkunci dengan countdown (Playwright);
+      plus <strong>verifikasi ulang</strong>: <span class="mono">npx vitest run</span> → 49 file/271 test aplikasi + 8 test sync-worker, 100% lulus;
+      <span class="mono">npx vite build</span> → sukses; migrasi 0023–0024 lulus lokal &amp; remote (backup: <span class="mono">d1-backup-0022-20260817-221339.sql</span>, <span class="mono">d1-backup-0023-20260817-224012.sql</span>).
+      Smoke test produksi 17 Agustus 2026: <strong>e2e Playwright 9/9</strong> (analitik, ekspor nilai CSV, modal kelas, rapor siswa JSON+CSV, PWA offline shell + banner) + uji beban 6 endpoint concurrency 10 semua 200 OK;
       simulasi skala besar nyata: UAS 45 soal (40 PG + 5 essai) skor 100 dan latihan 30 soal (25 PG + 5 essai) skor 100, attempt simulasi dibersihkan dari produksi.
       Aktivasi provider nyata (QR WhatsApp, deploy Apps Script) tetap menunggu langkah operator.
     </p>
   </div>
 
   <div class="footer">
-    Laporan penilaian digenerate dari audit nyata codebase SMK-AT-THAHIRIN · 15 Agustus 2026 (diperbarui 16 Agustus 2026) · Data: git log, wc -l, tsc, vitest, vite build, pembacaan file inti
+    Laporan penilaian digenerate dari audit nyata codebase SMK-AT-THAHIRIN · 15 Agustus 2026 (diperbarui 17 Agustus 2026) · Data: git log, wc -l, tsc, vitest, vite build, pembacaan file inti
   </div>
 </div>
 </body>
