@@ -8,6 +8,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
 - Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): fitur **waktu minimal pengerjaan ujian resmi** live (deploy `9476e578`, commit `f7c52ff`); smoke test produksi lulus (409/200, latihan bebas kirim, UI tombol terkunci).
 - **Migrasi relasional 0023 live (17 Agustus 2026)**: lapisan tulis `app_data` akademik ditutup — proyeksi relasional jadi sumber kebenaran; trigger sync 0018 di-drop; deploy `3690c8ba`; smoke test e2e produksi **9/9 lulus kembali**; backup D1 pra-migrasi: `/tmp/opencode/d1-backup-0022-20260817-221339.sql`.
+- **Hardening D1 0024 live (17 Agustus 2026)**: 8 index tambahan sesuai pola query produksi (deploy `4d624262`); benchmark sintetis 60 ujian × 90 siswa + 27k presensi: rapor NISN 15ms→0.7ms, rekap presensi 31ms→0.3ms, analitik 31ms→11ms, list notifikasi 13ms→1.5ms; uji beban produksi 6 endpoint concurrency 10 semua 200 OK.
 - **Deploy 17 Agustus 2026 (dilakukan)**: analitik, PWA offline, template PTS/UAS, `PATCH /api/users/me`, ekspor nilai CBT + rapor siswa — semua live (`5e78e61c` lalu `47968d60`); smoke test produksi lulus (detail di bawah). **Smoke test UI e2e via Playwright 9/9 lulus** (analitik, ekspor nilai, modal kelas, rapor siswa, offline shell + banner). **Ujian simulasi produksi dibersihkan**: `UAS Kearsipan (Simulasi 45 Soal)` (`UAS01`) dan `Latihan Kearsipan (Simulasi 30 Soal)` (`LAT02`) dihapus via DELETE; tersisa `Latihan Kearsipan` permanen (`LATIH01`, aktif 16–30 Agustus) + PTS/Kuis historis. 13 commit sesi sudah di-push ke `origin/main` (`82d4a4c`).
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
 - Verifikasi terakhir: `npm run lint` lulus, **271/271 test** lulus (49 file), production build berhasil; migrasi D1 remote sudah sampai `0023`.
@@ -94,6 +95,14 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - **`scripts/import-data.mjs`**: `siswaSql`/`kelasSql` kini emit mirror + proyeksi + revision (siswa & kelas + jadwal), bukan lagi mengandalkan trigger.
 - **Test**: 271/271 lulus (49 file; +2 test baru di `relational-academic-data.test.ts`: lapisan tertutup + tulis-dua-lapisan + mirror korup tak merusak baca + FK guard). Mock `TestD1Database` kini menerapkan 0023 dan punya `batch()` (transactional); mock `makeDb` user-management/`users-me` menangani statement tanpa `.bind()` dan bentuk batch baru (6 statement siswa-create, 5 pada users-me).
 - **Deploy & verifikasi**: migrasi diterapkan lokal + remote (backup `/tmp/opencode/d1-backup-0022-20260817-221339.sql`); deploy `3690c8ba`; konsistensi remote: 87 siswa / 3 kelas / 1 modul / 4 mirror / 4 revisi, trigger tersisa hanya 3 CBT; **e2e Playwright produksi 9/9 lulus kembali** (analitik, ekspor nilai, modal kelas, rapor siswa, PWA offline, banner).
+
+### Uji Beban & Hardening D1 (0024) — 8 Index Sesuai Pola Query
+
+- **Analisis pola query** (fungsi vs index): hotspot = 4 query hasil/analitik/ekspor CBT filter `status='submitted'` + sort `submitted_at` (full scan `cbt_attempts`), rapor per NISN (2× `cbt_attempts.nisn` + 1× `attendance_records.nisn` tanpa index), dan `hasHistoricalReferences` saat hapus user permanen (5 subquery EXISTS tanpa index).
+- **Migrasi `0024_d1_index_hardening.sql`** (8 index, semua `IF NOT EXISTS`): `idx_cbt_attempts_status_submitted (status, submitted_at DESC)`, `idx_cbt_attempts_nisn (nisn, status, submitted_at DESC)`, `idx_attendance_nisn (nisn, status, tanggal)`, `idx_cbt_exams_teacher (teacher_user_id)`, `idx_forum_topics_author`, `idx_forum_replies_author`, `idx_notifications_sender (sender_user_id, created_at DESC)`, `idx_wa_outbox_teacher (teacher_user_id)`.
+- **Benchmark sintetis** (node:sqlite, 5.4k attempts / 27k presensi / 5k notif): query hasil 183→114ms (SELECT * masih baca ribuan baris), analitik 31→10.6ms, rapor NISN 15.4→0.7ms, rekap presensi 30.6→0.3ms, notif sender 12.9→1.5ms.
+- **Uji beban produksi** (Playwright login admin + request API, `/tmp/opencode/loadtest.py`): 6 endpoint (`/api/cbt/results`, `/analytics`, `/exams`, `/api/rapor/0082219950`, `/cbt/export/scores`, `/notifications`) — concurrency 10 semuanya 200 OK; seq med 141–539ms, conc10 max 4.1s (cold start Cloudflare).
+- **Diterapkan**: lokal + remote (backup `/tmp/opencode/d1-backup-0023-20260817-224012.sql`), 8 index terverifikasi di remote, deploy `4d624262`. Monitor D1 usage dashboard via Cloudflare dashboard (tidak ada CLI metric).
 
 ## Perubahan Utama Sesi Sebelumnya
 

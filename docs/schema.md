@@ -474,6 +474,14 @@ FK fisik hanya pada: `sessions`, `cbt_questions`, `cbt_attempts`, `cbt_attempt_a
 | idx_students_active_nisn_unique | students | nisn | **UNIQUE parsial `WHERE active = 1`** |
 | idx_attendance_class_date | attendance_records | class_id, tanggal | rekap per kelas |
 | idx_modules_subject | teaching_modules | mata_pelajaran, active | pencarian modul |
+| idx_cbt_attempts_status_submitted | cbt_attempts | status, submitted_at DESC | 4 query hasil/analitik/ekspor (filter `status='submitted'` + urut) — 0024 |
+| idx_cbt_attempts_nisn | cbt_attempts | nisn, status, submitted_at DESC | rapor per NISN (2 query) — 0024 |
+| idx_attendance_nisn | attendance_records | nisn, status, tanggal | rekap presensi rapor per NISN — 0024 |
+| idx_cbt_exams_teacher | cbt_exams | teacher_user_id | filter analitik guru + EXISTS hapus user — 0024 |
+| idx_forum_topics_author | forum_topics | author_user_id | EXISTS hapus user — 0024 |
+| idx_forum_replies_author | forum_replies | author_user_id | EXISTS hapus user — 0024 |
+| idx_notifications_sender | notifications | sender_user_id, created_at DESC | branch sender di list notifikasi + hapus user — 0024 |
+| idx_wa_outbox_teacher | whatsapp_outbox | teacher_user_id | EXISTS hapus user — 0024 |
 
 Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai query.
 
@@ -504,6 +512,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0021 | Rebuild `cbt_questions` tanpa CHECK correct_answer (mendukung essai) |
 | 0022 | `cbt_exams`: +exam_type, +min_submit_minutes |
 | 0023 | Tutup lapisan tulis `app_data` akademik: re-sync akhir proyeksi, drop 8 trigger sync 0018 |
+| 0024 | Hardening D1: 8 index tambahan sesuai pola query produksi (hasil/analitik CBT, rapor NISN, hapus user) |
 
 ## Anomali & Catatan Penting (keputusan desain)
 

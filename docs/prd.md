@@ -104,6 +104,6 @@ Prioritas disepakati bersama pemilik project (17 Agu 2026).
 
 **Rendah:**
 7. **Email/SMS fallback** untuk notifikasi bila WhatsApp tidak tersedia.
-8. **Uji beban & hardening D1** — index tambahan sesuai pola query produksi; monitor D1 usage dashboard.
+8. ~~**Uji beban & hardening D1**~~ **SELESAI (0024, 17 Agu 2026)** — 8 index tambahan sesuai pola query produksi (analitik/hasil CBT, rapor NISN, hapus user); benchmark sintetis + uji beban produksi concurrency 10; monitor D1 usage dashboard lanjut secara berkala.
 
 **Kandidat baru (belum dikonfirmasi kebutuhan):** nilai semester/rapor digital — saat ini nilai hanya berasal dari CBT; bila sekolah membutuhkan, tambahkan sebagai item prioritas tinggi.
