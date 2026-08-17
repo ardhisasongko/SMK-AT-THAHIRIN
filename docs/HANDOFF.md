@@ -8,8 +8,9 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
 - Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): fitur **waktu minimal pengerjaan ujian resmi** live (deploy `9476e578`, commit `f7c52ff`); smoke test produksi lulus (409/200, latihan bebas kirim, UI tombol terkunci).
 - **Sesi 17 Agustus 2026 (belum di-deploy)**: 4 milestone baru siap deploy — analitik guru, service worker offline/PWA, template jadwal PTS/UAS massal, dan simpan profil sendiri ke server. Belum ada migrasi baru (tidak menyentuh skema D1).
+- **Deploy 17 Agustus 2026 (dilakukan)**: analitik, PWA offline, template PTS/UAS, `PATCH /api/users/me`, ekspor nilai CBT + rapor siswa — semua live (`5e78e61c` lalu `47968d60`); smoke test produksi lulus (detail di bawah). Fitur berikutnya yang sudah dikerjakan pasca-deploy pertama: ekspor nilai + rapor (deploy kedua `47968d60`).
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run lint` lulus, **262/262 test** lulus (47 file), production build berhasil; migrasi D1 remote tetap sampai `0022` (tidak ada migrasi baru di sesi ini).
+- Verifikasi terakhir: `npm run lint` lulus, **269/269 test** lulus (49 file), production build berhasil; migrasi D1 remote tetap sampai `0022` (tidak ada migrasi baru di sesi ini).
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
 - Migrasi D1 remote sudah diterapkan sampai `0022_cbt_exam_type.sql` (live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
@@ -17,6 +18,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 ### Commit Milestone Terbaru
 
 - `1f05422 fix(profil): simpan perubahan nama/email ke server (PATCH /api/users/me) + sinkronisasi roster siswa`
+- `b878aed feat(rapor): ekspor nilai CBT ke CSV + rapor siswa (rekap presensi & nilai per mapel, JSON & CSV)`
 - `f495bfd feat(cbt): template jadwal PTS/UAS massal 5 hari x 4 mapel — endpoint bulk + modal dengan pratinjau dan token otomatis`
 - `1304b00 feat(pwa): service worker offline (shell cached, API tidak pernah di-cache) + banner status offline`
 - `84e8a4a feat(cbt): analitik nilai guru — distribusi skor per ujian + deteksi pengerjaan cepat/mencurigakan`
@@ -66,6 +68,16 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Endpoint baru `PATCH /api/users/me`: autentikasi wajib; validasi nama 1–100 & format email; cek email duplikat (409); untuk siswa/ketua_kelas yang mengganti nama, roster `siswa_v1` ikut disinkronkan (`replaceStudentStatement`) dalam satu `DB.batch`.
 - Frontend: `handleSaveProfile` async dengan loading state, pesan error di modal, dan callback `onProfileUpdated` di `App.tsx` yang memperbarui sesi (nama/email tampil seketika di navbar/profil).
 - Test: `tests/users-me.test.ts` (6).
+
+### Ekspor Nilai CBT + Rapor Siswa
+
+- `GET /api/cbt/export/scores` (staff; guru hanya ujian miliknya): CSV nilai CBT — NISN, nama, tanggal kirim, ujian, mapel, jenis, skor, benar, salah, waktu. Tombol "Ekspor Nilai (CSV)" (`btn-export-cbt-scores`) di `CbtSection`.
+- `GET /api/rapor/:nisn` (JSON) dan `?format=csv`: identitas siswa (dari `students` + `school_classes`), rekap presensi per status (Hadir/Terlambat/Sakit/Izin/Alpa + % kehadiran), rekap nilai CBT per mapel (jumlah ujian, rata-rata, terbaik), dan riwayat 50 ujian terakhir. Akses: staff semua; siswa/ketua_kelas hanya dirinya; ketua_kelas approved boleh siswa sekelasnya; NISN divalidasi (4–20 digit).
+- UI: `src/components/RaporModal.tsx` — dibuka dari tombol dokumen rapor di kartu siswa (modal detail kelas) dan tombol "Rapor Saya" (`btn-open-rapor-saya`) di ProfilSection untuk siswa/ketua_kelas; tombol "Unduh Rapor (CSV)".
+- Helper baru `functions/_lib/csv.ts` (`toCsv`, `csvEscape`, `csvResponse`) + `src/utils/download.ts` (`downloadCsv` via blob).
+- Catatan: ekspor presensi TIDAK dibuat server-side — AbsensiSection sudah punya "Export Excel/CSV" client-side; endpoint `attendance/export` yang sempat dibuat dihapus (hindari duplikasi fitur).
+- Test: `tests/rapor-export.test.ts` (7) — scope per role, escaping, format CSV.
+- **Deploy 17 Agustus (kedua)**: rapor + ekspor live (`47968d60`). Smoke test produksi: rapor siswa GHINA NAILA `0082219950` JSON+CSV benar (kelas X MPLB 1, 1 ujian, rata-rata 67), rapor siswa lain 403, endpoint baru 401 tanpa auth.
 
 ## Perubahan Utama Sesi Sebelumnya
 
@@ -398,8 +410,8 @@ npx wrangler deploy --dry-run # dari sync-worker/
 
 Hasil terakhir (17 Agustus 2026):
 
-- 47 test files aplikasi lulus.
-- 262 tests aplikasi lulus (235 lama + 27 baru: analitik 8, PWA 4, bulk PTS/UAS 9, users/me 6).
+- 49 test files aplikasi lulus.
+- 269 tests aplikasi lulus (262 + 7 baru: rapor/ekspor).
 - TypeScript lulus. Production build lulus.
 - Tidak ada migrasi D1 baru di sesi ini (remote tetap sampai `0022`).
 - 8 tests sync-worker lulus (tidak berubah).
