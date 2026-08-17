@@ -137,7 +137,7 @@ export const onRequestDelete: PagesFunction<Env, any, AuthData> = async ({ env, 
   return jsonResponse({ success: true, data: { id: String(exam.id) } });
 };
 
-async function validClassTarget(db: D1Database, target: unknown): Promise<boolean> {
+export async function validClassTarget(db: D1Database, target: unknown): Promise<boolean> {
   if (target === 'all' || target === 'Semua Kelas MPLB') return true;
   if (typeof target !== 'string' || !target || target.length > 100) return false;
   const row = await db.prepare("SELECT value FROM app_data WHERE key='kelas_v1'").first<{ value: string }>();

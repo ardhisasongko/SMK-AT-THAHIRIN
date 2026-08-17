@@ -1,4 +1,4 @@
-import type { CbtAnalytics, CbtAttempt, CbtExam, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
+import type { CbtAnalytics, CbtAttempt, CbtBulkPayload, CbtBulkResult, CbtExam, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
 import { authHeaders } from './auth';
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -21,5 +21,6 @@ export const cbtApi = {
   submitAttempt: (attemptId: string, submission: CbtSubmission) => api<CbtSubmission>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/submit`, { method: 'POST', body: JSON.stringify({ answers: submission.answers, doubtful: submission.doubtful }) }),
   summary: () => api<CbtSummary[]>('/api/cbt/summary'),
   analytics: () => api<CbtAnalytics>('/api/cbt/analytics'),
+  createBulkExams: (payload: CbtBulkPayload) => api<CbtBulkResult>('/api/cbt/exams/bulk', { method: 'POST', body: JSON.stringify(payload) }),
   rotateToken: (examId: string) => api<{ token: string }>(`/api/cbt/exams/${encodeURIComponent(examId)}/token`, { method: 'POST' }),
 };

@@ -28,6 +28,7 @@ import { CbtAnalytics } from './cbt/CbtAnalytics';
 import { CbtResultReviewModal } from './cbt/CbtResultReviewModal';
 import { CbtTokenModal } from './cbt/CbtTokenModal';
 import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
+import { CbtBulkScheduleModal } from './cbt/CbtBulkScheduleModal';
 import { cbtApi } from '../utils/cbt-api';
 
 interface CbtSectionProps {
@@ -49,6 +50,7 @@ export function CbtSection({
   const [selectedExamForToken, setSelectedExamForToken] = useState<CbtExam | null>(null);
 
   const [showCreateExamModal, setShowCreateExamModal] = useState<boolean>(false);
+  const [showBulkScheduleModal, setShowBulkScheduleModal] = useState<boolean>(false);
   const [editingExam, setEditingExam] = useState<CbtExam | null>(null);
   const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
@@ -280,6 +282,15 @@ export function CbtSection({
                   >
                     <Plus className="w-4 h-4" />
                     <span>Buat Ujian / Kuis Baru</span>
+                  </button>
+
+                  <button
+                    id="btn-open-bulk-schedule"
+                    onClick={() => setShowBulkScheduleModal(true)}
+                    className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-violet-600/30 transition-all cursor-pointer"
+                  >
+                    <CalendarDays className="w-4 h-4" />
+                    <span>Jadwal PTS/UAS Massal</span>
                   </button>
                 </>
               )}
@@ -548,6 +559,17 @@ export function CbtSection({
            initialExam={editingExam}
            onSave={handleSaveExam}
            onClose={() => { setShowCreateExamModal(false); setEditingExam(null); }}
+        />
+      )}
+
+      {/* BULK PTS/UAS SCHEDULE MODAL (STAFF) */}
+      {showBulkScheduleModal && isStaff && (
+        <CbtBulkScheduleModal
+          kelasList={kelasList}
+          onClose={() => setShowBulkScheduleModal(false)}
+          onCreated={() => {
+            Promise.all([cbtApi.exams()]).then(([exams]) => setCbtExams(exams)).catch(() => undefined);
+          }}
         />
       )}
 

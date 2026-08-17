@@ -315,3 +315,34 @@ export interface CbtAnalytics {
   fastRatio: number;
   suspiciousScore: number;
 }
+
+export interface CbtBulkSubject {
+  name: string;
+  teacher: string;
+}
+
+export interface CbtBulkPayload {
+  title: string;
+  startDate: string;
+  subjects: CbtBulkSubject[];
+  classTarget: string;
+  durationMinutes: number;
+  openTime: string;
+  sessionGapMinutes: number;
+}
+
+export interface CbtBulkExamResult {
+  id: string;
+  date: string;
+  day: string;
+  subject: string;
+  openTime: string;
+  closeTime: string;
+  token: string;
+  startDate: string;
+}
+
+export interface CbtBulkResult {
+  title: string;
+  exams: CbtBulkExamResult[];
+}
