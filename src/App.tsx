@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { WifiOff } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { BottomDock } from './components/BottomDock';
 import { Footer } from './components/Footer';
@@ -42,6 +43,18 @@ export default function App() {
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => loadAuthSession());
   const currentUser: User | null = authSession?.user ?? null;
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
+  const [isOffline, setIsOffline] = useState<boolean>(() => typeof navigator !== 'undefined' && !navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // App persistent states - disimpan ke Cloudflare D1 via API
   const [kelasList, setKelasList] = usePersistedCollection<Kelas[]>('kelas_v1', INITIAL_KELAS);
@@ -132,9 +145,14 @@ export default function App() {
     window.location.reload();
   };
 
-  return (
+return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-900">
-      
+      {isOffline && (
+        <div className="sticky top-0 z-50 bg-amber-500 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-2">
+          <WifiOff className="w-3.5 h-3.5" />
+          <span>Anda sedang offline — halaman terbuka dari cache, data terbaru tidak tersedia.</span>
+        </div>
+      )}
       {currentUser && (
         <Navbar
           setActiveTab={setActiveTab}
