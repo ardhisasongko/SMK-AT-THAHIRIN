@@ -17,12 +17,14 @@ import {
   ShieldCheck,
   Pencil,
   Trash2,
+  TrendingUp,
 } from 'lucide-react';
-import { User as UserType, CbtExam, CbtSubmission, CbtSummary, Kelas } from '../types';
+import { User as UserType, CbtExam, CbtSubmission, CbtSummary, CbtAnalytics as CbtAnalyticsType, Kelas } from '../types';
 import { useFilter } from '../hooks/useFilter';
 import { CbtTestRunner } from './cbt/CbtTestRunner';
 import { CbtResultsTable } from './cbt/CbtResultsTable';
 import { CbtMyResults } from './cbt/CbtMyResults';
+import { CbtAnalytics } from './cbt/CbtAnalytics';
 import { CbtResultReviewModal } from './cbt/CbtResultReviewModal';
 import { CbtTokenModal } from './cbt/CbtTokenModal';
 import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
@@ -49,6 +51,9 @@ export function CbtSection({
   const [showCreateExamModal, setShowCreateExamModal] = useState<boolean>(false);
   const [editingExam, setEditingExam] = useState<CbtExam | null>(null);
   const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
+  const [analytics, setAnalytics] = useState<CbtAnalyticsType | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
   const { query: searchTerm, setQuery: setSearchTerm, filtered: filteredExams } = useFilter(
     cbtExams,
     ['title', 'subject']
@@ -188,6 +193,21 @@ export function CbtSection({
     }
   };
 
+  const handleToggleAnalytics = async () => {
+    const next = !showAnalytics;
+    setShowAnalytics(next);
+    if (!next) return;
+    if (analytics) return;
+    setAnalyticsLoading(true);
+    try {
+      setAnalytics(await cbtApi.analytics());
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Analitik gagal dimuat.');
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
   // Full-screen test runner
   if (isTestMode && activeExam && currentUser) {
     return (
@@ -237,11 +257,20 @@ export function CbtSection({
                 <>
                   <button
                     id="btn-open-results"
-                    onClick={() => setShowResultsTable(!showResultsTable)}
+                    onClick={() => { setShowResultsTable(!showResultsTable); if (showResultsTable) setShowAnalytics(false); }}
                     className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 shadow-md transition-all cursor-pointer"
                   >
                     <BarChart3 className="w-4 h-4 text-emerald-400" />
                     <span>{showResultsTable ? 'Tutup Nilai' : 'Daftar Nilai Siswa'}</span>
+                  </button>
+
+                  <button
+                    id="btn-open-analytics"
+                    onClick={() => { void handleToggleAnalytics(); if (showAnalytics) setShowResultsTable(false); }}
+                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 shadow-md transition-all cursor-pointer"
+                  >
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <span>{showAnalytics ? 'Tutup Analitik' : 'Analitik Nilai'}</span>
                   </button>
 
                   <button
@@ -307,6 +336,11 @@ export function CbtSection({
               </div>
             )}
           </>
+        )}
+
+        {/* ANALYTICS PANEL (STAFF) */}
+        {showAnalytics && isStaff && (
+          <CbtAnalytics analytics={analytics} loading={analyticsLoading} />
         )}
 
         {/* SEARCH & EXAM LIST GRID */}

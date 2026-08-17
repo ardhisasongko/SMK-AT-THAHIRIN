@@ -284,3 +284,34 @@ export interface CbtSummary {
   bestScore: number;
   worstScore: number;
 }
+
+export interface CbtAnalyticsFlag {
+  attemptId: string;
+  studentName: string;
+  nisn: string;
+  score: number;
+  timeSpentSeconds: number;
+  submittedAt: string | null;
+  suspicious: boolean;
+}
+
+export interface CbtAnalyticsExam {
+  examId: string;
+  title: string;
+  subject: string;
+  classTarget: string;
+  examType: string;
+  durationMinutes: number;
+  studentCount: number;
+  avgScore: number;
+  bestScore: number | null;
+  worstScore: number | null;
+  buckets: { label: string; count: number }[];
+  fastAttempts: CbtAnalyticsFlag[];
+}
+
+export interface CbtAnalytics {
+  exams: CbtAnalyticsExam[];
+  fastRatio: number;
+  suspiciousScore: number;
+}
