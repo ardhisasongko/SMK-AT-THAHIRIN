@@ -12,24 +12,26 @@ function makeDb(options: { target?: Record<string, unknown>; batchError?: boolea
   const batches: BoundStatement[][] = [];
   const classes = [{ id: 'k1', name: 'X MPLB 1' }];
   const roster = [{ id: 's1', nisn: '0068123491', name: 'Nama Lama', classId: 'k1', gender: 'P', foto: '/lama.jpg', nik: '123' }];
-  const prepare = (sql: string) => ({
-    bind: (...args: unknown[]) => {
-      const statement: BoundStatement = {
-        sql,
-        args,
-        first: async () => {
-          if (sql.includes('FROM app_data')) {
-            if (args[0] === 'kelas_v1') return { value: JSON.stringify(classes) };
-            if (args[0] === 'siswa_v1') return { value: JSON.stringify(roster) };
-          }
-          if (sql.includes('password_hash FROM users WHERE id')) return options.target || null;
-          return null;
-        },
-        run: async () => ({ success: true }),
-      };
-      return statement;
-    },
-  });
+  const prepare = (sql: string) => {
+    const statement = {
+      sql,
+      args: [] as unknown[],
+      first: async () => {
+        if (sql.includes('FROM app_data')) {
+          if (statement.args[0] === 'kelas_v1') return { value: JSON.stringify(classes) };
+          if (statement.args[0] === 'siswa_v1') return { value: JSON.stringify(roster) };
+        }
+        if (sql.includes('password_hash FROM users WHERE id')) return options.target || null;
+        return null;
+      },
+      run: async () => ({ success: true }),
+      bind: (...args: unknown[]) => {
+        statement.args = args;
+        return statement;
+      },
+    } satisfies BoundStatement & { bind: (...args: unknown[]) => BoundStatement };
+    return statement;
+  };
   const db = {
     prepare,
     batch: vi.fn(async (statements: BoundStatement[]) => {
@@ -73,10 +75,12 @@ describe('user management', () => {
       request: request('siswa', { identifier: '0068123499', classId: 'k1', gender: 'P' }),
     } as any);
     expect(res.status).toBe(201);
-    expect(batches[0]).toHaveLength(3);
-    const rosterWrite = batches[0].find(statement => statement.sql.includes("VALUES ('siswa_v1'"))!;
-    const saved = JSON.parse(String(rosterWrite.args[0]));
-    expect(saved).toEqual(expect.objectContaining({ nisn: '0068123499', name: 'Test User', classId: 'k1', gender: 'P' }));
+    expect(batches[0]).toHaveLength(6);
+    const rosterWrite = batches[0].find(statement => statement.sql.includes('INSERT INTO app_data'))!;
+    const saved = JSON.parse(String(rosterWrite.args[1]));
+    expect(saved).toEqual(expect.arrayContaining([
+      expect.objectContaining({ nisn: '0068123499', name: 'Test User', classId: 'k1', gender: 'P' }),
+    ]));
   });
 
   it('menolak siswa dengan NISN atau kelas tidak valid sebelum menulis', async () => {
@@ -105,9 +109,11 @@ describe('user management', () => {
     });
     const res = await onRequestPatch({ env: { DB: db }, data: { user: ADMIN }, request: req } as any);
     expect(res.status).toBe(200);
-    const rosterWrite = batches[0].find(statement => statement.sql.includes('json_set'))!;
+    const rosterWrite = batches[0].find(statement => statement.sql.includes('INSERT INTO app_data'))!;
     const saved = JSON.parse(String(rosterWrite.args[1]));
-    expect(saved).toMatchObject({ id: 's1', nisn: '0068123498', name: 'Nama Baru', classId: 'k1', gender: 'P', nik: '123' });
+    expect(saved).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 's1', nisn: '0068123498', name: 'Nama Baru', classId: 'k1', gender: 'P', nik: '123' }),
+    ]));
   });
 
   it('mengembalikan gagal dan bukan sukses jika batch atomik gagal', async () => {

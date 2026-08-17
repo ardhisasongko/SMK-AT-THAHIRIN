@@ -18,10 +18,8 @@ function makeDb(overrides: { role?: string; email?: string; duplicateEmail?: boo
         state.userRow.name = stmt.binds[0];
         state.userRow.email = stmt.binds[1];
       }
-      if (stmt.sql.includes('UPDATE app_data')) {
-        const student = JSON.parse(stmt.binds[1]);
-        const idx = state.roster.findIndex((r: any) => r.nisn === stmt.binds[0]);
-        if (idx >= 0) state.roster[idx] = { ...state.roster[idx], ...student };
+      if (stmt.sql.includes('INSERT INTO app_data')) {
+        state.roster = JSON.parse(stmt.binds[1]);
       }
     }
     return statements.map(() => ({}));
@@ -68,7 +66,7 @@ describe('PATCH /api/users/me — perbarui profil sendiri', () => {
     expect(json.user.email).toBe('budi@example.com');
     expect(state.roster[0].name).toBe('Budi Prasetyo');
     expect(batch).toHaveBeenCalledTimes(1);
-    expect(batch.mock.calls[0][0]).toHaveLength(2);
+    expect(batch.mock.calls[0][0]).toHaveLength(5);
   });
 
   it('siswa ganti email saja: tidak menyentuh roster', async () => {

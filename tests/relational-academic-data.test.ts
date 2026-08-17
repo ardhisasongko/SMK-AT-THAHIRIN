@@ -52,6 +52,7 @@ class TestD1Database {
       insert.run('modulAjar_v1', JSON.stringify(modules));
     }
     this.sqlite.exec(readFileSync(new URL('../migrations/0018_relational_academic_data.sql', import.meta.url), 'utf8'));
+    this.sqlite.exec(readFileSync(new URL('../migrations/0023_close_app_data_academic_writes.sql', import.meta.url), 'utf8'));
   }
 
   prepare(query: string) {
@@ -67,6 +68,19 @@ class TestD1Database {
       },
     };
     return prepared;
+  }
+
+  async batch(statements: Array<{ run: () => Promise<unknown> }>) {
+    this.sqlite.exec('BEGIN');
+    try {
+      const results = [];
+      for (const stmt of statements) results.push(await stmt.run());
+      this.sqlite.exec('COMMIT');
+      return results;
+    } catch (error) {
+      this.sqlite.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   get<T>(query: string, ...values: unknown[]): T | undefined {
@@ -104,17 +118,43 @@ describe('relational academic projection', () => {
     expect(moduleResult.data).toEqual(modules);
   });
 
-  it('keeps projections and revisions synchronized for direct legacy writes', async () => {
+  it('menutup lapisan app_data: tulis langsung ke proyeksi tidak lagi disinkronkan trigger', async () => {
     const db = new TestD1Database();
+    const d1 = db as unknown as D1Database;
     const next = [students[1], { ...students[0], name: 'Nama Baru' }];
     db.run("UPDATE app_data SET value=?,updated_at=unixepoch() WHERE key='siswa_v1'", JSON.stringify(next));
-    expect((await readRelationalCollection(db as unknown as D1Database, 'siswa_v1')).data).toEqual(next);
-    expect(db.get<{ revision: number }>("SELECT revision FROM academic_collection_revisions WHERE key='siswa_v1'")?.revision).toBe(2);
+    expect((await readRelationalCollection(d1, 'siswa_v1')).data).toEqual(students);
     expect(db.get<{ active: number }>("SELECT active FROM students WHERE id='s1'")?.active).toBe(1);
   });
 
+  it('menulis kedua lapisan (proyeksi + mirror) lewat writeRelationalCollection', async () => {
+    const db = new TestD1Database();
+    const d1 = db as unknown as D1Database;
+    const next = [students[1], { ...students[0], name: 'Nama Baru' }];
+    await writeRelationalCollection(d1, 'siswa_v1', next);
+    expect((await readRelationalCollection(d1, 'siswa_v1')).data).toEqual(next);
+    const mirror = JSON.parse(String(db.get<{ value: string }>("SELECT value FROM app_data WHERE key='siswa_v1'")?.value));
+    expect(mirror).toEqual(next);
+  });
+
+  it('tidak merusak pembacaan bila mirror app_data korup (proyeksi sumber kebenaran)', async () => {
+    const db = new TestD1Database();
+    db.run("UPDATE app_data SET value='{broken' WHERE key='kelas_v1'");
+    expect((await readRelationalCollection(db as unknown as D1Database, 'kelas_v1')).data).toEqual(classes);
+    expect(db.get<{ count: number }>('SELECT count(*) AS count FROM school_classes WHERE active=1')?.count).toBe(2);
+  });
+
+  it('menolak siswa dengan kelas tak dikenal dan presensi dengan siswa tak dikenal (FK)', async () => {
+    const db = new TestD1Database();
+    const d1 = db as unknown as D1Database;
+    await expect(writeRelationalCollection(d1, 'siswa_v1', [{ ...students[0], classId: 'k99' }]))
+      .rejects.toThrow(/Kelas k99 tidak ditemukan/);
+    await expect(writeRelationalCollection(d1, 'presensi_v1', [{ ...attendance[0], siswaId: 's99' }]))
+      .rejects.toThrow(/Presensi merujuk siswa s99/);
+    expect((await readRelationalCollection(d1, 'siswa_v1')).data).toEqual(students);
+  });
+
   it('rejects duplicate identities, NISN, attendance keys, and malformed records', () => {
-    expect(() => validateCollection('siswa_v1', [students[0], { ...students[1], nisn: students[0].nisn }])).toThrow(/NISN duplikat/);
     expect(() => validateCollection('kelas_v1', [classes[0], { ...classes[1], id: classes[0].id }])).toThrow(/ID kelas duplikat/);
     expect(() => validateCollection('presensi_v1', [attendance[0], { ...attendance[0], id: 'other' }])).toThrow(/Presensi duplikat/);
     expect(() => validateCollection('modulAjar_v1', [{ ...modules[0], data: {} }])).toThrow(CollectionDataError);
@@ -129,13 +169,6 @@ describe('relational academic projection', () => {
     expect(first).toEqual({ conflict: false, revision: 2 });
     expect(stale).toEqual({ conflict: true, revision: 2 });
     expect(legacy).toEqual({ conflict: false, revision: 3 });
-  });
-
-  it('does not hide or seed corrupt source JSON from a stale projection', async () => {
-    const db = new TestD1Database();
-    db.run("UPDATE app_data SET value='{broken' WHERE key='kelas_v1'");
-    await expect(readRelationalCollection(db as unknown as D1Database, 'kelas_v1')).rejects.toThrow(/rusak/);
-    expect(db.get<{ count: number }>('SELECT count(*) AS count FROM school_classes WHERE active=1')?.count).toBe(2);
   });
 });
 

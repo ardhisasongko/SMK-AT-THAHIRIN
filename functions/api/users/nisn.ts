@@ -3,7 +3,7 @@
 // Hanya admin. Menyesuaikan nip_nisn + email (`s<NISN>@smksplusatthahirin.sch.id`).
 import { getUserFromRequest, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse, errorResponse } from '../../_lib/response';
-import { readCollection, replaceStudentStatement } from '../../_lib/student-roster';
+import { readCollection, rosterReplaceStatements } from '../../_lib/student-roster';
 
 interface Env extends AuthEnv {}
 
@@ -64,7 +64,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, request }) => {
       env.DB.prepare(
         'UPDATE users SET nip_nisn = ?, email = ?, name = ? WHERE id = ?'
       ).bind(newNisn, newEmail, name || String(account.name || ''), String(account.id)),
-      replaceStudentStatement(env.DB, oldNisn, nextRoster[rosterIndex] as any),
+      ...rosterReplaceStatements(env.DB, nextRoster),
     ]);
   } catch (error) {
     console.error('Gagal menyinkronkan akun dan roster siswa:', error);

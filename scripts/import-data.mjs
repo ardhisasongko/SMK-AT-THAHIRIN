@@ -9,8 +9,8 @@
  * Output ke folder imported/ (ter-ignore git karena berisi data pribadi):
  *   - siswa.json : array lengkap siswa_v1 (untuk app_data D1)
  *   - akun.sql   : INSERT/upsert akun login ke tabel users (PBKDF2-SHA256)
- *   - siswa.sql  : upsert koleksi siswa_v1 ke app_data
- *   - kelas.sql  : (opsional) update jumlahSiswa di kelas_v1
+ *   - siswa.sql  : upsert siswa_v1 ke mirror app_data + proyeksi relasional (students)
+ *   - kelas.sql  : (opsional) update jumlahSiswa di kelas_v1 + proyeksi relasional (school_classes)
  *
  * Pemakaian:
  *   node scripts/import-data.mjs <file.xlsx>
@@ -285,9 +285,10 @@ export function processWorkbook(wb, { padNisn = false, placeholderNisn = false, 
     akunSql += upsert(`u-g${g.nik}`, g.name, `g${g.nik}@${EMAIL_DOMAIN}`, g.nik, 'guru', null, g.nik, g.ttl);
   }
 
-  // ---- SQL koleksi siswa_v1 ------------------------------------------------
+  // ---- SQL koleksi siswa_v1 (mirror app_data + proyeksi relasional, migrasi 0023) ----
   const siswaJson = JSON.stringify(siswaOut);
-  const siswaSql = `INSERT INTO app_data (key, value, updated_at)\n  VALUES ('siswa_v1', '${siswaJson.replace(/'/g, "''")}', unixepoch())\n  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;\n`;
+  const escJson = siswaJson.replace(/'/g, "''");
+  const siswaSql = `-- Mirror app_data (kompatibilitas pembaca legacy)\nINSERT INTO app_data (key, value, updated_at)\n  VALUES ('siswa_v1', '${escJson}', unixepoch())\n  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;\n\n-- Proyeksi relasional (sumber kebenaran sejak migrasi 0023)\nUPDATE students SET active = 0;\nINSERT INTO students (id, position, nisn, class_id, name, gender, foto, fields, source_json, active)\n  SELECT json_extract(value, '$.id'), CAST(key AS INTEGER), json_extract(value, '$.nisn'),\n    json_extract(value, '$.classId'), json_extract(value, '$.name'), json_extract(value, '$.gender'),\n    json_extract(value, '$.foto'), json(value), json(value), 1\n  FROM json_each('${escJson}') WHERE 1\n  ON CONFLICT(id) DO UPDATE SET position = excluded.position, nisn = excluded.nisn,\n    class_id = excluded.class_id, name = excluded.name, gender = excluded.gender, foto = excluded.foto,\n    fields = excluded.fields, source_json = excluded.source_json, active = 1;\n\nINSERT INTO academic_collection_revisions(key, revision, initialized, updated_at)\n  VALUES ('siswa_v1', 1, 1, unixepoch())\n  ON CONFLICT(key) DO UPDATE SET revision = revision + 1, initialized = 1, updated_at = unixepoch();\n`;
 
   return { siswaOut, guruRows, warnings, countByTingkat, akunSql, siswaSql, credentials };
 }
@@ -326,7 +327,9 @@ function main() {
         const total = siswaOut.filter((s) => s.classId === k.id).length;
         if (total) k.jumlahSiswa = total;
       }
-      kelasSql = `INSERT INTO app_data (key, value, updated_at)\n  VALUES ('kelas_v1', '${JSON.stringify(kelas).replace(/'/g, "''")}', unixepoch())\n  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;\n`;
+      const kelasJson = JSON.stringify(kelas);
+      const escKelasJson = kelasJson.replace(/'/g, "''");
+      kelasSql = `-- Mirror app_data (kompatibilitas pembaca legacy)\nINSERT INTO app_data (key, value, updated_at)\n  VALUES ('kelas_v1', '${escKelasJson}', unixepoch())\n  ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at;\n\n-- Proyeksi relasional (sumber kebenaran sejak migrasi 0023)\nUPDATE school_classes SET active = 0;\nDELETE FROM class_schedule_items;\nINSERT INTO school_classes (id, position, name, jurusan_code, tingkat, ruang, wali_kelas, jumlah_siswa, fields, source_json, active)\n  SELECT json_extract(value, '$.id'), CAST(key AS INTEGER), json_extract(value, '$.name'),\n    json_extract(value, '$.jurusanCode'), json_extract(value, '$.tingkat'), json_extract(value, '$.ruang'),\n    json_extract(value, '$.waliKelas'), json_extract(value, '$.jumlahSiswa'), json(value), json(value), 1\n  FROM json_each('${escKelasJson}') WHERE 1\n  ON CONFLICT(id) DO UPDATE SET position = excluded.position, name = excluded.name,\n    jurusan_code = excluded.jurusan_code, tingkat = excluded.tingkat, ruang = excluded.ruang,\n    wali_kelas = excluded.wali_kelas, jumlah_siswa = excluded.jumlah_siswa,\n    fields = excluded.fields, source_json = excluded.source_json, active = 1;\n\nINSERT INTO class_schedule_items (class_id, position, hari, jam_ke, jam_rentan, mata_pelajaran, guru, ruangan, fields, source_json)\n  SELECT json_extract(c.value, '$.id'), CAST(s.key AS INTEGER), json_extract(s.value, '$.hari'),\n    json_extract(s.value, '$.jamKe'), json_extract(s.value, '$.jamRentan'), json_extract(s.value, '$.mataPelajaran'),\n    json_extract(s.value, '$.guru'), json_extract(s.value, '$.ruangan'), json(s.value), json(s.value)\n  FROM json_each('${escKelasJson}') c, json_each(json_extract(c.value, '$.jadwal')) s;\n\nINSERT INTO academic_collection_revisions(key, revision, initialized, updated_at)\n  VALUES ('kelas_v1', 1, 1, unixepoch())\n  ON CONFLICT(key) DO UPDATE SET revision = revision + 1, initialized = 1, updated_at = unixepoch();\n`;
     }
   } catch (e) {
     warnings.push('Gagal mengambil kelas_v1 dari D1 remote untuk patch jumlahSiswa (dilewati).');

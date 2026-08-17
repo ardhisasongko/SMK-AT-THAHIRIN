@@ -1,5 +1,5 @@
 import { getUserById, getUserFromRequest, type AuthEnv } from '../../../_lib/auth';
-import { readCollection, replaceStudentStatement } from '../../../_lib/student-roster';
+import { readCollection, rosterReplaceStatements } from '../../../_lib/student-roster';
 import { jsonResponse } from '../../../_lib/response';
 
 interface Env extends AuthEnv {}
@@ -32,9 +32,13 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, request }) => {
   const isStudentRole = user.role === 'siswa' || user.role === 'ketua_kelas';
   if (isStudentRole && name !== undefined && name !== user.name && user.nipNisn) {
     const roster = await readCollection(env.DB, 'siswa_v1');
-    const current = roster?.find(item => item && typeof item === 'object' && String((item as any).nisn) === user.nipNisn);
-    if (current) {
-      statements.push(replaceStudentStatement(env.DB, user.nipNisn, { ...(current as any), name }));
+    const nextRoster = (roster || []).map(item =>
+      item && typeof item === 'object' && String((item as any).nisn) === user.nipNisn
+        ? { ...(item as Record<string, unknown>), name }
+        : item
+    );
+    if (JSON.stringify(nextRoster) !== JSON.stringify(roster)) {
+      statements.push(...rosterReplaceStatements(env.DB, nextRoster));
     }
   }
 

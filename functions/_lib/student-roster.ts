@@ -49,38 +49,33 @@ export function syncStudentRoster(
   return next;
 }
 
-export function saveCollectionStatement(db: D1Database, key: string, value: unknown): D1PreparedStatement {
-  return db.prepare(
-    `INSERT INTO app_data (key, value, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
-  ).bind(key, JSON.stringify(value), Math.floor(Date.now() / 1000));
-}
-
-export function appendStudentStatement(db: D1Database, student: StudentRosterRecord): D1PreparedStatement {
-  return db.prepare(
-    `INSERT INTO app_data (key, value, updated_at) VALUES ('siswa_v1', json_array(json(?)), unixepoch())
-     ON CONFLICT(key) DO UPDATE
-     SET value = json_insert(app_data.value, '$[#]', json(?)), updated_at = unixepoch()`
-  ).bind(JSON.stringify(student), JSON.stringify(student));
-}
-
-export function replaceStudentStatement(db: D1Database, oldNisn: string, student: StudentRosterRecord): D1PreparedStatement {
-  return db.prepare(
-    `UPDATE app_data
-     SET value = json_set(
-       value,
-       '$[' || (SELECT j.key FROM json_each(app_data.value) AS j WHERE json_extract(j.value, '$.nisn') = ? LIMIT 1) || ']',
-       json(?)
-     ), updated_at = unixepoch()
-     WHERE key = 'siswa_v1'`
-  ).bind(oldNisn, JSON.stringify(student));
-}
-
-export function removeStudentStatement(db: D1Database, nisn: string): D1PreparedStatement {
-  return db.prepare(
-    `UPDATE app_data
-     SET value = (SELECT json_group_array(json(j.value)) FROM json_each(app_data.value) AS j WHERE json_extract(j.value, '$.nisn') != ?),
-         updated_at = unixepoch()
-     WHERE key = 'siswa_v1'`
-  ).bind(nisn);
+// Sejak migrasi 0023, penulisan siswa_v1 memperbarui DUA lapisan sekaligus
+// dalam satu batch atomik: proyeksi tabel students (sumber kebenaran) +
+// mirror app_data (kompatibilitas pembaca legacy) + revisi. Seluruh roster
+// ditulis ulang (soft-disable lama, upsert baru) — pola sama dengan trigger
+// lama, tapi kini dipegang aplikasi.
+export function rosterReplaceStatements(db: D1Database, roster: unknown[]): D1PreparedStatement[] {
+  const serialized = JSON.stringify(roster);
+  return [
+    db.prepare('UPDATE students SET active = 0'),
+    db.prepare(
+      `INSERT INTO students (id, position, nisn, class_id, name, gender, foto, fields, source_json, active)
+       SELECT json_extract(value,'$.id'), CAST(key AS INTEGER), json_extract(value,'$.nisn'),
+         json_extract(value,'$.classId'), json_extract(value,'$.name'), json_extract(value,'$.gender'),
+         json_extract(value,'$.foto'), json(value), json(value), 1
+       FROM json_each(?) WHERE 1
+       ON CONFLICT(id) DO UPDATE SET position=excluded.position, nisn=excluded.nisn, class_id=excluded.class_id,
+         name=excluded.name, gender=excluded.gender, foto=excluded.foto,
+         fields=excluded.fields, source_json=excluded.source_json, active=1`
+    ).bind(serialized),
+    db.prepare(
+      `INSERT INTO app_data (key, value, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+    ).bind('siswa_v1', serialized, Math.floor(Date.now() / 1000)),
+    db.prepare(
+      `INSERT INTO academic_collection_revisions(key, revision, initialized, updated_at)
+       VALUES ('siswa_v1', 1, 1, unixepoch())
+       ON CONFLICT(key) DO UPDATE SET revision = revision + 1, initialized = 1, updated_at = unixepoch()`
+    ),
+  ];
 }

@@ -1,7 +1,7 @@
 import { hashPassword, verifyPassword, type AuthUser } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { prepareUserAudit, writeUserAudit } from '../../_lib/user-audit';
-import { appendStudentStatement, classExists, readCollection, removeStudentStatement, replaceStudentStatement, syncStudentRoster, type StudentRosterRecord } from '../../_lib/student-roster';
+import { classExists, readCollection, rosterReplaceStatements, syncStudentRoster, type StudentRosterRecord } from '../../_lib/student-roster';
 
 interface Env { DB: D1Database }
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -120,11 +120,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   const statements = [insert];
   if (role === 'siswa') {
     const nextRoster = syncStudentRoster(roster, { nisn: identifier, name, classId, gender: body.gender });
-    const existingStudent = roster?.some(item => item && typeof item === 'object' && String((item as any).nisn) === identifier);
-    const nextStudent = nextRoster.find(item => item.nisn === identifier)!;
-    statements.push(existingStudent
-      ? replaceStudentStatement(env.DB, identifier, nextStudent)
-      : appendStudentStatement(env.DB, nextStudent));
+    statements.push(...rosterReplaceStatements(env.DB, nextRoster));
   }
   statements.push(prepareUserAudit(env.DB, actor, 'CREATE_USER', created, undefined, created));
   try {
@@ -162,7 +158,7 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
     .bind(body.id, next.email, next.identifier).first();
   if (duplicate) return jsonResponse({ success: false, error: 'Email atau nomor identitas sudah digunakan.' }, 409);
 
-  let rosterStatement: D1PreparedStatement | null = null;
+  let rosterStatements: D1PreparedStatement[] = [];
   const studentIdentityChanged = next.role === 'siswa' && (
     String(target.role) !== 'siswa'
     || next.name !== String(target.name)
@@ -178,7 +174,6 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
         readCollection(env.DB, 'siswa_v1'),
       ]);
       if (!classExists(classes, next.classId)) return jsonResponse({ success: false, error: 'Kelas siswa tidak ditemukan.' }, 400);
-      const existingStudent = roster?.find(item => item && typeof item === 'object' && String((item as any).nisn) === String(target.nip_nisn));
       if (String(target.role) !== 'siswa' && !['L', 'P'].includes(String(body.gender || ''))) {
         return jsonResponse({ success: false, error: 'Jenis kelamin wajib diisi saat mengubah akun menjadi siswa.' }, 400);
       }
@@ -186,23 +181,21 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
         oldNisn: String(target.nip_nisn), nisn: next.identifier, name: next.name, classId: next.classId,
         gender: body.gender,
       });
-      const nextStudent = nextRoster.find(item => item.nisn === next.identifier)!;
-      rosterStatement = existingStudent
-        ? replaceStudentStatement(env.DB, String(target.nip_nisn), nextStudent)
-        : appendStudentStatement(env.DB, nextStudent);
+      rosterStatements.push(...rosterReplaceStatements(env.DB, nextRoster));
     } catch (error) {
       return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data roster tidak dapat diproses.' }, 500);
     }
   }
   if (String(target.role) === 'siswa' && next.role !== 'siswa') {
-    rosterStatement = removeStudentStatement(env.DB, String(target.nip_nisn));
+    const roster = await readCollection(env.DB, 'siswa_v1');
+    rosterStatements.push(...rosterReplaceStatements(env.DB,
+      (roster || []).filter(item => item && typeof item === 'object' && String((item as any).nisn) !== String(target.nip_nisn))));
   }
   const update = env.DB.prepare(
     `UPDATE users SET name = ?, email = ?, nip_nisn = ?, role = ?, class_id = ?, jabatan = ?, status = ?,
       archived_at = CASE WHEN ? = 'active' THEN NULL ELSE archived_at END WHERE id = ?`
   ).bind(next.name, next.email, next.identifier, next.role, next.classId, next.jabatan, next.status, next.status, body.id);
-  const statements = [update];
-  if (rosterStatement) statements.push(rosterStatement);
+  const statements = [update, ...rosterStatements];
   statements.push(prepareUserAudit(env.DB, actor, 'UPDATE_USER', { id: body.id, name: next.name }, publicUser(target), next, body.reason));
   try {
     await env.DB.batch(statements);
