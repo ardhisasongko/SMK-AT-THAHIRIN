@@ -100,7 +100,7 @@ Prioritas disepakati bersama pemilik project (17 Agu 2026).
 **Sedang:**
 4. **Bank soal** — kumpulan soal reusable lintas ujian (impor/ekspor JSON).
 5. **Import/ekspor nilai** ke Excel, cetak rapor digital (print styles sudah siap).
-6. **Migrasi penuh ke relasional** — menutup lapisan `app_data` JSON untuk koleksi akademik (transisi bertahap, verifikasi trigger sync).
+6. ~~**Migrasi penuh ke relasional**~~ **SELESAI (0023, 17 Agu 2026)** — lapisan tulis `app_data` JSON untuk koleksi akademik ditutup; trigger sync 0018 di-drop; proyeksi relasional jadi sumber kebenaran (tulis batch atomik + mirror `app_data` untuk pembaca legacy).
 
 **Rendah:**
 7. **Email/SMS fallback** untuk notifikasi bila WhatsApp tidak tersedia.

@@ -1,13 +1,13 @@
 # Skema Basis Data — SMKS PLUS AT THAHIRIN
 
-Database: **Cloudflare D1** (SQLite). Binding: `DB`. Migrasi: `migrations/0001_*.sql` s.d. `0022_*.sql`.
+Database: **Cloudflare D1** (SQLite). Binding: `DB`. Migrasi: `migrations/0001_*.sql` s.d. `0023_*.sql`.
 
 > Dokumen ini memuat versi **final** setiap tabel (perubahan dari migrasi berikutnya sudah digabung). Kolom yang ditambahkan belakangan ditandai `(+migrasi)`.
 
 ## Arsitektur Data: Dua Lapisan
 
-1. **Lapisan JSON legacy** — `app_data` menyimpan seluruh koleksi sebagai JSON per-key (`kelas_v1`, `siswa_v1`, `presensi_v1`, `modulAjar_v1`, dst). Dipertahankan untuk kompatibilitas API `GET/PUT /api/data/:key`.
-2. **Lapisan relasional** — tabel domain (CBT, Forum, Notifikasi, WhatsApp sejak 0009–0010) dan proyeksi relasional data akademik (`school_classes`, `students`, `attendance_records`, `teaching_modules` sejak 0018). Proyeksi disinkronkan otomatis dari `app_data` via **trigger** (lihat bagian Trigger).
+1. **Lapisan relasional (sumber kebenaran)** — tabel domain (CBT, Forum, Notifikasi, WhatsApp sejak 0009–0010) dan proyeksi relasional data akademik (`school_classes`, `students`, `attendance_records`, `teaching_modules` sejak 0018). Sejak **0023**, semua penulisan data akademik ditangani aplikasi langsung ke proyeksi (bukan lewat `app_data`).
+2. **Lapisan JSON legacy** — `app_data` menyimpan koleksi akademik (`kelas_v1`, `siswa_v1`, `presensi_v1`, `modulAjar_v1`) sebagai **mirror/arsip** (ditulis atomik bersama proyeksi lewat satu batch D1) agar pembaca legacy (`GET /api/data/:key`, WhatsApp contacts, forum, notifikasi, foto siswa, dll.) tetap berfungsi. Koleksi non-akademik (`users`, `cbt`, dll.) tetap hidup di `app_data` seperti biasa.
 
 Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + SQLite D1). Integritas dijaga di lapisan aplikasi.
 
@@ -441,9 +441,9 @@ whatsapp_outbox ─┬─< whatsapp_delivery_meta        (FK outbox_id, CASCADE)
                  ├─< whatsapp_reconciliation_events (FK outbox_id, CASCADE)
                  └─(logis) student_id → siswa / teacher_user_id → users
 
-app_data (JSON legacy) ──(trigger sync 0018)──> school_classes / class_schedule_items /
-                                                 students / attendance_records / teaching_modules
-                                                 (+ academic_collection_revisions)
+app_data (JSON mirror akademik) ⇄──batch atomik (0023)──> school_classes / class_schedule_items /
+                                                        students / attendance_records / teaching_modules
+                                                        (+ academic_collection_revisions)
 
 school_classes ──< class_schedule_items (FK class_id)
 school_classes ──< students.class_id    (FK)
@@ -456,7 +456,7 @@ FK fisik hanya pada: `sessions`, `cbt_questions`, `cbt_attempts`, `cbt_attempt_a
 ## Trigger
 
 1. **Proteksi soal CBT setelah ujian dimulai** (0015, dibuat ulang di 0021): `prevent_cbt_question_insert_after_attempt` / `_update_after_attempt` / `_delete_after_attempt` — begitu ada attempt untuk sebuah ujian, soal ujian itu tidak boleh diubah/disisipkan/dihapus (RAISE ABORT `CBT_EXAM_ALREADY_STARTED`).
-2. **Sinkronisasi proyeksi relasional dari `app_data`** (0018), berpasangan INSERT/UPDATE untuk 4 koleksi: `sync_kelas_projection_*`, `sync_siswa_projection_*`, `sync_presensi_projection_*`, `sync_modules_projection_*`. Pola: saat `app_data.key` yang sesuai ditulis dengan JSON array valid → nonaktifkan/DELETE data proyeksi lama → insert ulang → naikkan `revision`. JSON invalid **tidak** disinkronkan (gate `json_valid`).
+2. ~~Sinkronisasi proyeksi relasional dari `app_data`~~ **(di-drop di 0023)** — trigger 0018 (`sync_kelas_projection_*`, `sync_siswa_projection_*`, `sync_presensi_projection_*`, `sync_modules_projection_*`) dihapus setelah re-sync akhir. Kini aplikasi menulis proyeksi + mirror `app_data` + revisi dalam satu batch D1 atomik (lihat `functions/_lib/relational-data.ts`, `functions/_lib/student-roster.ts`).
 
 ## Index Penting
 
@@ -503,6 +503,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0020 | `cbt_questions`: +question_type |
 | 0021 | Rebuild `cbt_questions` tanpa CHECK correct_answer (mendukung essai) |
 | 0022 | `cbt_exams`: +exam_type, +min_submit_minutes |
+| 0023 | Tutup lapisan tulis `app_data` akademik: re-sync akhir proyeksi, drop 8 trigger sync 0018 |
 
 ## Anomali & Catatan Penting (keputusan desain)
 
@@ -512,7 +513,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 4. **`cbt_exams` punya 2 mekanisme aktivasi** (status + is_active + jam buka/tutup) — potensi ambiguitas state; aplikasi menghitung `effectiveCbtStatus`.
 5. **`min_submit_minutes` nullable** — "default 80% durasi" dihitung aplikasi (`resolveMinSubmitSeconds`).
 6. **`attendance_records.id` UNIQUE redundan** — dipertahankan demi kompatibilitas JSON legacy.
-7. **Sinkronisasi trigger 0018 destruktif** — update `presensi_v1` = DELETE semua `attendance_records` lalu insert ulang; `class_schedule_items` juga di-delete total. Aman karena anak dihapus lebih dulu, tapi tanpa riwayat.
+7. **Sinkronisasi 0018 destruktif (historis)** — dulu update `presensi_v1` = DELETE semua `attendance_records` lalu insert ulang; `class_schedule_items` juga di-delete total. Di **0023** trigger dihapus; penulisan batch aplikasi menggunakan full-replace yang sama tapi dipegang aplikasi dengan FK pre-check (referensi siswa/kelas yang tidak ada ditolak, bukan di-skip).
 8. **Unique NISN hanya siswa aktif** — NISN boleh duplikat antar siswa non-aktif.
 9. **`sessions` FK tanpa ON DELETE CASCADE** — hapus user dengan sesi aktif harus bersihkan sesi dulu.
 10. **0007 data-fix** — migrasi juga dipakai untuk perbaikan data, bukan hanya skema.
