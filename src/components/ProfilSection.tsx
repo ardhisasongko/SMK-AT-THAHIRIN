@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar } from '../types';
 import { authHeaders } from '../utils/auth';
+import { RaporModal } from './RaporModal';
 
 const normalizeName = (s: string) =>
   s
@@ -71,6 +72,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
   const [saveErrorMsg, setSaveErrorMsg] = useState<string>('');
   const [savingProfile, setSavingProfile] = useState<boolean>(false);
+  const [raporNisn, setRaporNisn] = useState<string | null>(null);
 
   if (!currentUser) {
     return (
@@ -197,6 +199,16 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
               <Edit className="w-3.5 h-3.5 text-slate-500" />
               <span>Edit Informasi</span>
             </button>
+            {(isStudentRole) && currentUser.nipNisn && (
+              <button
+                id="btn-open-rapor-saya"
+                onClick={() => setRaporNisn(currentUser.nipNisn!)}
+                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Rapor Saya</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -831,6 +843,15 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* RAPOR MODAL */}
+      {raporNisn && currentUser && (
+        <RaporModal
+          nisn={raporNisn}
+          name={currentUser.name}
+          onClose={() => setRaporNisn(null)}
+        />
       )}
 
     </div>

@@ -346,3 +346,30 @@ export interface CbtBulkResult {
   title: string;
   exams: CbtBulkExamResult[];
 }
+
+export interface RaporPresensiItem {
+  status: string;
+  jumlah: number;
+}
+
+export interface RaporCbtMapel {
+  subject: string;
+  examCount: number;
+  avgScore: number;
+  bestScore: number;
+}
+
+export interface RaporUjian {
+  title: string;
+  subject: string;
+  examType: string;
+  score: number;
+  submittedAt: string;
+}
+
+export interface RaporReport {
+  siswa: { nisn: string; name: string; classId: string; className: string };
+  presensi: { rincian: RaporPresensiItem[]; total: number; hadirPersen: number };
+  cbt: { perMapel: RaporCbtMapel[]; totalUjian: number; rataRata: number };
+  ujian: RaporUjian[];
+}

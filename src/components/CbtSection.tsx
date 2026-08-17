@@ -18,6 +18,7 @@ import {
   Pencil,
   Trash2,
   TrendingUp,
+  Download,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission, CbtSummary, CbtAnalytics as CbtAnalyticsType, Kelas } from '../types';
 import { useFilter } from '../hooks/useFilter';
@@ -30,6 +31,7 @@ import { CbtTokenModal } from './cbt/CbtTokenModal';
 import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
 import { CbtBulkScheduleModal } from './cbt/CbtBulkScheduleModal';
 import { cbtApi } from '../utils/cbt-api';
+import { downloadCsv } from '../utils/download';
 
 interface CbtSectionProps {
   currentUser: UserType | null;
@@ -56,6 +58,7 @@ export function CbtSection({
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
   const [analytics, setAnalytics] = useState<CbtAnalyticsType | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
+  const [exportingScores, setExportingScores] = useState<boolean>(false);
   const { query: searchTerm, setQuery: setSearchTerm, filtered: filteredExams } = useFilter(
     cbtExams,
     ['title', 'subject']
@@ -210,6 +213,17 @@ export function CbtSection({
     }
   };
 
+  const handleExportScores = async () => {
+    setExportingScores(true);
+    try {
+      await downloadCsv('/api/cbt/export/scores', `nilai-cbt-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Ekspor nilai gagal.');
+    } finally {
+      setExportingScores(false);
+    }
+  };
+
   // Full-screen test runner
   if (isTestMode && activeExam && currentUser) {
     return (
@@ -291,6 +305,16 @@ export function CbtSection({
                   >
                     <CalendarDays className="w-4 h-4" />
                     <span>Jadwal PTS/UAS Massal</span>
+                  </button>
+
+                  <button
+                    id="btn-export-cbt-scores"
+                    onClick={() => void handleExportScores()}
+                    disabled={exportingScores}
+                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4 text-emerald-400" />
+                    <span>{exportingScores ? 'Mengunduh...' : 'Ekspor Nilai (CSV)'}</span>
                   </button>
                 </>
               )}

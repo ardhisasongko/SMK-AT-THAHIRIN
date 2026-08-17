@@ -19,8 +19,10 @@ import {
   Crown,
   ShieldCheck,
   ShieldX,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
+import { RaporModal } from './RaporModal';
 
 interface KelasSectionProps {
   kelasList: Kelas[];
@@ -68,6 +70,8 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
   const [editHp, setEditHp] = useState('');
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  const [raporSiswa, setRaporSiswa] = useState<Siswa | null>(null);
 
   // ===== Kelola Ketua Kelas (admin) =====
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
@@ -559,6 +563,13 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
+                      <button
+                        onClick={() => setRaporSiswa(siswa)}
+                        title="Lihat rapor siswa"
+                        className="shrink-0 p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -847,6 +858,14 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {raporSiswa && (
+        <RaporModal
+          nisn={raporSiswa.nisn}
+          name={raporSiswa.name}
+          onClose={() => setRaporSiswa(null)}
+        />
       )}
 
     </div>
