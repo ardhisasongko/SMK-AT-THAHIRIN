@@ -1,20 +1,28 @@
 # HANDOFF - Status Proyek
 
-Tanggal pembaruan: Minggu, 16 Agustus 2026
+Tanggal pembaruan: Senin, 17 Agustus 2026
 Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
 - Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): fitur **waktu minimal pengerjaan ujian resmi** live (deploy `9476e578`, commit `f7c52ff`); smoke test produksi lulus (409/200, latihan bebas kirim, UI tombol terkunci).
+- **Sesi 17 Agustus 2026 (belum di-deploy)**: 4 milestone baru siap deploy — analitik guru, service worker offline/PWA, template jadwal PTS/UAS massal, dan simpan profil sendiri ke server. Belum ada migrasi baru (tidak menyentuh skema D1).
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
-- Verifikasi terakhir: `npm run lint` lulus, **235/235 test** lulus, production build berhasil, migrasi `0022` lulus di D1 lokal + remote.
+- Verifikasi terakhir: `npm run lint` lulus, **262/262 test** lulus (47 file), production build berhasil; migrasi D1 remote tetap sampai `0022` (tidak ada migrasi baru di sesi ini).
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
 - Migrasi D1 remote sudah diterapkan sampai `0022_cbt_exam_type.sql` (live di produksi 16 Agustus 2026).
 - Kesiapan kode integrasi eksternal dinilai A-, tetapi status operasional tetap menunggu deploy, dry-run Google Sync, scan QR WhatsApp, dan canary 7-14 hari.
 
 ### Commit Milestone Terbaru
 
+- `1f05422 fix(profil): simpan perubahan nama/email ke server (PATCH /api/users/me) + sinkronisasi roster siswa`
+- `f495bfd feat(cbt): template jadwal PTS/UAS massal 5 hari x 4 mapel — endpoint bulk + modal dengan pratinjau dan token otomatis`
+- `1304b00 feat(pwa): service worker offline (shell cached, API tidak pernah di-cache) + banner status offline`
+- `84e8a4a feat(cbt): analitik nilai guru — distribusi skor per ujian + deteksi pengerjaan cepat/mencurigakan`
+- `d77ef47 docs(prd): finalisasi roadmap dengan prioritas hasil review`
+- `0e39e93 docs: dokumentasi project lengkap di docs/ (prd, architecture, design, schema, rules) + AGENTS.md menunjuk ke docs/`
+- `76d0336 docs: arsipkan laporan perbaikan lama ke docs/archive, hapus status-report usang`
 - `e2decfd docs(cbt): update diagram alur ke simulasi skala besar (UAS 45 soal & latihan 30 soal)`
 - `91be39a docs(cbt): simulasi skala besar UAS 45 soal & latihan 30 soal`
 - `c6eebbe docs(cbt): catat fitur waktu minimal pengerjaan di laporan simulasi`
@@ -27,7 +35,39 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
 - `11405a8 feat(platform): tuntaskan lifecycle dan integritas domain`
 
-## Perubahan Utama Sesi Ini
+## Perubahan Utama Sesi Ini (17 Agustus 2026)
+
+### Analitik Nilai Guru
+
+- `GET /api/cbt/analytics` (staff: guru/admin/super_admin; guru hanya ujian miliknya, 403 untuk siswa): distribusi skor 6 bucket (0–49 s.d. 90–100), rata-rata, jumlah siswa, dan daftar flag pengerjaan mencurigakan.
+- Deteksi: `FAST_RATIO=0.25` — jawaban dikirim dalam ≤25% durasi; `SUSPICIOUS_SCORE=75` — cepat + skor ≥75 (indikasi kerja sama/kunci, bukan vonis).
+- UI `src/components/cbt/CbtAnalytics.tsx` (bar chart CSS, kartu ujian, tabel flag yang bisa di-expand) dibuka dari tombol `btn-open-analytics` di `CbtSection`.
+- Test: `tests/cbt-analytics-api.test.ts` (4) + `tests/CbtAnalytics.test.tsx` (4).
+
+### Service Worker + Offline Mode (PWA)
+
+- `public/sw.js`: cache `smk-at-tahirin-v1`; precache `/`, manifest, ikon; **respons API (`/api/`) tidak pernah di-cache** (sesi/privasi aman); navigasi network-first dengan fallback `caches.match('/')`; `/assets/` & `/images/` stale-while-revalidate; `skipWaiting` + `clients.claim`.
+- Registrasi di `src/main.tsx` hanya saat `import.meta.env.PROD` (dev tidak terganggu); `src/vite-env.d.ts` ditambah agar tsc mengenali `import.meta.env`.
+- Banner amber "Anda sedang offline" di `src/App.tsx` via listener `online`/`offline`.
+- Test: `tests/pwa-offline.test.ts` (4).
+
+### Template Jadwal PTS/UAS Massal (5 Hari × 4 Mapel)
+
+- `POST /api/cbt/exams/bulk` (staff): sekali submit menghasilkan 20 ujian (5 hari kerja dari `startDate`, melewati Sabtu/Minggu; 4 mapel per hari). Validasi: title ≤200, 1–8 mapel (name ≤150, teacher ≤100), durasi 1–300 menit, `openTime` HH:MM, jeda antar sesi 0–180 menit, `classTarget` valid.
+- Sesi beruntun: jam buka sesi berikutnya = tutup sesi sebelumnya + jeda; token 8 karakter uppercase otomatis per ujian; `exam_type='ujian'` (terkena min-submit 80%); status `upcoming`/`active` vs `todayWIB()`; insert D1 batch.
+- Helper diekspor untuk test: `weekdaysFrom`, `dayNameOf`, `addMinutesToTime`. `validClassTarget` diekspor dari `functions/api/cbt/exams/index.ts`.
+- UI `src/components/cbt/CbtBulkScheduleModal.tsx`: form + pratinjau grid 5×4 + tabel hasil dengan token & tombol salin semua; tombol `btn-open-bulk-schedule` "Jadwal PTS/UAS Massal" di `CbtSection`.
+- Bug yang diperbaiki selama pengerjaan: `await` di dalam callback `forEach` non-async (transform error vitest) → diganti `for...of`; test mengoreksi ekspektasi sesi ke-4 (07:30 + 3×105 mnt = 12:45–14:15).
+- Test: `tests/cbt-bulk-schedule.test.ts` (6) + `tests/CbtBulkScheduleModal.test.tsx` (3).
+
+### Perbaikan: Simpan Profil Sendiri ke Server (bug nyata lama)
+
+- Sebelumnya tombol "Edit Informasi" di Profil hanya memutasi objek `currentUser` (state React) tanpa menyimpan ke mana pun — hilang saat reload, dan nama di roster tidak pernah berubah.
+- Endpoint baru `PATCH /api/users/me`: autentikasi wajib; validasi nama 1–100 & format email; cek email duplikat (409); untuk siswa/ketua_kelas yang mengganti nama, roster `siswa_v1` ikut disinkronkan (`replaceStudentStatement`) dalam satu `DB.batch`.
+- Frontend: `handleSaveProfile` async dengan loading state, pesan error di modal, dan callback `onProfileUpdated` di `App.tsx` yang memperbarui sesi (nama/email tampil seketika di navbar/profil).
+- Test: `tests/users-me.test.ts` (6).
+
+## Perubahan Utama Sesi Sebelumnya
 
 ### Waktu Minimal Pengerjaan (Anti Jawaban Asal-Asalan) — Live
 
@@ -332,6 +372,12 @@ Panduan gateway: `WHATSAPP_GATEWAY.md` dan `EXTERNAL_INTEGRATIONS.md`.
 - `migrations/0019_cbt_schedule_autosave.sql`: jam buka/tutup ujian CBT (`open_time`/`close_time`) dan tabel auto-save jawaban `cbt_attempt_answers`.
 - `functions/api/cbt/summary/index.ts`: rekap nilai lintas ujian per siswa dengan scope per role.
 - `functions/api/cbt/attempts/[id]/save.ts`: endpoint auto-save/resume jawaban attempt.
+- `functions/api/cbt/analytics/index.ts`: analitik nilai guru (distribusi skor + flag mencurigakan).
+- `functions/api/cbt/exams/bulk/index.ts`: template jadwal PTS/UAS massal (5 hari × mapel, batch insert, token otomatis).
+- `functions/api/users/me/index.ts`: simpan nama/email profil sendiri + sinkronisasi roster siswa.
+- `public/sw.js`: service worker offline (API tidak pernah di-cache).
+- `src/components/cbt/CbtAnalytics.tsx`, `src/components/cbt/CbtBulkScheduleModal.tsx`: UI analitik & template PTS/UAS.
+- `tests/cbt-analytics-api.test.ts`, `tests/CbtAnalytics.test.tsx`, `tests/pwa-offline.test.ts`, `tests/cbt-bulk-schedule.test.ts`, `tests/CbtBulkScheduleModal.test.tsx`, `tests/users-me.test.ts`: test baru sesi 17 Agustus.
 - `src/components/CbtSection.tsx`, `src/components/cbt/CbtCreateExamModal.tsx`, `src/components/cbt/CbtTestRunner.tsx`: jadwal harian, jam buka/tutup, auto-save, dan rekap nilai.
 - `tests/cbt-schedule-autosave.test.ts`: test window jam, validasi, save API, dan summary API.
 - `functions/_lib/relational-data.ts`: validasi ketat, pembacaan proyeksi, dan tulis CAS untuk koleksi akademik.
@@ -350,14 +396,13 @@ node --check whatsapp-gateway/src/index.js
 npx wrangler deploy --dry-run # dari sync-worker/
 ```
 
-Hasil terakhir:
+Hasil terakhir (17 Agustus 2026):
 
-- 42 test files aplikasi lulus.
-- 235 tests aplikasi lulus (termasuk 13 baru: min-submit server/runner/modal + Nilai Saya).
-- 8 tests sync-worker lulus.
-- TypeScript lulus.
-- Typecheck sync-worker lulus.
-- Production build lulus.
+- 47 test files aplikasi lulus.
+- 262 tests aplikasi lulus (235 lama + 27 baru: analitik 8, PWA 4, bulk PTS/UAS 9, users/me 6).
+- TypeScript lulus. Production build lulus.
+- Tidak ada migrasi D1 baru di sesi ini (remote tetap sampai `0022`).
+- 8 tests sync-worker lulus (tidak berubah).
 - Migrasi D1 remote sampai `0022` berhasil (0021–0022 live 16 Agustus 2026; backup di `/tmp/opencode/backup-produksi-cbt-0021.sql` dan `backup-produksi-cbt-0022-*.sql`).
 - Smoke test produksi fitur min-submit (16 Agustus 2026): ujian resmi submit awal → 409; setelah min → 200 skor 100; latihan submit instan → 200; Playwright: tombol `Kirim dibuka dalam 02:30` disabled; badge kartu `Ujian Resmi · min. kirim 4 mnt`.
 - Simulasi skala besar produksi: UAS 45 soal (40 PG + 5 essai) skor 100, latihan 30 soal (25 PG + 5 essai) skor 100; attempt simulasi dibersihkan.
@@ -375,10 +420,11 @@ Hasil terakhir:
 
 Kode, migrasi, dan deploy sudah selesai (16 Agustus 2026). Langkah tersisa memerlukan mesin/akun operator dan dijalankan di luar repo:
 
-1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main` (HEAD: `e2decfd`).
-2. Ujian aktif di produksi yang perlu diketahui: `UAS Kearsipan (Simulasi 45 Soal)` (token `UAS01`, ujian resmi, min. kirim 30 mnt) dan `Latihan Kearsipan (Simulasi 30 Soal)` (token `LAT02`) — keduanya aktif 16 Agustus 2026 (rentang satu hari, harus diperbarui tanggal/endDate bila mau dipakai di hari lain), plus `Latihan Kearsipan` permanen (token `LATIH01`, 3 soal).
-3. Hati-hati dengan editor/prettier-on-save yang bisa menimpa `cbt-simulasi.html` dari salinan lama (pernah terjadi; restore via `git checkout -- cbt-simulasi.html`).
-4. Google Sync: deploy Apps Script baru sebagai Web App, set Script Property `SYNC_TOKEN`, pasang secret Worker dari `sync-worker/`, set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
+1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main` (HEAD: `1f05422`).
+2. **Deploy fitur sesi 17 Agustus 2026** (`npm run pages:deploy`): analitik guru, service worker offline (perhatikan `_headers` CSP tetap `script-src 'self'` — SW tidak menambah script inline), template PTS/UAS massal, dan `PATCH /api/users/me`. Tidak ada migrasi D1 baru. Smoke test: buka halaman lalu mode pesawat → shell tetap tampil; guru buka panel analitik; buat 20 ujian via template; siswa ubah nama di Profil → nama baru tampil & konsisten di daftar kelas.
+3. Ujian aktif di produksi yang perlu diketahui: `UAS Kearsipan (Simulasi 45 Soal)` (token `UAS01`, ujian resmi, min. kirim 30 mnt) dan `Latihan Kearsipan (Simulasi 30 Soal)` (token `LAT02`) — keduanya aktif 16 Agustus 2026 (rentang satu hari, harus diperbarui tanggal/endDate bila mau dipakai di hari lain), plus `Latihan Kearsipan` permanen (token `LATIH01`, 3 soal).
+4. Hati-hati dengan editor/prettier-on-save yang bisa menimpa `cbt-simulasi.html` dari salinan lama (pernah terjadi; restore via `git checkout -- cbt-simulasi.html`).
+5. Google Sync: deploy Apps Script baru sebagai Web App, set Script Property `SYNC_TOKEN`, pasang secret Worker dari `sync-worker/`, set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
 3. Dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
 4. WhatsApp: pastikan Google Chrome terpasang di komputer operator; isi `GATEWAY_KEY` di `whatsapp-gateway/.env`; `npm start` di `whatsapp-gateway/`; scan QR nomor pengirim; pastikan heartbeat muncul di panel Admin.
 5. Aktifkan canary hanya untuk 1-2 nomor ber-consent selama 7-14 hari; uji pause, restart, reconnect, dan rekonsiliasi `sent_unknown`.
