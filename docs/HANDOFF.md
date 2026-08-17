@@ -8,7 +8,7 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
 - Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): fitur **waktu minimal pengerjaan ujian resmi** live (deploy `9476e578`, commit `f7c52ff`); smoke test produksi lulus (409/200, latihan bebas kirim, UI tombol terkunci).
 - **Sesi 17 Agustus 2026 (belum di-deploy)**: 4 milestone baru siap deploy — analitik guru, service worker offline/PWA, template jadwal PTS/UAS massal, dan simpan profil sendiri ke server. Belum ada migrasi baru (tidak menyentuh skema D1).
-- **Deploy 17 Agustus 2026 (dilakukan)**: analitik, PWA offline, template PTS/UAS, `PATCH /api/users/me`, ekspor nilai CBT + rapor siswa — semua live (`5e78e61c` lalu `47968d60`); smoke test produksi lulus (detail di bawah). Fitur berikutnya yang sudah dikerjakan pasca-deploy pertama: ekspor nilai + rapor (deploy kedua `47968d60`).
+- **Deploy 17 Agustus 2026 (dilakukan)**: analitik, PWA offline, template PTS/UAS, `PATCH /api/users/me`, ekspor nilai CBT + rapor siswa — semua live (`5e78e61c` lalu `47968d60`); smoke test produksi lulus (detail di bawah). **Smoke test UI e2e via Playwright 9/9 lulus** (analitik, ekspor nilai, modal kelas, rapor siswa, offline shell + banner). **Ujian simulasi produksi dibersihkan**: `UAS Kearsipan (Simulasi 45 Soal)` (`UAS01`) dan `Latihan Kearsipan (Simulasi 30 Soal)` (`LAT02`) dihapus via DELETE; tersisa `Latihan Kearsipan` permanen (`LATIH01`, aktif 16–30 Agustus) + PTS/Kuis historis. 10 commit sesi sudah di-push ke `origin/main` (`7abb135`).
 - D1 remote: `smk-at-tahirin-db` (`e436d309-e92a-430d-8c48-c47752b3391b`).
 - Verifikasi terakhir: `npm run lint` lulus, **269/269 test** lulus (49 file), production build berhasil; migrasi D1 remote tetap sampai `0022` (tidak ada migrasi baru di sesi ini).
 - Bundle sudah dipisah menjadi chunk aplikasi, React, ikon, motion, dan vendor; warning ukuran bundle utama sudah hilang.
@@ -78,6 +78,12 @@ Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - Catatan: ekspor presensi TIDAK dibuat server-side — AbsensiSection sudah punya "Export Excel/CSV" client-side; endpoint `attendance/export` yang sempat dibuat dihapus (hindari duplikasi fitur).
 - Test: `tests/rapor-export.test.ts` (7) — scope per role, escaping, format CSV.
 - **Deploy 17 Agustus (kedua)**: rapor + ekspor live (`47968d60`). Smoke test produksi: rapor siswa GHINA NAILA `0082219950` JSON+CSV benar (kelas X MPLB 1, 1 ujian, rata-rata 67), rapor siswa lain 403, endpoint baru 401 tanpa auth.
+
+### Smoke Test UI e2e (Playwright) + Pembersihan Ujian Simulasi
+
+- **9/9 lulus** di produksi (`/tmp/opencode/e2e_smoke.py`): analitik panel terbuka (`#btn-open-analytics`), ekspor nilai CSV terunduh (`nilai-cbt-2026-08-17.csv`), modal kelas dibuka via tombol **"Siswa & Roster"** (klik teks nama kelas TIDAK membuka modal — tombol yang punya `onClick`), tombol rapor siswa ada, rapor modal terbuka + CSV terunduh (`rapor-0082219950.csv`), SW mengontrol halaman, banner offline muncul, rapor siswa ("Rapor Saya") terbuka dari Profil.
+- Temuan teknis e2e: (1) klik dock navigasi harus pakai `:visible` — `#dock-nav-profil` match 2 elemen (baris mobile `sm:hidden` + desktop `hidden sm:contents`) dan `.first` adalah yang tersembunyi; (2) offline reload hanya bekerja setelah cache di-warm (reload online kedua) — asset JS/CSS masuk cache saat SW sudah mengontrol; (3) di Chromium headless `navigator.onLine` tidak berubah oleh `set_offline` — emulasi via `add_init_script` `Object.defineProperty(navigator,'onLine',{get:()=>false})`; shell tetap termuat dari cache saat jaringan mati (body tampil, `ERR_INTERNET_DISCONNECTED` di console).
+- **Pembersihan produksi**: `DELETE /api/cbt/exams` sukses untuk `UAS Kearsipan (Simulasi 45 Soal)` dan `Latihan Kearsipan (Simulasi 30 Soal)` (keduanya `completed`, endDate 16 Agustus). Ujian yang tersisa: `Latihan Kearsipan` permanen (`LATIH01`, aktif 16–30 Agustus, punya attempt GHINA 67), `PTS Kearsipan Digital` (historis, attempt Ir. Suranto), `Kuis Harian Korespondensi` (historis).
 
 ## Perubahan Utama Sesi Sebelumnya
 
@@ -432,9 +438,9 @@ Hasil terakhir (17 Agustus 2026):
 
 Kode, migrasi, dan deploy sudah selesai (16 Agustus 2026). Langkah tersisa memerlukan mesin/akun operator dan dijalankan di luar repo:
 
-1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main` (HEAD: `1f05422`).
+1. Jalankan `git status --short --branch` dan pastikan mulai dari `main` yang sinkron dengan `origin/main` (HEAD: `7abb135`).
 2. **Deploy fitur sesi 17 Agustus 2026** (`npm run pages:deploy`): analitik guru, service worker offline (perhatikan `_headers` CSP tetap `script-src 'self'` — SW tidak menambah script inline), template PTS/UAS massal, dan `PATCH /api/users/me`. Tidak ada migrasi D1 baru. Smoke test: buka halaman lalu mode pesawat → shell tetap tampil; guru buka panel analitik; buat 20 ujian via template; siswa ubah nama di Profil → nama baru tampil & konsisten di daftar kelas.
-3. Ujian aktif di produksi yang perlu diketahui: `UAS Kearsipan (Simulasi 45 Soal)` (token `UAS01`, ujian resmi, min. kirim 30 mnt) dan `Latihan Kearsipan (Simulasi 30 Soal)` (token `LAT02`) — keduanya aktif 16 Agustus 2026 (rentang satu hari, harus diperbarui tanggal/endDate bila mau dipakai di hari lain), plus `Latihan Kearsipan` permanen (token `LATIH01`, 3 soal).
+3. Ujian aktif di produksi: `Latihan Kearsipan` permanen (token `LATIH01`, aktif 16–30 Agustus 2026). Ujian simulasi `UAS01`/`LAT02` sudah dihapus 17 Agustus 2026; PTS & Kuis historis dibiarkan.
 4. Hati-hati dengan editor/prettier-on-save yang bisa menimpa `cbt-simulasi.html` dari salinan lama (pernah terjadi; restore via `git checkout -- cbt-simulasi.html`).
 5. Google Sync: deploy Apps Script baru sebagai Web App, set Script Property `SYNC_TOKEN`, pasang secret Worker dari `sync-worker/`, set `SYNC_ENABLED=true` + `SYNC_DRY_RUN=true`, lalu `npx wrangler deploy`.
 3. Dry-run manual daily/weekly, kemudian non-dry-run staging; verifikasi tiga job harian dan satu mingguan tanpa duplikasi.
