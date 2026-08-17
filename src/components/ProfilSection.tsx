@@ -27,6 +27,7 @@ import {
   Award
 } from 'lucide-react';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar } from '../types';
+import { authHeaders } from '../utils/auth';
 
 const normalizeName = (s: string) =>
   s
@@ -43,6 +44,7 @@ interface ProfilSectionProps {
   modulList: ModulAjar[];
   setActiveTab: (tab: string) => void;
   onOpenLogin: () => void;
+  onProfileUpdated?: (user: User) => void;
 }
 
 export const ProfilSection: React.FC<ProfilSectionProps> = ({
@@ -52,7 +54,8 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   presensiList,
   modulList,
   setActiveTab,
-  onOpenLogin
+  onOpenLogin,
+  onProfileUpdated
 }) => {
   // Active inner profile sub-tab
   const [activeSubTab, setActiveSubTab] = useState<string>('pribadi');
@@ -61,11 +64,13 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
 
-  // Edit Personal Info Modal Simulator
+  // Edit Personal Info Modal
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>(currentUser?.name || '');
   const [editEmail, setEditEmail] = useState<string>(currentUser?.email || '');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string>('');
+  const [savingProfile, setSavingProfile] = useState<boolean>(false);
 
   if (!currentUser) {
     return (
@@ -109,14 +114,32 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   const teacherClasses = kelasList.filter(k => normalizeName(k.waliKelas).includes(normalizeName(currentUser.name)) || k.jadwal.some(j => normalizeName(j.guru).includes(normalizeName(currentUser.name))));
   const teacherModuls = modulList.filter(m => m.pembuat.includes(currentUser.name) || m.pembuat.includes('Ahmad Fauzi'));
 
-  // Save profile changes handler
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Simpan perubahan profil ke server (PATCH /api/users/me), lalu sinkronkan sesi.
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    currentUser.name = editName;
-    currentUser.email = editEmail;
-    setSaveSuccessMsg('Informasi profil berhasil diperbarui!');
-    setTimeout(() => setSaveSuccessMsg(''), 3000);
-    setShowEditModal(false);
+    if (savingProfile) return;
+    setSavingProfile(true);
+    setSaveErrorMsg('');
+    try {
+      const response = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ name: editName, email: editEmail }),
+      });
+      const json = await response.json() as { success: boolean; error?: string; user?: User };
+      if (!response.ok || !json.success) {
+        setSaveErrorMsg(json.error || 'Gagal menyimpan profil.');
+        return;
+      }
+      if (json.user) onProfileUpdated?.(json.user);
+      setSaveSuccessMsg('Informasi profil berhasil diperbarui!');
+      setTimeout(() => setSaveSuccessMsg(''), 3000);
+      setShowEditModal(false);
+    } catch {
+      setSaveErrorMsg('Gagal menyimpan profil. Periksa koneksi Anda.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   return (
@@ -786,6 +809,9 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                 />
               </div>
 
+              {saveErrorMsg && (
+                <p className="text-rose-600 font-bold">{saveErrorMsg}</p>
+              )}
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -796,9 +822,10 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg"
+                  disabled={savingProfile}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg disabled:opacity-50"
                 >
-                  Simpan
+                  {savingProfile ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
             </form>

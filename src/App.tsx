@@ -145,6 +145,13 @@ export default function App() {
     window.location.reload();
   };
 
+  const handleProfileUpdated = (user: User) => {
+    if (!authSession) return;
+    const next = { ...authSession, user: { ...user, avatar: authSession.user.avatar } };
+    saveAuthSession(next);
+    setAuthSession(next);
+  };
+
 return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-900">
       {isOffline && (
@@ -248,6 +255,7 @@ return (
             modulList={modulList}
             setActiveTab={setActiveTab}
             onOpenLogin={() => setShowLoginModal(true)}
+            onProfileUpdated={handleProfileUpdated}
           />
         )}
 
