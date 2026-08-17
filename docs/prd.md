@@ -90,13 +90,20 @@ Produk: Portal sekolah digital (SPA) untuk siswa, guru, dan pengelola — akses 
 
 ## 6. Roadmap (usulan, belum dikerjakan)
 
+Prioritas disepakati bersama pemilik project (17 Agu 2026).
+
+**Tinggi:**
 1. **Service worker + offline mode** — cache shell SPA, antrean mutasi offline.
 2. **Analitik guru** — grafik distribusi nilai per ujian/kelas, deteksi jawaban cepat (curang).
-3. **Bank soal** — kumpulan soal reusable lintas ujian (impor/ekspor JSON).
-4. **Jadwal PTS/UAS resmi penuh** — template 5 hari × 4 mapel dengan token per mapel.
-5. **Email/SMS fallback** untuk notifikasi bila WhatsApp tidak tersedia.
-6. **Import/ekspor nilai** ke Excel, cetak rapor digital (print styles sudah siap).
-7. **Migrasi penuh ke relasional** — menutup lapisan `app_data` JSON untuk koleksi akademik (transisi bertahap, verifikasi trigger sync).
+3. **Template jadwal PTS/UAS resmi penuh** — 5 hari × 4 mapel dengan token per mapel.
+
+**Sedang:**
+4. **Bank soal** — kumpulan soal reusable lintas ujian (impor/ekspor JSON).
+5. **Import/ekspor nilai** ke Excel, cetak rapor digital (print styles sudah siap).
+6. **Migrasi penuh ke relasional** — menutup lapisan `app_data` JSON untuk koleksi akademik (transisi bertahap, verifikasi trigger sync).
+
+**Rendah:**
+7. **Email/SMS fallback** untuk notifikasi bila WhatsApp tidak tersedia.
 8. **Uji beban & hardening D1** — index tambahan sesuai pola query produksi; monitor D1 usage dashboard.
 
-> Catatan: roadmap adalah usulan; pilih prioritas bersama pemilik project di sesi berikutnya.
+**Kandidat baru (belum dikonfirmasi kebutuhan):** nilai semester/rapor digital — saat ini nilai hanya berasal dari CBT; bila sekolah membutuhkan, tambahkan sebagai item prioritas tinggi.
