@@ -1,5 +1,5 @@
 /**
- * Client auth utilities untuk SMKS PLUS AT THAHIRIN.
+ * Client auth utilities untuk sistem informasi sekolah.
  * Autentikasi dilakukan SERVER (Pages Functions + D1); file ini hanya
  * menyimpan profil tampilan dan validasi ringan sisi client. Token sesi berada
  * di cookie HttpOnly agar tidak dapat dibaca JavaScript.

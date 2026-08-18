@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Import massal data siswa & guru dari file Excel (.xlsx) ke SMKS PLUS AT THAHIRIN.
+ * Import massal data siswa & guru dari file Excel (.xlsx) ke sistem informasi sekolah.
  *
  * Format file (4 sheet):
  *   - 3 sheet siswa (X, XI, XII) — kolom: NO, NAMA SISWA, JK, NISN, TANGGAL LAHIR
@@ -18,7 +18,7 @@
  * Aturan akun:
  *   - Login memakai NISN/NIK dengan password awal acak yang wajib diganti.
  */
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -30,8 +30,13 @@ const ROOT = join(__dirname, '..');
 const OUT_DIR = join(ROOT, 'imported');
 const DEFAULT_FOTO =
   'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80';
-const EMAIL_DOMAIN = 'smksplusatthahirin.sch.id';
 const PASSWORD_ITERATIONS = 100_000;
+
+// Identitas sekolah & DB diambil dari wrangler.toml (satu sumber kebenaran).
+const toml = readFileSync(join(ROOT, 'wrangler.toml'), 'utf8');
+const matchToml = (key) => toml.match(new RegExp(`^\\s*${key}\\s*=\\s*"([^"]+)"`, 'm'))?.[1];
+const EMAIL_DOMAIN = matchToml('SCHOOL_EMAIL_DOMAIN') || 'smksplusatthahirin.sch.id';
+const DB_NAME = matchToml('database_name') || 'smk-at-tahirin-db';
 
 // ---- Kelas yang dikenal (id + tingkat) --------------------------------
 const KELAS_BY_TINGKAT = {
@@ -315,7 +320,7 @@ function main() {
   let kelasSql = '';
   try {
     const out = execSync(
-      `npx wrangler d1 execute smk-at-tahirin-db --remote --json --command "SELECT value FROM app_data WHERE key = 'kelas_v1'"`,
+      `npx wrangler d1 execute '${DB_NAME}' --remote --json --command "SELECT value FROM app_data WHERE key = 'kelas_v1'"`,
       { cwd: ROOT, env: { ...process.env, NODE_ENV: 'development' }, stdio: ['ignore', 'pipe', 'pipe'] }
     ).toString();
     const parsed = JSON.parse(out);
@@ -360,10 +365,10 @@ function main() {
   console.log('\nOutput: imported/siswa.json, imported/akun.sql, imported/siswa.sql, imported/kredensial-akun.txt' + (kelasSql ? ', imported/kelas.sql' : ''));
   console.log('\nLangkah berikutnya:');
   console.log('  source .env.cloudflare');
-  console.log('  npx wrangler d1 migrations apply smk-at-tahirin-db --remote');
-  console.log('  npx wrangler d1 execute smk-at-tahirin-db --remote --file=imported/akun.sql');
-  console.log('  npx wrangler d1 execute smk-at-tahirin-db --remote --file=imported/siswa.sql');
-  if (kelasSql) console.log('  npx wrangler d1 execute smk-at-tahirin-db --remote --file=imported/kelas.sql');
+  console.log('  npx wrangler d1 migrations apply ' + DB_NAME + ' --remote');
+  console.log('  npx wrangler d1 execute ' + DB_NAME + ' --remote --file=imported/akun.sql');
+  console.log('  npx wrangler d1 execute ' + DB_NAME + ' --remote --file=imported/siswa.sql');
+  if (kelasSql) console.log('  npx wrangler d1 execute ' + DB_NAME + ' --remote --file=imported/kelas.sql');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

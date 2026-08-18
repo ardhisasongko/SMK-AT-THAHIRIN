@@ -1,4 +1,4 @@
-# Arsitektur — SMKS PLUS AT THAHIRIN
+# Arsitektur — Sistem Informasi Sekolah (Template)
 
 Platform: **React 19 SPA (Vite) + Cloudflare Pages Functions + D1 (SQLite)**. Semua di satu project, tanpa server tradisional.
 
@@ -14,7 +14,7 @@ Platform: **React 19 SPA (Vite) + Cloudflare Pages Functions + D1 (SQLite)**. Se
                         │  /api/** (Pages Functions)  response, dll   │
                         │     │                                        │
                         │     ▼                                        │
-                        │  D1  smk-at-tahirin-db (SQLite, 22 migrasi)  │
+                        │  D1  smk-at-tahirin-db (SQLite, 24 migrasi)  │
                         └────────────┬────────────────────────────────┘
                                      │
             ┌────────────────────────┼────────────────────────────┐

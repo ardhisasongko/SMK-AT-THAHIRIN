@@ -135,7 +135,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 <div className="relative rounded-2xl overflow-hidden border border-slate-700 shadow-2xl bg-slate-800">
                   <img 
                     src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80" 
-                    alt="Siswa SMKS PLUS AT THAHIRIN Praktikum" 
+                    alt={`Siswa ${SCHOOL_INFO.name} Praktikum`} 
                     fetchPriority="high"
                     decoding="async"
                     className="h-64 w-full object-cover sm:h-80 lg:h-96"

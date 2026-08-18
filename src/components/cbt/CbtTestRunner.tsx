@@ -12,6 +12,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission } from '../../types';
+import { SCHOOL_INFO } from '../../data/initialData';
 import { Modal } from '../ui/Modal';
 import { cbtApi } from '../../utils/cbt-api';
 import { isQuestionAnswered } from '../../utils/cbt-scoring';
@@ -492,7 +493,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
           <div className="pt-4 border-t border-slate-700 text-center">
             <p className="text-[11px] text-slate-400">
-              Aplikasi CBT SMKS PLUS AT THAHIRIN
+              Aplikasi CBT {SCHOOL_INFO.name}
             </p>
           </div>
         </aside>

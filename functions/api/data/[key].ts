@@ -24,6 +24,7 @@ import { attendanceMessage, enqueueMessage } from '../../_lib/whatsapp';
 
 interface Env {
   DB: D1Database;
+  SCHOOL_NAME?: string;
 }
 
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -286,7 +287,7 @@ async function validateAndPatchPresensi(
   return { ok: true, status: 200, result, changedCount, logs };
 }
 
-async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], previous: any[]): Promise<void> {
+async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], previous: any[], schoolName = 'SMK PLUS AT THAHIRIN'): Promise<void> {
   const setting: any = await db.prepare('SELECT enabled, absence_cutoff FROM whatsapp_settings WHERE id=1').first();
   if (!setting || Number(setting.enabled) !== 1) return;
   const classesRow = await db.prepare("SELECT value FROM app_data WHERE key='kelas_v1'").first();
@@ -298,7 +299,7 @@ async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], p
     if (!contact) continue;
     const className = classes.find(k => k.id === record.classId)?.name || record.classId;
     const note = old ? `Koreksi status sebelumnya: ${old.status}. ${record.keterangan || ''}`.trim() : record.keterangan;
-    const text = attendanceMessage({ studentName: record.siswaName, className, status: record.status, date: record.tanggal, time: String(record.waktuInput || '').slice(0,5), note });
+    const text = attendanceMessage({ studentName: record.siswaName, className, status: record.status, date: record.tanggal, time: String(record.waktuInput || '').slice(0,5), note }, schoolName);
     const scheduledAt = record.status === 'Alpa' ? new Date(`${record.tanggal}T${String(setting.absence_cutoff || '09:00')}:00+07:00`).toISOString() : new Date().toISOString();
     for (const dest of [{slot:1,phone:contact.guardian_1_phone,enabled:contact.guardian_1_enabled},{slot:2,phone:contact.guardian_2_phone,enabled:contact.guardian_2_enabled}]) {
       if (Number(dest.enabled) === 1 && dest.phone) await enqueueMessage(db,{dedupeKey:`attendance:${record.tanggal}:${record.siswaId}:${record.status}:g${dest.slot}`,phone:String(dest.phone),type:'attendance',text,studentId:record.siswaId,attendanceDate:record.tanggal,scheduledAt});
@@ -429,7 +430,7 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
       console.error('Presensi tersimpan, tetapi audit log gagal:', error);
     }
     try {
-      await enqueueAttendanceNotifications(env.DB, Array.isArray(checked.result) ? checked.result : [], previous);
+      await enqueueAttendanceNotifications(env.DB, Array.isArray(checked.result) ? checked.result : [], previous, env.SCHOOL_NAME);
     } catch (error) {
       console.error('Presensi tersimpan, tetapi antrean notifikasi gagal:', error);
     }

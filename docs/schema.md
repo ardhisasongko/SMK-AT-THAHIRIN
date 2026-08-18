@@ -1,6 +1,6 @@
-# Skema Basis Data — SMKS PLUS AT THAHIRIN
+# Skema Basis Data — Sistem Informasi Sekolah (Template)
 
-Database: **Cloudflare D1** (SQLite). Binding: `DB`. Migrasi: `migrations/0001_*.sql` s.d. `0023_*.sql`.
+Database: **Cloudflare D1** (SQLite). Binding: `DB`. Migrasi: `migrations/0001_*.sql` s.d. `0024_*.sql`.
 
 > Dokumen ini memuat versi **final** setiap tabel (perubahan dari migrasi berikutnya sudah digabung). Kolom yang ditambahkan belakangan ditandai `(+migrasi)`.
 

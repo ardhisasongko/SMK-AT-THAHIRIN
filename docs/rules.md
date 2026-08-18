@@ -1,4 +1,4 @@
-# Aturan Project — SMKS PLUS AT THAHIRIN
+# Aturan Project — Sistem Informasi Sekolah (Template)
 
 Aturan wajib untuk semua sesi kerja (manusia maupun AI) di repo ini. **AGENTS.md di root menunjuk ke dokumen ini.**
 
@@ -55,7 +55,19 @@ npm run pages:deploy     # build + deploy ke Cloudflare Pages
 - Konfirmasi server dulu sebelum UI menampilkan sukses (`actions.save`), bukan setter optimistik buta.
 - Testing komponen: Vitest + Testing Library (lihat `tests/*.test.tsx`); setiap fitur baru wajib test.
 
-## 6. Keamanan (tidak bisa ditawar)
+## 6. Identitas Sekolah (template multi-sekolah)
+
+- **Identitas tersentral** di `src/data/schoolConfig.ts` (nama, kontak, alamat, NPSN, brand, fitur)
+  + `wrangler.toml` `[vars]` (`APP_NAME`, `SCHOOL_NAME`, `SCHOOL_EMAIL_DOMAIN`) untuk backend,
+  + aset `public/school/` + `src/theme.css` untuk warna/logo.
+- **LARANGAN hardcode nama/domain/email sekolah** di komponen, fungsi, script, atau test —
+  baca dari config (frontend) / env (backend).
+- File situs (`index.html`, `site.webmanifest`, `robots.txt`, `sitemap.xml`) di-generate:
+  `npm run generate:site` — jangan edit manual.
+- Fitur umum dikerjakan di template; fitur khusus sekolah di repo sekolah itu.
+  Identitas sekolah yang tersentral membuat merge antar repo tidak bentrok.
+
+## 7. Keamanan (tidak bisa ditawar)
 
 - Jangan pernah commit: `.env*`, `imported/` (akun.sql, kredensial, siswa.json), `data/*.xlsx`, secret API key.
 - Jangan expose secret di respons/console/commit message. Rotasi key yang pernah bocor ke git history.
@@ -63,7 +75,7 @@ npm run pages:deploy     # build + deploy ke Cloudflare Pages
 - WhatsApp gateway hanya via header `X-Gateway-Key` (secret `WHATSAPP_GATEWAY_KEY`).
 - Gate integrasi: `external_integrations` (enabled, emergency_pause, rollout off/canary/all) — jangan hardcode bypass.
 
-## 7. Dokumentasi & Konvensi
+## 8. Dokumentasi & Konvensi
 
 - **`docs/` adalah sumber kebenaran**: `prd.md`, `architecture.md`, `design.md`, `schema.md`, `rules.md`, `HANDOFF.md`.
 - **Setiap akhir sesi**: perbarui `docs/HANDOFF.md` (status, perubahan, test count, migrasi, verifikasi, tindak lanjut). Jangan tumpuk info lama di root.
@@ -72,7 +84,7 @@ npm run pages:deploy     # build + deploy ke Cloudflare Pages
 - Jangan simpan file laporan HTML sesi (assessment-report, cbt-simulasi) dari editor dengan prettier-on-save yang memegang salinan lama — pernah menimpa isi (`cbt-simulasi.html`).
 - Konvensi commit: `<type>(<scope>): <pesan ringkas bahasa Indonesia>`, contoh `feat(cbt): ...`, `fix(forum): ...`, `docs(cbt): ...`, `test(auth): ...`. Commit per milestone kecil.
 
-## 8. Alur Kerja Sesi
+## 9. Alur Kerja Sesi
 
 1. Baca `docs/HANDOFF.md` dulu (status terakhir) + `docs/rules.md`.
 2. Eksplorasi kode sebelum mengubah — jangan tebak.

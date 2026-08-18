@@ -1,4 +1,4 @@
-# PRD — Sistem Informasi SMKS PLUS AT THAHIRIN
+# PRD — Sistem Informasi Sekolah (Template)
 
 Produk: Portal sekolah digital (SPA) untuk siswa, guru, dan pengelola — akses dari HP dan desktop.
 

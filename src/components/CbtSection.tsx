@@ -21,6 +21,7 @@ import {
   Download,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission, CbtSummary, CbtAnalytics as CbtAnalyticsType, Kelas } from '../types';
+import { SCHOOL_INFO } from '../data/initialData';
 import { useFilter } from '../hooks/useFilter';
 import { CbtTestRunner } from './cbt/CbtTestRunner';
 import { CbtResultsTable } from './cbt/CbtResultsTable';
@@ -257,7 +258,7 @@ export function CbtSection({
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-semibold border border-emerald-500/30">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>CBT Portal • SMKS PLUS AT THAHIRIN</span>
+                <span>CBT Portal • {SCHOOL_INFO.name}</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Computer Based Test (CBT) Kuis & Ujian Digital

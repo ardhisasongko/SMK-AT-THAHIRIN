@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Kelas, Siswa, ScheduleItem, User } from '../types';
 import { validateNISN, validateName, validateTextField } from '../utils/validation';
 import { authHeaders } from '../utils/auth';
+import { SCHOOL_INFO } from '../data/initialData';
 import { 
   Users, 
   Plus, 
@@ -220,7 +221,7 @@ export const KelasSection: React.FC<KelasSectionProps> = ({
       response = await fetch('/api/users', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ name: newSiswaName.trim(), email: `s${nisn}@smksplusatthahirin.sch.id`, identifier: nisn, role: 'siswa', classId: selectedKelas.id, gender: newSiswaGender }),
+        body: JSON.stringify({ name: newSiswaName.trim(), email: `s${nisn}@${SCHOOL_INFO.email.split('@')[1]}`, identifier: nisn, role: 'siswa', classId: selectedKelas.id, gender: newSiswaGender }),
       });
     } catch {
       setSiswaFormError('Gagal terhubung ke server.');

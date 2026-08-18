@@ -5,7 +5,9 @@ import { getUserFromRequest, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse, errorResponse } from '../../_lib/response';
 import { readCollection, rosterReplaceStatements } from '../../_lib/student-roster';
 
-interface Env extends AuthEnv {}
+interface Env extends AuthEnv {
+  SCHOOL_EMAIL_DOMAIN?: string;
+}
 
 export const onRequestPatch: PagesFunction<Env> = async ({ env, request }) => {
   const user = await getUserFromRequest(env, request);
@@ -36,7 +38,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, request }) => {
     return errorResponse(`Tidak ada akun siswa dengan NISN ${oldNisn}.`, 404);
   }
 
-  const newEmail = `s${newNisn}@smksplusatthahirin.sch.id`;
+  const newEmail = `s${newNisn}@${env.SCHOOL_EMAIL_DOMAIN || 'smksplusatthahirin.sch.id'}`;
   const clash = await env.DB.prepare('SELECT id FROM users WHERE id != ? AND (email = ? OR nip_nisn = ?)')
     .bind(String(account.id), newEmail, newNisn).first();
   if (clash) {

@@ -1,4 +1,4 @@
-import { Berita, Jurusan, User } from '../types';
+import type { Berita, Jurusan, User } from '../types';
 
 export const SCHOOL_INFO = {
   name: 'SMK PLUS AT THAHIRIN',
@@ -11,6 +11,13 @@ export const SCHOOL_INFO = {
   email: 'info@smksplusatthahirin.sch.id',
   website: 'https://smksplusatthahirin.sch.id',
   kepalaSekolah: 'Ir. Suranto',
+  address: {
+    streetAddress: 'Jl. Sirnagalih No. 09 RT 06/RW 02, Cipayung Girang',
+    locality: 'Megamendung',
+    region: 'Jawa Barat',
+    postalCode: '16770',
+    country: 'ID'
+  },
   sambutan: 'Selamat datang di SMKS PLUS AT THAHIRIN Megamendung. Sebagai lembaga pendidikan kejuruan swasta terakreditasi B yang berfokus penuh pada keahlian Manajemen Perkantoran dan Layanan Bisnis (MPLB), kami berkomitmen membentuk lulusan yang mahir dalam tata kelola administrasi digital, kearsipan elektronik, komunikasi bisnis, serta berakhlak mulia dan siap kerja di era industri modern.',
   stats: {
     siswa: 380,
@@ -101,8 +108,11 @@ export const BERITA_LIST: Berita[] = [
 
 export const SCHOOL_BRAND = {
   themeColor: '#047857',
+  domain: 'smk-at-tahirin.pages.dev',
+  ogImage: 'og-smk-at-thahirin.png',
   manifestName: 'SMK Plus At Thahirin',
-  manifestShortName: 'At Thahirin'
+  manifestShortName: 'At Thahirin',
+  altName: 'SMKS Plus At Thahirin'
 };
 
 export const SCHOOL_FEATURES = {

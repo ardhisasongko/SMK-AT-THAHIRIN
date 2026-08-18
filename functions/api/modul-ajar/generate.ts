@@ -8,6 +8,7 @@ interface Env {
   GEMINI_API_KEY?: string;
   GEMINI_ENABLED?: string;
   GEMINI_MODEL?: string;
+  APP_NAME?: string;
   DB: D1Database;
 }
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -94,7 +95,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     if (!env.GEMINI_API_KEY?.trim()) return errorResponse("Layanan AI belum tersedia.", 503);
     if (!(await consumeRateLimit(env.DB, `ai-modul:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan modul hari ini habis.", 429);
 
-    const prompt = `Buatkan Modul Ajar Kurikulum Merdeka lengkap dan terstruktur profesional untuk SMKS PLUS AT THAHIRIN.
+    const schoolName = env.APP_NAME || 'SMKS PLUS AT THAHIRIN';
+    const prompt = `Buatkan Modul Ajar Kurikulum Merdeka lengkap dan terstruktur profesional untuk ${schoolName}.
 Detail Input:
 - Mata Pelajaran: ${mataPelajaran}
 - Jurusan / Keahlian: ${jurusan || "Manajemen Perkantoran dan Layanan Bisnis (MPLB)"}
@@ -106,11 +108,11 @@ Detail Input:
 - Dimensi Profil Pelajar Pancasila: ${profilPancasila || "Bernalar Kritis, Mandiri, Gotong Royong, Kreatif"}
 - Sarana & Prasarana: ${saranaPrasarana || "Komputer/Laptop, Internet, LCD Projector, Scanner, Modul Kearsipan Digital"}
 
-Susunlah dokumen Modul Ajar SMKS PLUS AT THAHIRIN ini dengan format JSON rapi dengan struktur:
+Susunlah dokumen Modul Ajar ${schoolName} ini dengan format JSON rapi dengan struktur:
 {
   "judul": "Modul Ajar ...",
   "identitas": {
-    "sekolah": "SMKS PLUS AT THAHIRIN",
+    "sekolah": "${schoolName}",
     "mataPelajaran": "...",
     "jurusan": "...",
     "faseKelas": "...",
@@ -146,7 +148,7 @@ Susunlah dokumen Modul Ajar SMKS PLUS AT THAHIRIN ini dengan format JSON rapi de
 
     const generated = await callGeminiJson<unknown>(env.GEMINI_API_KEY, prompt, {
       systemInstruction:
-        "Anda adalah pakar Pengembang Kurikulum SMK (Sekolah Menengah Kejuruan) Indonesia berpengalaman. Buatkan modul ajar Kurikulum Merdeka yang komprehensif, terstruktur, praktis, dan langsung dapat digunakan oleh guru SMKS PLUS AT THAHIRIN. Selalu berikan output dalam format JSON sesuai schema yang diminta.",
+        "Anda adalah pakar Pengembang Kurikulum SMK (Sekolah Menengah Kejuruan) Indonesia berpengalaman. Buatkan modul ajar Kurikulum Merdeka yang komprehensif, terstruktur, praktis, dan langsung dapat digunakan oleh guru ${schoolName}. Selalu berikan output dalam format JSON sesuai schema yang diminta.",
       maxOutputTokens: 16384,
       model: env.GEMINI_MODEL,
     });

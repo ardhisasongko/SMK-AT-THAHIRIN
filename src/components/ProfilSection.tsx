@@ -716,7 +716,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                       <td className="p-3">
                         <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">Siswa</span>
                       </td>
-                      <td className="p-3 text-slate-500">{s.name.toLowerCase().replace(/\s+/g, '')}@smksplusatthahirin.sch.id</td>
+                      <td className="p-3 text-slate-500">{s.name.toLowerCase().replace(/\s+/g, '')}@{SCHOOL_INFO.email.split('@')[1]}</td>
                       <td className="p-3 font-mono">{s.nisn}</td>
                       <td className="p-3">
                         <button 

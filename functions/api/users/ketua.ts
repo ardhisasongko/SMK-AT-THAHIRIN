@@ -8,6 +8,7 @@ import { jsonResponse } from '../../_lib/response';
 
 interface Env {
   DB: D1Database;
+  SCHOOL_EMAIL_DOMAIN?: string;
 }
 
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -77,7 +78,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   }
 
   const nisn = siswa.nisn;
-  const email = `${nisn}@siswa.smksplusatthahirin.sch.id`;
+  const email = `${nisn}@siswa.${env.SCHOOL_EMAIL_DOMAIN || 'smksplusatthahirin.sch.id'}`;
   const temporaryPassword = crypto.randomUUID();
   const passwordHash = await hashPassword(temporaryPassword);
   const now = new Date().toISOString();

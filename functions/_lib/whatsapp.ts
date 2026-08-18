@@ -24,12 +24,12 @@ export function wibDateParts(date = new Date()): { date: string; time: string; d
   };
 }
 
-export function attendanceMessage(input: { studentName: string; className: string; status: string; date: string; time: string; note?: string }): string {
+export function attendanceMessage(input: { studentName: string; className: string; status: string; date: string; time: string; note?: string }, schoolName = 'SMK PLUS AT THAHIRIN'): string {
   const local = new Date(`${input.date}T00:00:00Z`);
   const day = local.toLocaleDateString('id-ID', { weekday: 'long', timeZone: 'UTC' });
   const dateLabel = local.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
   const correction = input.note ? `\nKeterangan: ${input.note}` : '';
-  return `Yth. Bapak/Ibu Orang Tua/Wali ${input.studentName},\n\n${input.studentName} tercatat *${input.status.toUpperCase()}* di SMK PLUS AT THAHIRIN.\n\nHari/Tanggal: ${day}, ${dateLabel}\nWaktu: ${input.time || '-'} WIB\nKelas: ${input.className}${correction}\n\nPesan otomatis sistem sekolah.`;
+  return `Yth. Bapak/Ibu Orang Tua/Wali ${input.studentName},\n\n${input.studentName} tercatat *${input.status.toUpperCase()}* di ${schoolName}.\n\nHari/Tanggal: ${day}, ${dateLabel}\nWaktu: ${input.time || '-'} WIB\nKelas: ${input.className}${correction}\n\nPesan otomatis sistem sekolah.`;
 }
 
 export function messageFingerprint(input: { text: string; eventIdentity?: string }): string {

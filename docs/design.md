@@ -1,4 +1,4 @@
-# Desain UI/UX — SMKS PLUS AT THAHIRIN
+# Desain UI/UX — Sistem Informasi Sekolah (Template)
 
 ## 1. Prinsip Desain
 
