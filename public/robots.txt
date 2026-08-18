@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://smk-at-tahirin.pages.dev/sitemap.xml
+Sitemap: https://smkn-teknologi-jkt.pages.dev/sitemap.xml
