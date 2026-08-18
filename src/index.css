@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import "./theme.css";
 
 /* Print styles: sembunyikan navigasi, tampilkan hanya konten saat mencetak laporan */
 @media print {

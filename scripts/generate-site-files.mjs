@@ -22,8 +22,8 @@ const indexHtml = `<!doctype html>
     <meta name="theme-color" content="${themeColor}" />
     <meta name="application-name" content="${manifestName}" />
     <link rel="canonical" href="${origin}/" />
-    <link rel="icon" type="image/svg+xml" href="/school-mark.svg" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/school/school-mark.svg" />
+    <link rel="apple-touch-icon" href="/school/icon-192.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
     <meta property="og:type" content="website" />
@@ -32,8 +32,8 @@ const indexHtml = `<!doctype html>
     <meta property="og:title" content="SMK Plus At Thahirin | Portal Sekolah & MPLB" />
     <meta property="og:description" content="Portal pendidikan digital SMK Plus At Thahirin Megamendung: informasi sekolah, MPLB, CBT, absensi, dan layanan pembelajaran terpadu." />
     <meta property="og:url" content="${origin}/" />
-    <meta property="og:image" content="${origin}/${ogImage}" />
-    <meta property="og:image:secure_url" content="${origin}/${ogImage}" />
+    <meta property="og:image" content="${origin}/school/${ogImage}" />
+    <meta property="og:image:secure_url" content="${origin}/school/${ogImage}" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -42,7 +42,7 @@ const indexHtml = `<!doctype html>
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="SMK Plus At Thahirin | Portal Sekolah & MPLB" />
     <meta name="twitter:description" content="Informasi sekolah, MPLB, CBT, absensi digital, dan layanan pembelajaran SMK Plus At Thahirin." />
-    <meta name="twitter:image" content="${origin}/${ogImage}" />
+    <meta name="twitter:image" content="${origin}/school/${ogImage}" />
 
     <script type="application/ld+json">
       {
@@ -52,8 +52,8 @@ const indexHtml = `<!doctype html>
         "name": "${manifestName}",
         "alternateName": "${altName}",
         "url": "${origin}/",
-        "logo": "${origin}/icon-512.png",
-        "image": "${origin}/${ogImage}",
+        "logo": "${origin}/school/icon-512.png",
+        "image": "${origin}/school/${ogImage}",
         "description": "Sekolah menengah kejuruan di Megamendung, Bogor dengan program Manajemen Perkantoran dan Layanan Bisnis.",
         "identifier": "NPSN ${npsn}",
         "email": "${email}",
@@ -86,8 +86,8 @@ const webmanifest = `{
   "background_color": "#f8fafc",
   "theme_color": "${themeColor}",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/school/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/school/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
 `;

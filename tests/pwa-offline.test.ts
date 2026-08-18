@@ -9,7 +9,7 @@ describe('PWA offline (service worker)', () => {
   it('service worker tersedia dan precache shell aplikasi', () => {
     expect(sw).toContain("PRECACHE_URLS");
     expect(sw).toContain("'/site.webmanifest'");
-    expect(sw).toContain("'/icon-192.png'");
+    expect(sw).toContain("'/school/icon-192.png'");
     expect(sw).toContain('skipWaiting');
     expect(sw).toContain('clients.claim');
   });

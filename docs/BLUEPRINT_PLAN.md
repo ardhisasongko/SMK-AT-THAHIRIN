@@ -41,11 +41,13 @@ sekolah baru bisa dibuat dari template ini (fork per sekolah) tanpa menyentuh ko
   `prd.md`, `design.md`; tetapkan peran per dokumen (template vs at-thahirin-only).
 - Verifikasi: `npm run verify` + diff generated vs file sekarang (identik).
 
-### M3 — Tema + aset generik
-- `src/theme.css`: override palet `emerald` via Tailwind 4 `@theme` (tema A;
-  default = warna sekarang `#047857`).
-- Aset sekolah dipindah ke `public/school/` + dokumen cara ganti.
-- Verifikasi: `npm run verify`.
+### M3 — Tema + aset generik ✅
+- `src/theme.css`: blok `@theme` override palet `emerald` (nilai = default Tailwind, identik).
+  Sekolah lain ganti ramp `--color-emerald-*` di sini.
+- Aset sekolah di `public/school/`: `school-mark.svg`, `icon-192.png`, `icon-512.png`,
+  `og-smk-at-thahirin.png/.svg` — ganti file dengan nama sama untuk sekolah baru.
+- Referensi UI (`LoginForm`, `Navbar`) & generator situs memakai path `/school/...`.
+- Verifikasi: `npm run verify` → 271 test lulus.
 
 ### M4 — Deploy + smoke test produksi (At-Thahirin)
 - `npm run pages:deploy` lalu smoke test: landing, login semua role, CBT, presensi, rapor —
@@ -71,7 +73,7 @@ sekolah baru bisa dibuat dari template ini (fork per sekolah) tanpa menyentuh ko
 ## Status
 
 - [x] M1
-- [ ] M2
-- [ ] M3
+- [x] M2
+- [x] M3
 - [ ] M4 (butuh persetujuan deploy)
 - [ ] M5 (butuh persetujuan)

@@ -1,5 +1,5 @@
 const CACHE_NAME = 'smk-at-tahirin-v1';
-const PRECACHE_URLS = ['/', '/site.webmanifest', '/icon-192.png', '/icon-512.png', '/school-mark.svg'];
+const PRECACHE_URLS = ['/', '/site.webmanifest', '/school/icon-192.png', '/school/icon-512.png', '/school/school-mark.svg'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

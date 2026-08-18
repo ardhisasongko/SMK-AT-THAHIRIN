@@ -13,7 +13,7 @@ describe('SEO and social metadata', () => {
   });
 
   it('defines a large Open Graph image for WhatsApp previews', () => {
-    expect(html).toContain('property="og:image" content="https://smk-at-tahirin.pages.dev/og-smk-at-thahirin.png"');
+    expect(html).toContain('property="og:image" content="https://smk-at-tahirin.pages.dev/school/og-smk-at-thahirin.png"');
     expect(html).toContain('property="og:image:width" content="1200"');
     expect(html).toContain('property="og:image:height" content="630"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');

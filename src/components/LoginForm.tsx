@@ -53,7 +53,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 overflow-hidden rounded-xl bg-emerald-600 text-white shadow-md">
-            <img src="/school-mark.svg" alt="Logo portal SMK Plus At Thahirin" className="h-full w-full" width="40" height="40" />
+            <img src="/school/school-mark.svg" alt="Logo portal SMK Plus At Thahirin" className="h-full w-full" width="40" height="40" />
           </div>
           <div>
             <h3 className="font-extrabold text-lg text-slate-900">Login Portal SMK</h3>
