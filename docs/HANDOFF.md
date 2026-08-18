@@ -1,10 +1,26 @@
 # HANDOFF - Status Proyek
 
-Tanggal pembaruan: Senin, 17 Agustus 2026
-Project: SMK PLUS AT THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
+Tanggal pembaruan: Selasa, 18 Agustus 2026
+Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Refactor blueprint multi-sekolah (M1–M4, 18 Agustus 2026)**: identitas sekolah
+  tersentral di `src/data/schoolConfig.ts`; `npm run generate:site` menghasilkan
+  `index.html`/`site.webmanifest`/`robots.txt`/`sitemap.xml` dari config
+  (output identik); nama/domain sekolah di UI, functions, dan script dibaca dari
+  config/env `wrangler.toml` (`SCHOOL_NAME`, `SCHOOL_EMAIL_DOMAIN`); tema warna
+  via `src/theme.css` (`@theme` override palet emerald); aset sekolah di
+  `public/school/` (school-mark.svg, icon-192/512, og-*). Rencana: `docs/BLUEPRINT_PLAN.md`
+  (M1–M4 selesai; M5 checklist sekolah baru belum).
+- **Nama resmi disatukan menjadi "SMK PLUS AT-THAHIRIN"** (18 Agustus): varian
+  "SMKS ..." dihapus di semua tempat (config, wrangler.toml, fallback functions,
+  template generator, seed, test fixture) + `alternateName` JSON-LD dihapus.
+  Domain email tetap `smksplusatthahirin.sch.id` (registrasi, tidak diubah).
+- **Deploy live (18 Agustus)**: `npm run pages:deploy` setelah refactor; smoke test
+  curl produksi lulus — title/JSON-LD/manifest nama baru, semua aset `/school/*` 200,
+  `robots.txt`/`sitemap.xml`/`sw.js`/manifest 200, `/api/health` →
+  `{"status":"ok","school":"SMK PLUS AT-THAHIRIN",...}`. Rollback: `git revert <commit>` + redeploy.
 - Domain produksi utama: `https://smk-at-tahirin.pages.dev/`.
 - Deployment produksi terakhir yang diverifikasi (16 Agustus 2026): fitur **waktu minimal pengerjaan ujian resmi** live (deploy `9476e578`, commit `f7c52ff`); smoke test produksi lulus (409/200, latihan bebas kirim, UI tombol terkunci).
 - **Migrasi relasional 0023 live (17 Agustus 2026)**: lapisan tulis `app_data` akademik ditutup — proyeksi relasional jadi sumber kebenaran; trigger sync 0018 di-drop; deploy `3690c8ba`; smoke test e2e produksi **9/9 lulus kembali**; backup D1 pra-migrasi: `/tmp/opencode/d1-backup-0022-20260817-221339.sql`.

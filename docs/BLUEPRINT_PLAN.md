@@ -50,9 +50,13 @@ sekolah baru bisa dibuat dari template ini (fork per sekolah) tanpa menyentuh ko
 - Verifikasi: `npm run verify` → 271 test lulus.
 
 ### M4 — Deploy + smoke test produksi (At-Thahirin)
-- `npm run pages:deploy` lalu smoke test: landing, login semua role, CBT, presensi, rapor —
-  tampilan identik dengan sebelum refactor.
-- Verifikasi: smoke test + e2e; rollback siap.
+- `npm run pages:deploy` → live. Smoke test curl: semua aset `/school/*` 200,
+  manifest/robots/sitemap/sw 200, title & JSON-LD nama baru, `/api/health` =
+  `school:"SMK PLUS AT-THAHIRIN"`.
+- Nama sekolah disatukan ke varian resmi **"SMK Plus At-Thahirin"** (hapus varian
+  SMKS + `alternateName` di config, wrangler.toml, fallback functions, template
+  generator, seed, test fixture).
+- Rollback siap: `git revert <commit>` + redeploy.
 
 ### M5 — Checklist sekolah baru
 - Tulis `docs/DEPLOY_SCHOOL.md`: salin repo → edit config → ganti aset → D1 baru →
@@ -75,5 +79,5 @@ sekolah baru bisa dibuat dari template ini (fork per sekolah) tanpa menyentuh ko
 - [x] M1
 - [x] M2
 - [x] M3
-- [ ] M4 (butuh persetujuan deploy)
+- [x] M4 (deploy + smoke test selesai)
 - [ ] M5 (butuh persetujuan)
