@@ -11,8 +11,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   }
   return jsonResponse({
       status: db === 'ok' ? 'ok' : 'degraded',
-      school: "SMKS PLUS AT THAHIRIN",
-      app: env.APP_NAME || "SMKS PLUS AT THAHIRIN",
+      school: "SMK PLUS AT-THAHIRIN",
+      app: env.APP_NAME || "SMK PLUS AT-THAHIRIN",
       db,
       time: new Date().toISOString(),
   }, db === 'ok' ? 200 : 503);

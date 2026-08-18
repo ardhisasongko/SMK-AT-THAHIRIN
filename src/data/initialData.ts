@@ -84,7 +84,7 @@ export const INITIAL_MODUL_AJAR: ModulAjar[] = [
     data: {
       judul: 'Modul Ajar Digitalisasi & Otomatisasi Kearsipan Perkantoran',
       identitas: {
-        sekolah: 'SMKS PLUS AT THAHIRIN',
+        sekolah: 'SMK PLUS AT-THAHIRIN',
         mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
         jurusan: 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
         faseKelas: 'Fase F (Kelas XI)',
@@ -251,7 +251,7 @@ export const INITIAL_CBT_EXAMS: CbtExam[] = [
       },
       {
         id: 'q2',
-        question: 'Format penamaan file arsip digital yang disepakati sesuai standar Manajemen Perkantoran dan Layanan Bisnis SMKS PLUS AT THAHIRIN adalah ...',
+        question: 'Format penamaan file arsip digital yang disepakati sesuai standar Manajemen Perkantoran dan Layanan Bisnis SMK PLUS AT-THAHIRIN adalah ...',
         options: [
           { key: 'A', text: 'Surat1.pdf' },
           { key: 'B', text: '[KODE_ARSIP]_[TANGGAL]_[NAMA_INSTANSI].pdf' },

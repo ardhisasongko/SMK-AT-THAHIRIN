@@ -95,7 +95,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     if (!env.GEMINI_API_KEY?.trim()) return errorResponse("Layanan AI belum tersedia.", 503);
     if (!(await consumeRateLimit(env.DB, `ai-modul:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan modul hari ini habis.", 429);
 
-    const schoolName = env.APP_NAME || 'SMKS PLUS AT THAHIRIN';
+    const schoolName = env.APP_NAME || 'SMK PLUS AT-THAHIRIN';
     const prompt = `Buatkan Modul Ajar Kurikulum Merdeka lengkap dan terstruktur profesional untuk ${schoolName}.
 Detail Input:
 - Mata Pelajaran: ${mataPelajaran}

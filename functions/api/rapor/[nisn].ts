@@ -72,7 +72,7 @@ export const onRequestGet: PagesFunction<Env, any, Record<string, unknown> & { u
 
   if (new URL(request.url).searchParams.get('format') === 'csv') {
     const rows: Array<Array<unknown>> = [
-      ['RAPOR', env.SCHOOL_NAME || 'SMK PLUS AT THAHIRIN'],
+      ['RAPOR', env.SCHOOL_NAME || 'SMK PLUS AT-THAHIRIN'],
       ['NISN', report.siswa.nisn],
       ['Nama', report.siswa.name],
       ['Kelas', report.siswa.className],

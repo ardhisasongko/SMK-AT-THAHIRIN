@@ -37,7 +37,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setActiveTab('landing')}
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-800 text-white shadow-md shadow-emerald-700/20 transition-transform group-hover:scale-105 sm:h-11 sm:w-11">
-              <img src="/school/school-mark.svg" alt="Logo portal SMK Plus At Thahirin" className="h-full w-full" width="44" height="44" />
+              <img src="/school/school-mark.svg" alt="Logo portal SMK Plus At-Thahirin" className="h-full w-full" width="44" height="44" />
             </div>
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-1.5">

@@ -20,7 +20,7 @@ const modulList: ModulAjar[] = [
     data: {
       judul: 'Modul Kearsipan Digital',
       identitas: {
-        sekolah: 'SMKS PLUS AT THAHIRIN',
+        sekolah: 'SMK PLUS AT-THAHIRIN',
         mataPelajaran: 'Otomatisasi Tata Kelola Kearsipan Digital',
         jurusan: 'Manajemen Perkantoran dan Layanan Bisnis (MPLB)',
         faseKelas: 'Fase F (Kelas XI)',

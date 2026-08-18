@@ -38,7 +38,7 @@ function modul() {
   return {
     judul: 'Modul Ajar Kearsipan',
     identitas: {
-      sekolah: 'SMKS PLUS AT THAHIRIN', mataPelajaran: 'Kearsipan', jurusan: 'MPLB',
+      sekolah: 'SMK PLUS AT-THAHIRIN', mataPelajaran: 'Kearsipan', jurusan: 'MPLB',
       faseKelas: 'Fase F', alokasiWaktu: '2 x 45 menit', tahunAjaran: '2026/2027',
     },
     profilPelajarPancasila: ['Mandiri'],

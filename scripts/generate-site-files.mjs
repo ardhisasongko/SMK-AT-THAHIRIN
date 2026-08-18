@@ -6,7 +6,7 @@ import { writeFileSync } from 'node:fs';
 import { SCHOOL_INFO, SCHOOL_BRAND } from '../src/data/schoolConfig.ts';
 
 const { name, npsn, email, telepon, address } = SCHOOL_INFO;
-const { themeColor, domain, ogImage, manifestName, manifestShortName, altName } = SCHOOL_BRAND;
+const { themeColor, domain, ogImage, manifestName, manifestShortName } = SCHOOL_BRAND;
 const origin = `https://${domain}`;
 const telDigits = telepon.replace(/\D/g, '').replace(/^0/, '');
 const telephoneIntl = telDigits.length === 10 ? `+62-${telDigits.slice(0, 3)}-${telDigits.slice(3)}` : `+62-${telDigits}`;
@@ -16,8 +16,8 @@ const indexHtml = `<!doctype html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SMK Plus At Thahirin | Portal Sekolah & MPLB Megamendung</title>
-    <meta name="description" content="Portal resmi SMK Plus At Thahirin Megamendung, Bogor. Informasi sekolah, program MPLB, CBT, absensi digital, kelas, dan layanan pembelajaran terpadu." />
+    <title>SMK Plus At-Thahirin | Portal Sekolah & MPLB Megamendung</title>
+    <meta name="description" content="Portal resmi SMK Plus At-Thahirin Megamendung, Bogor. Informasi sekolah, program MPLB, CBT, absensi digital, kelas, dan layanan pembelajaran terpadu." />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="theme-color" content="${themeColor}" />
     <meta name="application-name" content="${manifestName}" />
@@ -29,19 +29,19 @@ const indexHtml = `<!doctype html>
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="id_ID" />
     <meta property="og:site_name" content="${manifestName}" />
-    <meta property="og:title" content="SMK Plus At Thahirin | Portal Sekolah & MPLB" />
-    <meta property="og:description" content="Portal pendidikan digital SMK Plus At Thahirin Megamendung: informasi sekolah, MPLB, CBT, absensi, dan layanan pembelajaran terpadu." />
+    <meta property="og:title" content="SMK Plus At-Thahirin | Portal Sekolah & MPLB" />
+    <meta property="og:description" content="Portal pendidikan digital SMK Plus At-Thahirin Megamendung: informasi sekolah, MPLB, CBT, absensi, dan layanan pembelajaran terpadu." />
     <meta property="og:url" content="${origin}/" />
     <meta property="og:image" content="${origin}/school/${ogImage}" />
     <meta property="og:image:secure_url" content="${origin}/school/${ogImage}" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="SMK Plus At Thahirin, portal pendidikan digital terpadu di Megamendung Bogor" />
+    <meta property="og:image:alt" content="SMK Plus At-Thahirin, portal pendidikan digital terpadu di Megamendung Bogor" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="SMK Plus At Thahirin | Portal Sekolah & MPLB" />
-    <meta name="twitter:description" content="Informasi sekolah, MPLB, CBT, absensi digital, dan layanan pembelajaran SMK Plus At Thahirin." />
+    <meta name="twitter:title" content="SMK Plus At-Thahirin | Portal Sekolah & MPLB" />
+    <meta name="twitter:description" content="Informasi sekolah, MPLB, CBT, absensi digital, dan layanan pembelajaran SMK Plus At-Thahirin." />
     <meta name="twitter:image" content="${origin}/school/${ogImage}" />
 
     <script type="application/ld+json">
@@ -50,7 +50,6 @@ const indexHtml = `<!doctype html>
         "@type": "EducationalOrganization",
         "@id": "${origin}/#school",
         "name": "${manifestName}",
-        "alternateName": "${altName}",
         "url": "${origin}/",
         "logo": "${origin}/school/icon-512.png",
         "image": "${origin}/school/${ogImage}",

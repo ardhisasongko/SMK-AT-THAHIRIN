@@ -24,7 +24,7 @@ export function wibDateParts(date = new Date()): { date: string; time: string; d
   };
 }
 
-export function attendanceMessage(input: { studentName: string; className: string; status: string; date: string; time: string; note?: string }, schoolName = 'SMK PLUS AT THAHIRIN'): string {
+export function attendanceMessage(input: { studentName: string; className: string; status: string; date: string; time: string; note?: string }, schoolName = 'SMK PLUS AT-THAHIRIN'): string {
   const local = new Date(`${input.date}T00:00:00Z`);
   const day = local.toLocaleDateString('id-ID', { weekday: 'long', timeZone: 'UTC' });
   const dateLabel = local.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });

@@ -287,7 +287,7 @@ async function validateAndPatchPresensi(
   return { ok: true, status: 200, result, changedCount, logs };
 }
 
-async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], previous: any[], schoolName = 'SMK PLUS AT THAHIRIN'): Promise<void> {
+async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], previous: any[], schoolName = 'SMK PLUS AT-THAHIRIN'): Promise<void> {
   const setting: any = await db.prepare('SELECT enabled, absence_cutoff FROM whatsapp_settings WHERE id=1').first();
   if (!setting || Number(setting.enabled) !== 1) return;
   const classesRow = await db.prepare("SELECT value FROM app_data WHERE key='kelas_v1'").first();

@@ -1,7 +1,7 @@
 {
-  "name": "SMK Plus At Thahirin",
-  "short_name": "At Thahirin",
-  "description": "Portal pendidikan digital SMK Plus At Thahirin Megamendung",
+  "name": "SMK Plus At-Thahirin",
+  "short_name": "At-Thahirin",
+  "description": "Portal pendidikan digital SMK Plus At-Thahirin Megamendung",
   "lang": "id-ID",
   "start_url": "/",
   "display": "standalone",
