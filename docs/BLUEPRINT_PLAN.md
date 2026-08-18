@@ -80,4 +80,4 @@ sekolah baru bisa dibuat dari template ini (fork per sekolah) tanpa menyentuh ko
 - [x] M2
 - [x] M3
 - [x] M4 (deploy + smoke test selesai)
-- [ ] M5 (butuh persetujuan)
+- [x] M5 (DEPLOY_SCHOOL.md + contoh implementasi SMKN Teknologi Jakarta)
