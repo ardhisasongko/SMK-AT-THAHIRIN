@@ -14,10 +14,10 @@ migrations_dir = "migrations"
 
 # Shared variable untuk konfigurasi akses
 [vars]
-APP_NAME = "SMK NEGERI TEKNOLOGI JAKARTA"
+APP_NAME = "SMK PLUS AT-THAHIRIN"
 # Identitas sekolah untuk output user-facing (pesan WhatsApp, CSV rapor, prompt AI).
-SCHOOL_NAME = "SMK NEGERI TEKNOLOGI JAKARTA"
-SCHOOL_EMAIL_DOMAIN = "smkn-teknologi-jkt.sch.id"
+SCHOOL_NAME = "SMK PLUS AT-THAHIRIN"
+SCHOOL_EMAIL_DOMAIN = "smksplusatthahirin.sch.id"
 # Flag harus eksplisit. Nilai true mempertahankan fitur AI yang sudah tersedia;
 # nonaktifkan dari dashboard bila diperlukan tanpa deploy ulang.
 GEMINI_ENABLED = "true"

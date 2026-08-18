@@ -1,12 +1,12 @@
 {
-  "name": "SMK Negeri Teknologi Jakarta",
-  "short_name": "SMK Tekno",
-  "description": "Portal pendidikan digital SMK Negeri Teknologi Jakarta Jakarta Pusat",
+  "name": "SMK Plus At-Thahirin",
+  "short_name": "At-Thahirin",
+  "description": "Portal pendidikan digital SMK Plus At-Thahirin Megamendung",
   "lang": "id-ID",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
-  "theme_color": "#1e40af",
+  "theme_color": "#047857",
   "icons": [
     { "src": "/school/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/school/icon-512.png", "sizes": "512x512", "type": "image/png" }

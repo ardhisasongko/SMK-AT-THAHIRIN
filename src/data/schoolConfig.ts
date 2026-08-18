@@ -1,128 +1,117 @@
 import type { Berita, Jurusan, User } from '../types';
 
 export const SCHOOL_INFO = {
-  name: 'SMK NEGERI TEKNOLOGI JAKARTA',
-  tagline: 'Unggul Teknologi, Berprestasi Nasional',
-  npsn: '20123456',
-  akreditasi: 'A (Unggul)',
-  alamat: 'JL. TEKNOLOGI NO. 10, Kec. Menteng, Jakarta Pusat 10310',
-  telepon: '(021) 3456789',
-  whatsapp: '+62 856-1234-5678',
-  email: 'info@smkn-teknologi-jkt.sch.id',
-  website: 'https://smkn-teknologi-jkt.sch.id',
-  kepalaSekolah: 'Dra. Siti Nurhaliza, M.Pd.',
+  name: 'SMK PLUS AT-THAHIRIN',
+  tagline: 'Unggul, Berkarakter & Ahli Manajemen Perkantoran dan Layanan Bisnis',
+  npsn: '20232426',
+  akreditasi: 'B (Baik)',
+  alamat: 'JL. SIRNAGALIH NO.09 RT 06/RW 02, Desa Cipayung Girang, Kec. Megamendung, Kab. Bogor, Jawa Barat 16770',
+  telepon: '(0251) 8254123',
+  whatsapp: '+62 812-3456-7890',
+  email: 'info@smksplusatthahirin.sch.id',
+  website: 'https://smksplusatthahirin.sch.id',
+  kepalaSekolah: 'Ir. Suranto',
   address: {
-    streetAddress: 'Jl. Teknologi No. 10, Menteng',
-    locality: 'Jakarta Pusat',
-    region: 'DKI Jakarta',
-    postalCode: '10310',
+    streetAddress: 'Jl. Sirnagalih No. 09 RT 06/RW 02, Cipayung Girang',
+    locality: 'Megamendung',
+    region: 'Jawa Barat',
+    postalCode: '16770',
     country: 'ID'
   },
-  sambutan: 'Selamat datang di SMK NEGERI TEKNOLOGI JAKARTA. Sebagai sekolah menengah kejuruan negeri terakreditasi A, kami berkomitmen menghasilkan lulusan yang menguasai teknologi informasi dan siap bersaing di era digital global.',
+  sambutan: 'Selamat datang di SMK PLUS AT-THAHIRIN Megamendung. Sebagai lembaga pendidikan kejuruan swasta terakreditasi B yang berfokus penuh pada keahlian Manajemen Perkantoran dan Layanan Bisnis (MPLB), kami berkomitmen membentuk lulusan yang mahir dalam tata kelola administrasi digital, kearsipan elektronik, komunikasi bisnis, serta berakhlak mulia dan siap kerja di era industri modern.',
   stats: {
-    siswa: 720,
-    guru: 48,
-    jurusan: 3,
-    mitraIndustri: 36,
-    persenKerja: '96.2%'
+    siswa: 380,
+    guru: 26,
+    jurusan: 1,
+    mitraIndustri: 24,
+    persenKerja: '93.5%'
   }
 };
 
 export const INITIAL_USERS: User[] = [
   {
     id: 'u1',
-    name: 'Dra. Siti Nurhaliza, M.Pd.',
-    email: 'admin@smkn-teknologi-jkt.sch.id',
+    name: 'Ir. Suranto',
+    email: 'admin@smksplusatthahirin.sch.id',
     role: 'admin',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    nipNisn: '19680515 199203 2 005',
-    jabatan: 'Kepala Sekolah SMK NEGERI TEKNOLOGI JAKARTA'
+    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+    nipNisn: '19700512 199803 1 002',
+    jabatan: 'Kepala Sekolah SMK PLUS AT-THAHIRIN'
   },
   {
     id: 'u2',
-    name: 'Bpk. Drs. Hendra Wijaya, M.T.',
-    email: 'guru@smkn-teknologi-jkt.sch.id',
+    name: 'Bpk. Ahmad Fauzi, S.Pd.',
+    email: 'guru@smksplusatthahirin.sch.id',
     role: 'guru',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    nipNisn: '19850310 201201 1 008',
-    jabatan: 'Guru Produktif Pemrograman Web & Mobile'
+    nipNisn: '19890215 201502 1 003',
+    jabatan: 'Guru Produktif Manajemen Perkantoran dan Layanan Bisnis & Wali Kelas X MPLB 1'
   },
   {
     id: 'u3',
-    name: 'Andi Prasetyo',
-    email: 'siswa@smkn-teknologi-jkt.sch.id',
+    name: 'Muhammad Rizky Pratama',
+    email: 'siswa@smksplusatthahirin.sch.id',
     role: 'siswa',
     avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
-    nipNisn: '0075123490',
+    nipNisn: '0068123491',
     classId: 'k1',
-    jabatan: 'Ketua Kelas X RPL 1'
+    jabatan: 'Ketua Kelas X MPLB 1'
   }
 ];
 
 export const JURUSAN_LIST: Jurusan[] = [
   {
     id: 'j1',
-    code: 'RPL',
-    name: 'Rekayasa Perangkat Lunak',
-    iconName: 'Code',
-    description: 'Konsentrasi keahlian pengembangan perangkat lunak: pemrograman web, mobile, database, dan sistem informasi.',
-    kepalaJurusan: 'Drs. Budi Santoso, M.T.',
-    prospekKerja: ['Web Developer', 'Mobile Developer', 'Software Engineer', 'Database Administrator', 'IT Consultant', 'Freelance Developer'],
-    fasilitas: ['Lab Komputer 40 Unit', 'Lab Server & Cloud', 'Studio Desain UI/UX', 'Akses GitHub Education'],
-    color: 'from-blue-600 to-indigo-700'
-  },
-  {
-    id: 'j2',
-    code: 'TKJ',
-    name: 'Teknik Komputer & Jaringan',
-    iconName: 'Network',
-    description: 'Konsentrasi keahlian jaringan komputer, administrasi server, keamanan siber, dan infrastruktur TI.',
-    kepalaJurusan: 'Ir. Dwi Raharjo, M.Kom.',
-    prospekKerja: ['Network Engineer', 'System Administrator', 'Cloud Engineer', 'Security Analyst', 'IT Support Specialist', 'Data Center Technician'],
-    fasilitas: ['Lab Jaringan & Server', 'Lab MikroTik & Cisco', 'Rack Server Real-time', 'Sertifikasi Cisco Networking Academy'],
-    color: 'from-cyan-600 to-teal-700'
+    code: 'MPLB',
+    name: 'Manajemen Perkantoran dan Layanan Bisnis',
+    iconName: 'Briefcase',
+    description: 'Konsentrasi keahlian Kurikulum Merdeka yang mencakup tata kelola administrasi dan manajemen perkantoran digital, otomatisasi perkantoran, manajemen kearsipan elektronik, korespondensi bisnis, serta layanan bisnis dan pelayanan publik modern yang terintegrasi teknologi.',
+    kepalaJurusan: 'Dra. Hj. Sri Wahyuni, M.Pd.',
+    prospekKerja: ['Staf Administrasi & Administrasi Digital', 'Sekretaris / Asisten Manajemen', 'Customer Service / Front Office / Public Relations', 'Staf Kearsipan Digital', 'Staf Keuangan & SDM (Entry Level)', 'Wirausaha Layanan Bisnis'],
+    fasilitas: ['Lab Simulator Kantor Modern', 'Komputer Administrasi & Software Kearsipan', 'Perangkat Telekonferensi HD', 'Mesin Otomatisasi Perkantoran & Scanner Digital'],
+    color: 'from-emerald-600 to-teal-700'
   }
 ];
 
 export const BERITA_LIST: Berita[] = [
   {
     id: 'b1',
-    judul: 'Siswa RPL SMK Negeri Teknologi Jakarta Juara 1 Kompetisi Hackathon Nasional',
-    tanggal: '10 Agustus 2026',
+    judul: 'Siswa Manajemen Perkantoran SMK PLUS AT-THAHIRIN Meraih Juara 1 LKS Kejuruan Perkantoran',
+    tanggal: '01 Agustus 2026',
     kategori: 'Prestasi',
-    ringkasan: 'Tim developer siswa RPL berhasil meraih juara 1 pada Hackathon Nasional 2026 dengan aplikasi inovatif berbasis AI.',
-    konten: 'Tim tiga orang siswa kelas XII RPL dari SMK Negeri Teknologi Jakarta menorehkan prestasi gemilang dalam Hackathon Nasional 2026 yang diselenggarakan di Jakarta. Mereka mengembangkan aplikasi edutech berbasis kecerdasan buatan yang memenangkan penilaian juri.',
-    gambar: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&auto=format&fit=crop&q=80',
-    penulis: 'Humas SMK Negeri Teknologi Jakarta'
+    ringkasan: 'Selamat kepada ananda Muhammad Rizky Pratama dari X MPLB 1 yang berhasil meraih gelar juara pada bidang perlombaan Otomatisasi Perkantoran.',
+    konten: 'Prestasi membanggakan diukir oleh civitas akademika SMK PLUS AT-THAHIRIN Megamendung Bogor. Dalam ajang Lomba Kompetensi Siswa (LKS) Kejuruan bidang Manajemen Perkantoran dan Layanan Bisnis / Otomatisasi Perkantoran, perwakilan sekolah berhasil meraih juara pertama di bawah bimbingan Bpk. Ir. Surantro dan tim pengajar.',
+    gambar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+    penulis: 'Humas SMK PLUS AT-THAHIRIN'
   },
   {
     id: 'b2',
-    judul: 'MoU Kerjasama dengan Startup Teknologi untuk Program Magang Siswa',
-    tanggal: '28 Juli 2026',
+    judul: 'Penandatanganan MoU Kerjasama Industri Perkantoran & Magang Kerja dengan Perusahaan Terkemuka',
+    tanggal: '25 Juli 2026',
     kategori: 'Mitra Industri',
-    ringkasan: 'Penandatanganan kerjasama magang dengan 12 perusahaan teknologi terkemuka di Jakarta.',
-    konten: 'Kepala SMK Negeri Teknologi Jakarta secara resmi menandatangani nota kesepahaman dengan 12 perusahaan teknologi untuk program magang siswa. Program ini akan memberikan pengalaman kerja nyata di bidang pengembangan perangkat lunak, jaringan, dan cloud computing.',
-    gambar: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&auto=format&fit=crop&q=80',
-    penulis: 'Tim BKK'
+    ringkasan: 'Memperkuat link and match jurusan Manajemen Perkantoran dan Layanan Bisnis dengan dunia usaha dan industri.',
+    konten: 'Kepala SMK PLUS AT-THAHIRIN, Bpk. Ir. Surantro, secara resmi menandatangani nota kesepahaman (MoU) dengan berbagai instansi dan perusahaan swasta untuk program Praktik Kerja Lapangan (PKL) serta rekrutmen lulusan Manajemen Perkantoran dan Layanan Bisnis.',
+    gambar: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?w=800&auto=format&fit=crop&q=80',
+    penulis: 'Tim Bursa Kerja Khusus (BKK)'
   },
   {
     id: 'b3',
-    judul: 'Lab Cloud Computing Baru Siap Digunakan untuk Pembelajaran',
+    judul: 'Peluncuran Sistem Absensi QR Code & Generator Modul Ajar AI Kurikulum Merdeka',
     tanggal: '15 Juli 2026',
     kategori: 'Pengumuman',
-    ringkasan: 'Fasilitas terbaru berupa lab cloud computing dengan 40 workstation dan akses ke platform cloud internasional.',
-    konten: 'SMK Negeri Teknologi Jakarta resmi membuka Lab Cloud Computing baru yang dilengkapi dengan 40 workstation, akses ke AWS Academy dan Google Cloud, serta simulator infrastruktur jaringan enterprise. Lab ini akan mendukung pembelajaran praktis siswa TKJ dan RPL.',
-    gambar: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&auto=format&fit=crop&q=80',
-    penulis: 'Tim IT'
+    ringkasan: 'Digitalisasi layanan sekolah terpadu bagi seluruh guru dan siswa Manajemen Perkantoran dan Layanan Bisnis.',
+    konten: 'Memasuki Tahun Ajaran 2026/2027, SMK PLUS AT-THAHIRIN meluncurkan portal web terpadu yang memuat presensi QR Code, jadwal kelas, serta pembuatan Modul Ajar AI Kurikulum Merdeka berbasis Gemini.',
+    gambar: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&auto=format&fit=crop&q=80',
+    penulis: 'Tim IT SMK PLUS AT-THAHIRIN'
   }
 ];
 
 export const SCHOOL_BRAND = {
-  themeColor: '#1e40af',
-  domain: 'smkn-teknologi-jkt.pages.dev',
-  ogImage: 'og-smkn-teknologi-jkt.png',
-  manifestName: 'SMK Negeri Teknologi Jakarta',
-  manifestShortName: 'SMK Tekno'
+  themeColor: '#047857',
+  domain: 'smk-at-tahirin.pages.dev',
+  ogImage: 'og-smk-at-thahirin.png',
+  manifestName: 'SMK Plus At-Thahirin',
+  manifestShortName: 'At-Thahirin'
 };
 
 export const SCHOOL_FEATURES = {
