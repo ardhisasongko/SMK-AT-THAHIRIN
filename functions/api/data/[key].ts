@@ -289,23 +289,53 @@ async function validateAndPatchPresensi(
   return { ok: true, status: 200, result, changedCount, changedRecords, logs };
 }
 
+/** Batas anti-banjir: maksimal pesan absensi per siswa per hari (semua status/gabungan slot). */
+const MAX_ATTENDANCE_MSGS_PER_STUDENT_DAY = 3;
+
 async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], previous: any[], schoolName = 'SMK PLUS AT-THAHIRIN'): Promise<void> {
   const setting: any = await db.prepare('SELECT enabled, absence_cutoff FROM whatsapp_settings WHERE id=1').first();
   if (!setting || Number(setting.enabled) !== 1) return;
   const classesRow = await db.prepare("SELECT value FROM app_data WHERE key='kelas_v1'").first();
   const classes = classesRow ? JSON.parse(String(classesRow.value)) as any[] : [];
+
+  // Satu query untuk semua siswa: hitung pesan absensi yang sudah terantre
+  // per (siswa, tanggal) sebagai cap anti-banjir koreksi berulang.
+  const studentIds = [...new Set(incoming.map(r => String(r.siswaId)))];
+  const sentCounts = new Map<string, number>();
+  if (studentIds.length) {
+    const placeholders = studentIds.map(() => '?').join(',');
+    const rows = await db.prepare(
+      `SELECT student_id, attendance_date, COUNT(*) AS c FROM whatsapp_outbox
+        WHERE message_type = 'attendance' AND student_id IN (${placeholders})
+        GROUP BY student_id, attendance_date`
+    ).bind(...studentIds).all<{ student_id: string; attendance_date: string; c: number }>();
+    for (const row of rows.results) {
+      sentCounts.set(`${row.student_id}|${row.attendance_date}`, Number(row.c));
+    }
+  }
+
   for (const record of incoming) {
     const old = previous.find(r => r.tanggal === record.tanggal && r.siswaId === record.siswaId);
     if (old && old.status === record.status) continue;
+    const capKey = `${record.siswaId}|${record.tanggal}`;
+    if ((sentCounts.get(capKey) || 0) >= MAX_ATTENDANCE_MSGS_PER_STUDENT_DAY) {
+      console.warn(`Cap pesan WA tercapai untuk ${capKey}, lewati.`);
+      continue;
+    }
     const contact: any = await db.prepare('SELECT * FROM guardian_contacts WHERE student_id=?').bind(record.siswaId).first();
     if (!contact) continue;
     const className = classes.find(k => k.id === record.classId)?.name || record.classId;
     const note = old ? `Koreksi status sebelumnya: ${old.status}. ${record.keterangan || ''}`.trim() : record.keterangan;
     const text = attendanceMessage({ studentName: record.siswaName, className, status: record.status, date: record.tanggal, time: String(record.waktuInput || '').slice(0,5), note }, schoolName);
     const scheduledAt = record.status === 'Alpa' ? new Date(`${record.tanggal}T${String(setting.absence_cutoff || '09:00')}:00+07:00`).toISOString() : new Date().toISOString();
+    let enqueuedForRecord = 0;
     for (const dest of [{slot:1,phone:contact.guardian_1_phone,enabled:contact.guardian_1_enabled},{slot:2,phone:contact.guardian_2_phone,enabled:contact.guardian_2_enabled}]) {
-      if (Number(dest.enabled) === 1 && dest.phone) await enqueueMessage(db,{dedupeKey:`attendance:${record.tanggal}:${record.siswaId}:${record.status}:g${dest.slot}`,phone:String(dest.phone),type:'attendance',text,studentId:record.siswaId,attendanceDate:record.tanggal,scheduledAt});
+      if (Number(dest.enabled) === 1 && dest.phone) {
+        const inserted = await enqueueMessage(db,{dedupeKey:`attendance:${record.tanggal}:${record.siswaId}:${record.status}:g${dest.slot}`,phone:String(dest.phone),type:'attendance',text,studentId:record.siswaId,attendanceDate:record.tanggal,scheduledAt});
+        if (inserted) enqueuedForRecord++;
+      }
     }
+    if (enqueuedForRecord > 0) sentCounts.set(capKey, (sentCounts.get(capKey) || 0) + enqueuedForRecord);
   }
 }
 

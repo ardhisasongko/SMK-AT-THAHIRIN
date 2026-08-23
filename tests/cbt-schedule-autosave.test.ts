@@ -69,12 +69,26 @@ describe('CBT schedule window', () => {
 });
 
 describe('CBT essai scoring', () => {
-  it('mencocokkan jawaban essai dengan kunci (substring, case-insensitive)', () => {
+  it('mencocokkan jawaban essai dengan kunci (seluruh kata penting, case-insensitive)', () => {
     expect(isEssayAnswerCorrect('Arsip adalah rekaman kegiatan manusia.', 'rekaman kegiatan')).toBe(true);
     expect(isEssayAnswerCorrect('ARSIP ADALAH REKAMAN KEGIATAN.', 'rekaman kegiatan')).toBe(true);
+    // Urutan kata bebas.
+    expect(isEssayAnswerCorrect('Kegiatan tanpa rekaman bukan arsip.', 'rekaman kegiatan')).toBe(true);
     expect(isEssayAnswerCorrect('Arsip adalah berkas.', 'rekaman kegiatan')).toBe(false);
     expect(isEssayAnswerCorrect('', 'rekaman kegiatan')).toBe(false);
     expect(isEssayAnswerCorrect('   ', 'rekaman kegiatan')).toBe(false);
+  });
+
+  it('anti-gaming: satu kata kunci saja tidak cukup, dan kata utuh diharuskan', () => {
+    // Dulu: substring 'rekaman' saja sudah dianggap benar -> bisa digaming.
+    expect(isEssayAnswerCorrect('Saya menulis tentang rekaman saja.', 'rekaman kegiatan')).toBe(false);
+    // Kata harus utuh: 'merekam' tidak memenuhi token 'rekaman'.
+    expect(isEssayAnswerCorrect('Saya suka merekam kegiatan.', 'rekaman kegiatan')).toBe(false);
+  });
+
+  it('kunci pendek/angka tetap memakai fallback substring', () => {
+    expect(isEssayAnswerCorrect('Jawabannya 2 unit.', '2')).toBe(true);
+    expect(isEssayAnswerCorrect('Jawabannya 12 unit.', '2')).toBe(false);
   });
 
   it('mendukung alternatif kunci dipisah |', () => {

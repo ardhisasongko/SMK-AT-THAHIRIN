@@ -1,4 +1,10 @@
-export async function consumeRateLimit(db: D1Database, key: string, limit: number, windowSeconds: number): Promise<boolean> {
+export async function consumeRateLimit(
+  db: D1Database,
+  key: string,
+  limit: number,
+  windowSeconds: number,
+  options: { cleanup?: boolean } = {},
+): Promise<boolean> {
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + windowSeconds;
   const row = await db.prepare(`
@@ -12,15 +18,19 @@ export async function consumeRateLimit(db: D1Database, key: string, limit: numbe
     RETURNING request_count
   `).bind(key, now, expiresAt, now, now, now, now, limit).first<{ request_count: number }>();
 
-  await db.prepare(`
-    DELETE FROM api_rate_limits
-    WHERE key IN (
-      SELECT key FROM api_rate_limits
-      WHERE window_expires <= ?
-      ORDER BY window_expires
-      LIMIT 32
-    )
-  `).bind(now).run();
+  // Jalankan hanya bila diminta (default). Jalur GET mematikan ini agar tidak
+  // membakar statement D1 ekstra per pembacaan — pembersihan penuh ditangani cron purge.
+  if (options.cleanup !== false) {
+    await db.prepare(`
+      DELETE FROM api_rate_limits
+      WHERE key IN (
+        SELECT key FROM api_rate_limits
+        WHERE window_expires <= ?
+        ORDER BY window_expires
+        LIMIT 32
+      )
+    `).bind(now).run();
+  }
 
   return row !== null;
 }

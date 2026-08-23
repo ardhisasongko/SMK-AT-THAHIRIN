@@ -68,6 +68,16 @@ export const onRequest: PagesFunction<Env, any, AuthData> = async (context) => {
       return jsonResponse({ success: false, error: 'Terlalu banyak permintaan. Coba lagi sebentar.' }, 429);
     }
   }
+  // Rate limit pembacaan (anti scraping & biaya D1): 300 req/menit per user/IP.
+  // Health endpoint dikecualikan untuk uptime monitor; cleanup dimatikan karena
+  // pembersihan penuh ditangani cron purge harian.
+  if (path.startsWith('/api/') && !isMutation && method !== 'OPTIONS' && path !== '/api/health') {
+    const clientIp = context.request.headers.get('CF-Connecting-IP') || 'unknown';
+    const actor = user?.id || clientIp;
+    if (!(await consumeRateLimit(context.env.DB, `read:${actor}`, 300, 60, { cleanup: false }))) {
+      return jsonResponse({ success: false, error: 'Terlalu banyak permintaan. Coba lagi sebentar.' }, 429);
+    }
+  }
   const passwordChangeAllowed = ['/api/auth/change-password', '/api/auth/logout', '/api/auth/me'].includes(path);
   if (user?.mustChangePassword && path.startsWith('/api/') && !passwordChangeAllowed) {
     return jsonResponse({ success: false, error: 'Ganti password awal sebelum menggunakan aplikasi.' }, 403);
