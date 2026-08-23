@@ -1,4 +1,4 @@
-export type JobName = 'daily' | 'weekly';
+export type JobName = 'daily' | 'weekly' | 'purge';
 
 export interface Env {
   DB: D1Database;

@@ -1,9 +1,11 @@
 import { runSync } from './sync';
+import { runPurge } from './purge';
 import { Env, JobName } from './types';
 
 const CRON_JOBS: Record<string, JobName> = {
   '0 13 * * *': 'daily',
   '0 14 * * 0': 'weekly',
+  '30 13 * * *': 'purge',
 };
 
 export default {
@@ -11,6 +13,12 @@ export default {
     const job = CRON_JOBS[event.cron];
     if (!job) {
       console.error(`[sync] cron tidak dikenal: ${event.cron}`);
+      return;
+    }
+    if (job === 'purge') {
+      ctx.waitUntil(runPurge(env).then(result => {
+        console.log(`[sync] job=purge`, JSON.stringify(result));
+      }));
       return;
     }
     ctx.waitUntil(runSync(job, env).then(result => {
@@ -25,8 +33,12 @@ export default {
       return json({ ok: false, error: 'Unauthorized' }, 401);
     }
     const job = new URL(request.url).searchParams.get('job');
+    if (job === 'purge') {
+      const result = await runPurge(env);
+      return json(result, result.ok ? 200 : 500);
+    }
     if (job !== 'daily' && job !== 'weekly') {
-      return json({ ok: false, error: 'Use POST /?job=daily|weekly' }, 400);
+      return json({ ok: false, error: 'Use POST /?job=daily|weekly|purge' }, 400);
     }
     const result = await runSync(job, env);
     const status = result.status === 'locked' ? 409 : result.status === 'disabled' ? 503 : result.ok ? 200 : 502;
