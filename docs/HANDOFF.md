@@ -5,7 +5,7 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
-- **Backlog audit batch 2 (24 Agustus 2026, commit lokal — belum dideploy)**:
+- **Backlog audit batch 2 (24 Agustus 2026 — LIVE bersama batch 1: deploy `fa57a66d`)**:
   (E1) Modal ui/Modal.tsx di-hardening: role="dialog"+aria-modal, Escape menutup,
   focus trap + fokus awal + kembalikan fokus, body scroll-lock, opsi
   closeOnBackdrop={false} — dipakai dialog konfirmasi selesai CBT (anti misklik).
@@ -20,7 +20,7 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
   Sisa backlog: ganti sisa alert() (Forum/Notifikasi/Kelas/Profil), styled
   confirm modal pengganti window.confirm, dark mode.
 
-- **Backlog audit batch 1 (24 Agustus 2026, commit lokal — belum dideploy)**:
+- **Backlog audit batch 1 (24 Agustus 2026 — LIVE: deploy `fa57a66d`, backup pra-deploy `/tmp/opencode/backup-pra-batch12-20260824.sql`)**:
   (A) feat(security): cap pesan WA absensi 3/siswa/hari via 1 query GROUP BY;
   rate limit GET 300/menit per user/IP di middleware (health dikecualikan, cleanup
   off di jalur GET — safety net cron purge); penilaian essai anti-gaming: semua kata
