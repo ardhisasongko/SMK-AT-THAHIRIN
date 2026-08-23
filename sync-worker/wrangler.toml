@@ -9,12 +9,12 @@ database_name = "smk-at-tahirin-db"
 database_id = "e436d309-e92a-430d-8c48-c47752b3391b"
 
 # Cron (UTC). WIB = UTC+7, jadi:
-#   "0 13 * * *"  = setiap hari  20:00 WIB  (push foto full -> Google Drive + tabel Harian)
-#   "0 14 * * 0"  = Minggu       21:00 WIB  (tabel Rekap mingguan)
-#   "30 13 * * *" = setiap hari  20:30 WIB  (purge: sesi kedaluwarsa, rate limit,
-#                                            blob foto full yang sudah diarsip >24 jam)
+#   "0 13 * * *"   = setiap hari  20:00 WIB  (push foto full -> Google Drive + tabel Harian)
+#   "0 14 * * SUN" = Minggu       21:00 WIB  (tabel Rekap mingguan) — API CF minta 'SUN', bukan '0'
+#   "30 13 * * *"  = setiap hari  20:30 WIB  (purge: sesi kedaluwarsa, rate limit,
+#                                             blob foto full yang sudah diarsip >24 jam)
 [triggers]
-crons = ["0 13 * * *", "0 14 * * 0", "30 13 * * *"]
+crons = ["0 13 * * *", "0 14 * * SUN", "30 13 * * *"]
 
 [vars]
 APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwM8BSf3UVDZBD1HZhLsTQIer3_ZlIFm7mlUMX6nmPYbvAPuoEMq97serIgHkVzRMa4/exec"

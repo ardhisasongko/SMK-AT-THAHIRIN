@@ -5,7 +5,7 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
-- **Hardening sesi audit (23 Agustus 2026, commit lokal — belum dideploy)**:
+- **Hardening sesi audit (23 Agustus 2026 — LIVE: deploy Pages + sync-worker `866ea18f`)**:
   (1) fix(auth): validasi /api/auth/me hanya menghapus sesi saat 401 pasti — error
   jaringan/5xx tidak lagi me-logout user (`shouldClearSessionOnAuthCheck` + test).
   (2) fix .gitignore: `data/` → `/data/` agar functions/api/data tidak terabaikan.
@@ -21,8 +21,11 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
   penugasan = perilaku lama; `/api/auth/me` mengirim `classAssignments`; dropdown
   absensi guru ikut membatasi. Verifikasi: 282 test root + 10 sync-worker + build OK;
   migrasi 0026 diterapkan lokal.
-  Tindak lanjut deploy: backup D1 remote → db:migrate:remote (0025+0026) → deploy
-  Pages → deploy sync-worker (cron baru) → smoke test login guru (dropdown kelas).
+  Deploy 23 Agu: backup `/tmp/opencode/backup-pra-0026-20260823.sql` → migrasi remote
+  0025+0026 ✅ → deploy Pages ✅ → sync-worker `866ea18f` dengan 3 cron ✅ (catatan:
+  API CF menolak day-of-week `0`, harus `SUN`). Smoke test health/situs/401 lulus.
+  Sisa tindak lanjut manual: verifikasi UI login guru (dropdown kelas terbatas) +
+  perbaiki typo waliKelas k2 "Fahri" → "Fachri" di Manajemen Kelas.
 - **Model tulis presensi DELTA (live 23 Agustus 2026)**: `PUT /api/data/presensi_v1` tidak lagi
   DELETE-all + INSERT-all seluruh koleksi. Baru: `writePresensiDelta()` di
   `functions/_lib/relational-data.ts` — hanya rekaman yang berubah di-upsert via
