@@ -62,3 +62,10 @@ export function canAccessTab(currentUser: User | null, tab: string): boolean {
   if (!currentUser) return false;
   return getNavItems(currentUser).some(item => item.id === tab);
 }
+
+/** Semua id tab yang dikenal aplikasi (untuk validasi URL hash). */
+const KNOWN_TAB_IDS = new Set(['landing', 'cbt', 'absensi', 'kelas', 'modul-ajar', 'forum', 'notifikasi', 'pengguna', 'whatsapp', 'profil']);
+
+export function isKnownTab(tab: string): boolean {
+  return KNOWN_TAB_IDS.has(tab);
+}

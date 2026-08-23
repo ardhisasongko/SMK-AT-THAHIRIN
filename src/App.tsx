@@ -25,7 +25,7 @@ import {
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, AuthSession } from './types';
 import { usePersistedCollection } from './hooks/usePersistedCollection';
 import { authHeaders, loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest, shouldClearSessionOnAuthCheck } from './utils/auth';
-import { canAccessTab } from './navItems';
+import { canAccessTab, isKnownTab } from './navItems';
 import { forumApi, notificationApi } from './utils/community-api';
 
 const AVATAR_BY_ROLE: Record<string, string> = {
@@ -36,8 +36,30 @@ const AVATAR_BY_ROLE: Record<string, string> = {
   siswa: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
 };
 
+/** Baca tab aktif dari URL hash (deep-link), fallback 'landing' bila tidak dikenal. */
+function tabFromHash(): string {
+  if (typeof window === 'undefined') return 'landing';
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  return isKnownTab(raw) ? raw : 'landing';
+}
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('landing');
+  const [activeTab, setActiveTabState] = useState<string>(tabFromHash);
+
+  // Tulis tab ke URL hash agar bisa di-bookmark/di-share, dan tanggapi Back/Forward.
+  const setActiveTab = (tab: string) => setActiveTabState(tab);
+  useEffect(() => {
+    const onPopState = () => setActiveTabState(tabFromHash());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+  useEffect(() => {
+    const desired = activeTab === 'landing' ? '' : `#/${activeTab}`;
+    const current = `${window.location.hash}`.replace(/^#/, '');
+    if (current !== desired.replace(/^#/, '')) {
+      history.pushState(null, '', `${window.location.pathname}${window.location.search}${desired}`);
+    }
+  }, [activeTab]);
 
   // Load sesi (token + user) dari localStorage; user dibawa dari server
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => loadAuthSession());
