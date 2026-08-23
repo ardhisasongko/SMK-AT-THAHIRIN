@@ -11,7 +11,7 @@
 //   PUT /api/data/:key            -> upsert a collection (body = full JSON array/object)
 //   DELETE /api/data/:key         -> delete a collection (admin only)
 
-import { canEditClass, type AuthUser } from '../../_lib/auth';
+import { canEditClassScoped, type AuthUser } from '../../_lib/auth';
 import {
   CollectionDataError,
   RELATIONAL_COLLECTIONS,
@@ -233,7 +233,7 @@ async function validateAndPatchPresensi(
         if (!check.ok) {
           return { ok: false, status: 403, error: check.error };
         }
-      } else if (!canEditClass(user, record.classId)) {
+      } else if (!(await canEditClassScoped(db, user, record.classId))) {
         return {
           ok: false,
           status: 403,

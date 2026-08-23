@@ -65,7 +65,11 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
   const canEditClass = (classId: string): boolean => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin' || currentUser.role === 'super_admin') return true;
-    if (currentUser.role === 'guru') return true;
+    if (currentUser.role === 'guru') {
+      // Guru dengan penugasan dibatasi ke kelasnya; tanpa penugasan = semua (perilaku lama).
+      const assigned = currentUser.classAssignments;
+      return !assigned || assigned.length === 0 || assigned.includes(classId);
+    }
     if (currentUser.role === 'ketua_kelas') {
       return currentUser.ketuaStatus === 'approved' && currentUser.classId === classId;
     }
@@ -74,11 +78,14 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
 
   // Daftar kelas yang boleh diedit user (untuk selektor & default)
   const fullClassIds = kelasList.map(k => k.id);
+  const guruAssigned = currentUser?.role === 'guru'
+    ? currentUser.classAssignments?.filter(id => fullClassIds.includes(id)) ?? []
+    : [];
   const editableClassIds: string[] =
     currentUser?.role === 'admin' || currentUser?.role === 'super_admin'
       ? fullClassIds
       : currentUser?.role === 'guru'
-        ? fullClassIds
+        ? (guruAssigned.length ? guruAssigned : fullClassIds)
         : (currentUser?.role === 'ketua_kelas' && currentUser.ketuaStatus === 'approved' && currentUser.classId)
           ? [currentUser.classId]
           : [];

@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../_lib/auth';
-import { ACTION_URLS, ensureLegacyNotificationsMigrated, NOTIFICATION_CATEGORIES, NOTIFICATION_ROLES } from '../../_lib/forum-notifications';
+import { ACTION_URLS, NOTIFICATION_CATEGORIES, NOTIFICATION_ROLES } from '../../_lib/forum-notifications';
 import { jsonResponse } from '../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -28,14 +28,12 @@ export async function listNotifications(db: D1Database, user: AuthUser): Promise
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
-  await ensureLegacyNotificationsMigrated(env.DB);
   return jsonResponse({ success: true, data: await listNotifications(env.DB, data.user) });
 };
 
 export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, data, request }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
   if (!['guru','admin','super_admin'].includes(data.user.role)) return jsonResponse({ success: false, error: 'Tidak berwenang mengirim notifikasi.' }, 403);
-  await ensureLegacyNotificationsMigrated(env.DB);
   let body: any; try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 200 || typeof body.message !== 'string' || !body.message.trim() || body.message.length > 5000 || !NOTIFICATION_ROLES.has(body.targetRole) || !NOTIFICATION_CATEGORIES.has(body.category)) return jsonResponse({ success: false, error: 'Data notifikasi tidak valid.' }, 400);
   if (data.user.role === 'guru' && (body.targetRole === 'admin' || body.category === 'Sistem')) return jsonResponse({ success: false, error: 'Guru tidak dapat mengirim notifikasi sistem/admin.' }, 403);

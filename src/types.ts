@@ -14,6 +14,8 @@ export interface User {
   ketuaStatus?: 'none' | 'pending' | 'approved';
   status?: 'active' | 'inactive' | 'archived';
   mustChangePassword?: boolean;
+  /** Kelas yang ditugaskan ke guru (migrasi 0026). Kosong/undefined = belum dikonfigurasi = semua kelas. */
+  classAssignments?: string[];
 }
 
 export interface AuthSession {

@@ -1,5 +1,4 @@
 import type { AuthUser } from '../../../_lib/auth';
-import { ensureLegacyCbtMigrated } from '../../../_lib/cbt';
 import { jsonResponse } from '../../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -7,7 +6,6 @@ type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
-  await ensureLegacyCbtMigrated(env.DB);
   const isAdmin = data.user.role === 'admin' || data.user.role === 'super_admin';
   const isTeacher = data.user.role === 'guru';
   if (!isAdmin && !isTeacher && !['siswa', 'ketua_kelas'].includes(data.user.role)) return jsonResponse({ success: false, error: 'Tidak berwenang.' }, 403);

@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../_lib/auth';
-import { effectiveCbtStatus, ensureLegacyCbtMigrated, getExamQuestions, hashCbtToken, isCbtStaff, isCbtStudent, todayWIB, canManageCbtExam, canTakeExam, parseJson, validateCbtExamInput } from '../../../_lib/cbt';
+import { effectiveCbtStatus, getExamQuestions, hashCbtToken, isCbtStaff, isCbtStudent, todayWIB, canManageCbtExam, canTakeExam, parseJson, validateCbtExamInput } from '../../../_lib/cbt';
 import { jsonResponse } from '../../../_lib/response';
 
 function examTypeValue(body: any): 'ujian' | 'latihan' {
@@ -16,7 +16,6 @@ type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
-  await ensureLegacyCbtMigrated(env.DB);
   const { results } = await env.DB.prepare('SELECT * FROM cbt_exams ORDER BY created_at DESC').all();
   const exams = [];
   for (const row of results as any[]) {
@@ -48,7 +47,6 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
 export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, data, request }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
   if (!isCbtStaff(data.user)) return jsonResponse({ success: false, error: 'Tidak berwenang membuat ujian.' }, 403);
-  await ensureLegacyCbtMigrated(env.DB);
   if (Number(request.headers.get('Content-Length') || 0) > 512_000) return jsonResponse({ success: false, error: 'Paket ujian terlalu besar.' }, 413);
   let body: any;
   try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }

@@ -175,6 +175,36 @@ export function canEditClass(user: AuthUser, classId: string): boolean {
   return false;
 }
 
+/**
+ * Versi async dengan penugasan eksplisit (migrasi 0026).
+ * Guru yang punya >=1 baris di teacher_class_assignments dibatasi ke
+ * kelasnya; guru tanpa penugasan apa pun memakai perilaku lama (semua kelas)
+ * agar transisi data tidak mengunci siapa pun.
+ */
+export async function canEditClassScoped(db: D1Database, user: AuthUser, classId: string): Promise<boolean> {
+  if (user.role === 'super_admin' || user.role === 'admin') return true;
+  if (user.role === 'ketua_kelas') {
+    return user.ketuaStatus === 'approved' && user.classId === classId;
+  }
+  if (user.role !== 'guru') return false;
+  const anyAssignment = await db.prepare(
+    'SELECT 1 AS x FROM teacher_class_assignments WHERE user_id = ? LIMIT 1'
+  ).bind(user.id).first();
+  if (!anyAssignment) return canEditClass(user, classId);
+  const assigned = await db.prepare(
+    'SELECT 1 AS x FROM teacher_class_assignments WHERE user_id = ? AND class_id = ? LIMIT 1'
+  ).bind(user.id, classId).first();
+  return Boolean(assigned);
+}
+
+/** ID kelas yang ditugaskan ke seorang guru (untuk dibawa ke client). */
+export async function getAssignedClassIds(db: D1Database, userId: string): Promise<string[]> {
+  const rows = await db.prepare(
+    'SELECT class_id FROM teacher_class_assignments WHERE user_id = ? ORDER BY class_id'
+  ).bind(userId).all<{ class_id: string }>();
+  return rows.results.map(row => String(row.class_id));
+}
+
 /** Kelas yang boleh diedit user (untuk pembatasan dropdown di client & validasi server). */
 export function editableClassIds(user: AuthUser): string[] | 'all' {
   if (user.role === 'super_admin' || user.role === 'admin') return 'all';

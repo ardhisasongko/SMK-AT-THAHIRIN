@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../../_lib/auth';
-import { canTakeExam, cbtWindowOpen, effectiveCbtStatus, ensureLegacyCbtMigrated, getExamQuestions, hashCbtToken, isCbtStudent, parseJson } from '../../../../_lib/cbt';
+import { canTakeExam, cbtWindowOpen, effectiveCbtStatus, getExamQuestions, hashCbtToken, isCbtStudent, parseJson } from '../../../../_lib/cbt';
 import { jsonResponse } from '../../../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../../../_lib/rate-limit';
 
@@ -9,7 +9,6 @@ type AuthData = Record<string, unknown> & { user: AuthUser | null };
 export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, data, request, params }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
   if (!isCbtStudent(data.user)) return jsonResponse({ success: false, error: 'Hanya siswa yang dapat memulai ujian.' }, 403);
-  await ensureLegacyCbtMigrated(env.DB);
   let body: any;
   try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   if (typeof body.token !== 'string' || body.token.length > 32) return jsonResponse({ success: false, error: 'Token tidak valid.' }, 400);
