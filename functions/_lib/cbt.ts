@@ -182,11 +182,14 @@ export async function getExamQuestions(db: D1Database, examId: string, includeAn
   }));
 }
 
-export async function canTakeExam(db: D1Database, user: AuthUser, exam: any): Promise<boolean> {
+export async function canTakeExam(db: D1Database, user: AuthUser, exam: any, preloadedClasses?: any[]): Promise<boolean> {
   if (!isCbtStudent(user) || !user.classId) return false;
   if (exam.class_target === 'Semua Kelas MPLB' || exam.class_target === 'all' || exam.class_target === user.classId) return true;
-  const classesRow = await db.prepare("SELECT value FROM app_data WHERE key = 'kelas_v1'").first<{ value: string }>();
-  const classes = parseJson<any[]>(classesRow?.value, []);
+  // PreloadedClasses: hindari membaca blob kelas_v1 berulang saat memeriksa banyak ujian.
+  const classes = preloadedClasses ?? await (async () => {
+    const classesRow = await db.prepare("SELECT value FROM app_data WHERE key = 'kelas_v1'").first<{ value: string }>();
+    return parseJson<any[]>(classesRow?.value, []);
+  })();
   return classes.some(item => item.id === user.classId && item.name === exam.class_target);
 }
 

@@ -16,25 +16,67 @@ type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
+  const user = data.user;
   const { results } = await env.DB.prepare('SELECT * FROM cbt_exams ORDER BY created_at DESC').all();
+  const staff = isCbtStaff(user);
+  const student = isCbtStudent(user);
+
+  // Filter kandidat tanpa query tambahan (visibilitas & kepemilikan).
+  const candidates = (results as any[]).filter(row => {
+    if (staff && !canManageCbtExam(user, row)) return false;
+    return true;
+  });
+
+  // Siswa: kelas_v1 dibaca SEKALI untuk seluruh pemeriksaan canTakeExam (anti N+1 blob).
+  let classList: any[] | undefined;
+  const needsClassLookup = student && candidates.some(row =>
+    !['Semua Kelas MPLB', 'all'].includes(String(row.class_target)) && row.class_target !== user.classId);
+  if (needsClassLookup) {
+    const classesRow = await env.DB.prepare("SELECT value FROM app_data WHERE key='kelas_v1'").first<{ value: string }>();
+    classList = parseJson<any[]>(classesRow?.value || '[]', []);
+  }
+  const allowed = [];
+  for (const row of candidates) {
+    if (student) {
+      if (effectiveCbtStatus(row) === 'inactive') continue;
+      if (!(await canTakeExam(env.DB, user, row, classList))) continue;
+    }
+    allowed.push(row);
+  }
+  if (!allowed.length) return jsonResponse({ success: true, data: [] });
+
+  const ids = allowed.map(row => String(row.id));
+  const placeholders = ids.map(() => '?').join(',');
+
+  // Anti N+1: attempt siswa & jumlah soal dimuat dalam 2 query batch.
+  const attemptsByExam = new Map<string, any>();
+  if (student) {
+    const { results: attemptRows } = await env.DB.prepare(
+      `SELECT id,exam_id,status,score,correct_count,wrong_count,submitted_at,time_spent_seconds,answers_json,doubtful_json
+         FROM cbt_attempts WHERE student_user_id=? AND exam_id IN (${placeholders})`
+    ).bind(user.id, ...ids).all<any>();
+    for (const attempt of attemptRows) attemptsByExam.set(String(attempt.exam_id), attempt);
+  }
+  const countsByExam = new Map<string, number>();
+  if (!staff) {
+    const { results: countRows } = await env.DB.prepare(
+      `SELECT exam_id, COUNT(*) AS total FROM cbt_questions WHERE exam_id IN (${placeholders}) GROUP BY exam_id`
+    ).bind(...ids).all<any>();
+    for (const row of countRows) countsByExam.set(String(row.exam_id), Number(row.total));
+  }
+
   const exams = [];
-  for (const row of results as any[]) {
-    if (isCbtStudent(data.user) && effectiveCbtStatus(row) === 'inactive') continue;
-    if (isCbtStudent(data.user) && !(await canTakeExam(env.DB, data.user, row))) continue;
-    if (isCbtStaff(data.user) && !canManageCbtExam(data.user, row)) continue;
-    const staff = isCbtStaff(data.user);
+  for (const row of allowed) {
     const questions = staff ? await getExamQuestions(env.DB, String(row.id), true) : [];
-    const attempt = isCbtStudent(data.user)
-      ? await env.DB.prepare('SELECT id,status,score,correct_count,wrong_count,submitted_at,time_spent_seconds,answers_json,doubtful_json FROM cbt_attempts WHERE exam_id=? AND student_user_id=?').bind(row.id, data.user.id).first()
-      : null;
+    const attempt = attemptsByExam.get(String(row.id)) || null;
     exams.push({
       id: String(row.id), title: String(row.title), subject: String(row.subject), classTarget: String(row.class_target),
       durationMinutes: Number(row.duration_minutes), token: '', teacherName: String(row.teacher_name),
       startDate: String(row.start_date), endDate: String(row.end_date), openTime: row.open_time || '', closeTime: row.close_time || '', status: effectiveCbtStatus(row),
       examType: String(row.exam_type || 'latihan'), minSubmitMinutes: row.min_submit_minutes != null ? Number(row.min_submit_minutes) : undefined,
-      questions, questionCount: staff ? questions.length : Number((await env.DB.prepare('SELECT COUNT(*) AS total FROM cbt_questions WHERE exam_id=?').bind(row.id).first<any>())?.total || 0),
+      questions, questionCount: staff ? questions.length : (countsByExam.get(String(row.id)) || 0),
       attempt: attempt ? {
-        id: String(attempt.id), examId: String(row.id), siswaId: data.user.id, siswaName: data.user.name, nisn: data.user.nipNisn || '',
+        id: String(attempt.id), examId: String(row.id), siswaId: user.id, siswaName: user.name, nisn: user.nipNisn || '',
         answers: JSON.parse(String(attempt.answers_json || '{}')), doubtful: JSON.parse(String(attempt.doubtful_json || '{}')),
         score: Number(attempt.score || 0), correctCount: Number(attempt.correct_count || 0), wrongCount: Number(attempt.wrong_count || 0),
         submittedAt: String(attempt.submitted_at || ''), timeSpentSeconds: Number(attempt.time_spent_seconds || 0), status: String(attempt.status),

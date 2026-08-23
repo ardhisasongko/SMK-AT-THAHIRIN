@@ -12,17 +12,37 @@ async function mapTopics(db: D1Database, user: AuthUser): Promise<any[]> {
     const row = await db.prepare("SELECT value FROM app_data WHERE key='kelas_v1'").first<{ value: string }>();
     try { className = (JSON.parse(row?.value || '[]') as any[]).find(item => item.id === user.classId)?.name || ''; } catch { className = ''; }
   }
-  const output = [];
-  for (const row of results as any[]) {
+  // Filter visibilitas dulu agar balasan/like hanya dimuat untuk topik terlihat.
+  const visible = (results as any[]).filter(row => {
     if ((user.role === 'siswa' || user.role === 'ketua_kelas') && row.category_type === 'kelas') {
-      const visible = row.class_id ? row.class_id === user.classId : row.category_name === className || row.category_name === user.classId;
-      if (!visible) continue;
+      return row.class_id ? row.class_id === user.classId : row.category_name === className || row.category_name === user.classId;
     }
-    const replies = await db.prepare("SELECT * FROM forum_replies WHERE topic_id=? AND deleted_at IS NULL ORDER BY created_at").bind(row.id).all<any>();
-    const likes = await db.prepare('SELECT user_id FROM forum_topic_likes WHERE topic_id=?').bind(row.id).all<any>();
-    output.push({ id: row.id, title: row.title, categoryType: row.category_type, categoryName: row.category_name, authorId: row.author_user_id, authorName: row.author_name, authorRole: row.author_role, authorAvatar: row.author_avatar, createdAt: row.created_at, content: row.content, attachments: JSON.parse(row.attachments_json || '[]'), tags: JSON.parse(row.tags_json || '[]'), likes: Number(row.legacy_like_count) + likes.results.length, likedBy: likes.results.map(item => item.user_id), views: Number(row.view_count), isPinned: Boolean(row.is_pinned), isResolved: Boolean(row.is_resolved), replies: replies.results.map((reply: any) => ({ id: reply.id, authorId: reply.author_user_id, authorName: reply.author_name, authorRole: reply.author_role, authorAvatar: reply.author_avatar, createdAt: reply.created_at, content: reply.content, attachments: JSON.parse(reply.attachments_json || '[]'), likes: Number(reply.legacy_like_count), likedBy: [] })) });
+    return true;
+  });
+  if (!visible.length) return [];
+
+  // Anti N+1: seluruh balasan & like dimuat dalam 2 query (IN), lalu dikelompokkan.
+  const ids = visible.map(row => String(row.id));
+  const placeholders = ids.map(() => '?').join(',');
+  const [replyRows, likeRows] = await Promise.all([
+    db.prepare(`SELECT * FROM forum_replies WHERE deleted_at IS NULL AND topic_id IN (${placeholders}) ORDER BY created_at`).bind(...ids).all<any>(),
+    db.prepare(`SELECT topic_id, user_id FROM forum_topic_likes WHERE topic_id IN (${placeholders})`).bind(...ids).all<any>(),
+  ]);
+
+  const repliesByTopic = new Map<string, any[]>();
+  for (const reply of replyRows.results) {
+    const list = repliesByTopic.get(reply.topic_id) || [];
+    list.push({ id: reply.id, authorId: reply.author_user_id, authorName: reply.author_name, authorRole: reply.author_role, authorAvatar: reply.author_avatar, createdAt: reply.created_at, content: reply.content, attachments: JSON.parse(reply.attachments_json || '[]'), likes: Number(reply.legacy_like_count), likedBy: [] });
+    repliesByTopic.set(reply.topic_id, list);
   }
-  return output;
+  const likesByTopic = new Map<string, string[]>();
+  for (const like of likeRows.results) {
+    const list = likesByTopic.get(like.topic_id) || [];
+    list.push(String(like.user_id));
+    likesByTopic.set(like.topic_id, list);
+  }
+
+  return visible.map(row => ({ id: row.id, title: row.title, categoryType: row.category_type, categoryName: row.category_name, authorId: row.author_user_id, authorName: row.author_name, authorRole: row.author_role, authorAvatar: row.author_avatar, createdAt: row.created_at, content: row.content, attachments: JSON.parse(row.attachments_json || '[]'), tags: JSON.parse(row.tags_json || '[]'), likes: Number(row.legacy_like_count) + (likesByTopic.get(String(row.id))?.length || 0), likedBy: likesByTopic.get(String(row.id)) || [], views: Number(row.view_count), isPinned: Boolean(row.is_pinned), isResolved: Boolean(row.is_resolved), replies: repliesByTopic.get(String(row.id)) || [] }));
 }
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
