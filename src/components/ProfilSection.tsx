@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar } from '../types';
 import { authHeaders } from '../utils/auth';
+import { buildCsv, downloadTextFile } from '../utils/download';
+import { dateWIB } from '../utils/date';
 import { RaporModal } from './RaporModal';
 
 const normalizeName = (s: string) =>
@@ -65,6 +67,13 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
 
+  // Aksi admin nyata (bukan simulasi)
+  const [resetBusyNisn, setResetBusyNisn] = useState<string | null>(null);
+  const [resetResult, setResetResult] = useState<{ name: string; password: string } | null>(null);
+  const [auditLoading, setAuditLoading] = useState<boolean>(false);
+  const [auditLog, setAuditLog] = useState<Array<{ action: string; actor_name: string; target_name: string | null; created_at: string }> | null>(null);
+  const [rekapExporting, setRekapExporting] = useState<boolean>(false);
+
   // Edit Personal Info Modal
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>(currentUser?.name || '');
@@ -100,6 +109,74 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
   const isStudentRole = role === 'siswa' || role === 'ketua_kelas';
 
   // Derive Student Data if user is Siswa
+  /** Reset password akun siswa via endpoint nyata; hasil ditampilkan sekali. */
+  const handleResetAccess = async (siswa: Siswa) => {
+    if (resetBusyNisn) return;
+    setResetBusyNisn(siswa.nisn);
+    try {
+      const listResponse = await fetch('/api/users', { headers: authHeaders() });
+      const list = await listResponse.json() as { success?: boolean; data?: Array<{ id: string; nipNisn: string | null }> };
+      const account = list.data?.find(item => item.nipNisn === siswa.nisn);
+      if (!account) {
+        alert(`Akun untuk ${siswa.name} (NISN ${siswa.nisn}) tidak ditemukan.`);
+        return;
+      }
+      const response = await fetch('/api/users/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ id: account.id }),
+      });
+      const json = await response.json() as { success?: boolean; initialPassword?: string; error?: string };
+      if (!json.success || !json.initialPassword) {
+        alert(json.error || 'Gagal mereset kata sandi.');
+        return;
+      }
+      setResetResult({ name: siswa.name, password: json.initialPassword });
+    } catch {
+      alert('Gagal menghubungi server. Coba lagi sebentar.');
+    } finally {
+      setResetBusyNisn(null);
+    }
+  };
+
+  /** Ekspor rekap presensi dari data yang sudah dimuat (CSV ter-escape). */
+  const handleExportRekapCsv = () => {
+    setRekapExporting(true);
+    try {
+      const rows = [...presensiList]
+        .sort((a, b) => (a.tanggal === b.tanggal ? a.siswaName.localeCompare(b.siswaName) : a.tanggal.localeCompare(b.tanggal)))
+        .map(p => ({
+          Tanggal: p.tanggal,
+          Kelas: kelasList.find(k => k.id === p.classId)?.name || p.classId,
+          Nama: p.siswaName,
+          NISN: p.nisn,
+          Status: p.status,
+          Jam: p.waktuInput,
+          DiinputOleh: p.inputBy?.name || '',
+        }));
+      if (!rows.length) { alert('Belum ada data presensi untuk diekspor.'); return; }
+      downloadTextFile(buildCsv(rows), `rekap-presensi-${dateWIB()}.csv`);
+    } finally {
+      setRekapExporting(false);
+    }
+  };
+
+  /** Muat log audit pengguna terbaru (endpoint admin nyata). */
+  const handleLoadAuditLog = async () => {
+    if (auditLoading) return;
+    setAuditLoading(true);
+    try {
+      const response = await fetch('/api/users/audit', { headers: authHeaders() });
+      const json = await response.json() as { success?: boolean; data?: Array<{ action: string; actor_name: string; target_name: string | null; created_at: string }>; error?: string };
+      if (!json.success || !json.data) { alert(json.error || 'Gagal memuat log.'); return; }
+      setAuditLog(json.data.slice(0, 10));
+    } catch {
+      alert('Gagal menghubungi server. Coba lagi sebentar.');
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   const studentData = siswaList.find(s => s.name === currentUser.name || s.nisn === currentUser.nipNisn) || siswaList[0];
   const studentClass = kelasList.find(k => k.id === currentUser.classId || k.id === studentData?.classId) || kelasList[0];
   const studentPresensiHistory = presensiList.filter(p => p.siswaName === currentUser.name || p.nisn === currentUser.nipNisn || p.siswaId === studentData?.id);
@@ -719,11 +796,12 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                       <td className="p-3 text-slate-500">{s.name.toLowerCase().replace(/\s+/g, '')}@{SCHOOL_INFO.email.split('@')[1]}</td>
                       <td className="p-3 font-mono">{s.nisn}</td>
                       <td className="p-3">
-                        <button 
-                          onClick={() => alert(`Sistem Admin: Reset kata sandi akun ${s.name} telah dikirim ke email!`)}
-                          className="text-purple-600 hover:underline font-bold text-[11px] cursor-pointer"
+                        <button
+                          onClick={() => handleResetAccess(s)}
+                          disabled={resetBusyNisn === s.nisn}
+                          className="text-purple-600 hover:underline font-bold text-[11px] cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                         >
-                          Reset Akses
+                          {resetBusyNisn === s.nisn ? 'Memproses...' : 'Reset Akses'}
                         </button>
                       </td>
                     </tr>
@@ -753,12 +831,13 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                 <Database className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-slate-900">Rekapitulasi Data Absensi</h3>
-              <p className="text-xs text-slate-500">Ekspor rekapitulasi kehadiran mingguan & bulanan dalam format CSV / Excel.</p>
-              <button 
-                onClick={() => alert('Mengunduh Laporan Rekapitulasi Presensi Sekolah (CSV)...')}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-xs w-full transition-colors cursor-pointer"
+              <p className="text-xs text-slate-500">Ekspor seluruh data presensi yang dimuat ({presensiList.length} rekaman) ke berkas CSV.</p>
+              <button
+                onClick={handleExportRekapCsv}
+                disabled={rekapExporting}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-xs w-full transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
               >
-                Unduh Rekap CSV
+                {rekapExporting ? 'Menyiapkan...' : 'Unduh Rekap CSV'}
               </button>
             </div>
 
@@ -767,26 +846,63 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
                 <BarChart3 className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-slate-900">Backup Data Sistem</h3>
-              <p className="text-xs text-slate-500">Simpan cadangan data jadwal, siswa, dan modul ajar ke penyimpanan terenkripsi.</p>
-              <button 
-                onClick={() => alert('Berhasil membuat cadangan database sistem!')}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl text-xs w-full transition-colors cursor-pointer"
-              >
-                Jalankan Backup
-              </button>
+              <p className="text-xs text-slate-500">Backup database dijalankan dari komputer admin via Cloudflare CLI (bukan dari web):</p>
+              <code className="block text-[10px] bg-slate-100 text-slate-700 rounded-lg p-2 font-mono break-all select-all">
+                npx wrangler d1 export smk-at-tahirin-db --remote --output=backup.sql
+              </code>
+              <p className="text-[10px] text-slate-400">Lakukan rutin, terutama sebelum migrasi.</p>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 shadow-xs">
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl w-fit">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-900">Audit Keamanan Server</h3>
-              <p className="text-xs text-slate-500">Periksa status keamanan SSL, izin pengguna, dan aktivitas log terkini.</p>
-              <button 
-                onClick={() => alert('Status Server: Normal (0 Ancaman Terdeteksi)')}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs w-full transition-colors cursor-pointer"
+              <h3 className="text-sm font-bold text-slate-900">Audit Keamanan Pengguna</h3>
+              <p className="text-xs text-slate-500">10 aktivitas administratif terbaru (reset sandi, ubah role, arsip akun).</p>
+              <button
+                onClick={handleLoadAuditLog}
+                disabled={auditLoading}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-xl text-xs w-full transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
               >
-                Cek Log Keamanan
+                {auditLoading ? 'Memuat...' : 'Muat Log Terbaru'}
+              </button>
+              {auditLog && (
+                auditLog.length === 0
+                  ? <p className="text-[11px] text-slate-500 italic">Belum ada aktivitas tercatat.</p>
+                  : <ul className="text-[11px] text-slate-600 space-y-1 max-h-40 overflow-y-auto">
+                      {auditLog.map((entry, index) => (
+                        <li key={index} className="border-b border-slate-100 pb-1">
+                          <span className="font-bold">{entry.action}</span> — {entry.actor_name}
+                          {entry.target_name ? ` → ${entry.target_name}` : ''}
+                          <span className="block text-slate-400">{entry.created_at.replace('T', ' ').slice(0, 16)} UTC</span>
+                        </li>
+                      ))}
+                    </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET PASSWORD RESULT MODAL (sekali tampil) */}
+      {resetResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200" role="dialog" aria-modal="true" aria-labelledby="reset-result-title">
+            <h3 id="reset-result-title" className="text-base font-bold text-slate-900">Kata sandi {resetResult.name} direset</h3>
+            <p className="text-xs text-slate-500">Berikan password awal berikut kepada yang bersangkutan. Wajib diganti saat login pertama. <strong>Tidak akan ditampilkan lagi.</strong></p>
+            <code className="block text-sm bg-emerald-50 text-emerald-800 rounded-xl p-3 font-mono text-center select-all break-all">{resetResult.password}</code>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { navigator.clipboard?.writeText(resetResult.password).catch(() => undefined); }}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+              >
+                Salin
+              </button>
+              <button
+                onClick={() => setResetResult(null)}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer"
+              >
+                Selesai
               </button>
             </div>
           </div>
