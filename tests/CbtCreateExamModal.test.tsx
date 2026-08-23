@@ -1,5 +1,7 @@
+vi.mock('../src/components/ui/toast', () => ({ showToast: vi.fn() }));
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { showToast } from '../src/components/ui/toast';
 import { CbtCreateExamModal } from '../src/components/cbt/CbtCreateExamModal';
 import type { User } from '../src/types';
 
@@ -32,14 +34,13 @@ describe('CbtCreateExamModal', () => {
   });
 
   it('menolak simpan tanpa soal', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const { onSave } = renderModal();
     fireEvent.change(screen.getByPlaceholderText('contoh: Penilaian Harian - Otomatisasi Kearsipan Digital'), {
       target: { value: 'Penilaian Harian Kearsipan' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Ujian CBT' }));
     expect(onSave).not.toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith('Harap tambahkan minimal 1 soal ujian.');
+    expect(showToast).toHaveBeenCalledWith('Harap tambahkan minimal 1 soal ujian.', 'error');
   });
 
   it('menyimpan ujian baru dengan judul dan soal', () => {
@@ -58,7 +59,6 @@ describe('CbtCreateExamModal', () => {
   });
 
   it('menambahkan soal essai dan wajib mengisi kunci jawaban', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const { onSave } = renderModal();
     fireEvent.change(screen.getByPlaceholderText('contoh: Penilaian Harian - Otomatisasi Kearsipan Digital'), {
       target: { value: 'Penilaian Harian Kearsipan' },
@@ -68,7 +68,7 @@ describe('CbtCreateExamModal', () => {
     expect(screen.getByText('Essai')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Simpan Ujian CBT' }));
-    expect(alertSpy).toHaveBeenCalledWith('Setiap soal essai wajib memiliki kunci jawaban teks.');
+    expect(showToast).toHaveBeenCalledWith('Setiap soal essai wajib memiliki kunci jawaban teks.', 'error');
     expect(onSave).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByPlaceholderText('contoh: arsip adalah rekaman kegiatan|rekaman informasi'), { target: { value: 'rekaman kegiatan' } });
@@ -76,7 +76,6 @@ describe('CbtCreateExamModal', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     const saved = onSave.mock.calls[0][0];
     expect(saved.questions[0]).toMatchObject({ type: 'essai', correctAnswer: 'rekaman kegiatan', options: [] });
-    alertSpy.mockRestore();
   });
 
   it('ujian resmi (UAS/UTS) otomatis mengisi waktu minimal kirim 80% durasi', () => {

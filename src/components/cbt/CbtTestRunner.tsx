@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { showToast } from '../ui/toast';
 import {
   Clock,
   AlertTriangle,
@@ -176,11 +177,11 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
   const handleFinishClick = () => {
     if (submitting) return;
     if (!canSubmitYet) {
-      alert(`Ujian resmi belum boleh dikirim. Minimal pengerjaan ${exam.minSubmitMinutes} menit — masih tersisa ${formatTime(minSubmitWaitSeconds)}. Jawaban Anda tetap aman tersimpan.`);
+      showToast(`Ujian resmi belum boleh dikirim. Minimal pengerjaan ${exam.minSubmitMinutes} menit — masih tersisa ${formatTime(minSubmitWaitSeconds)}. Jawaban Anda tetap aman tersimpan.`, 'info');
       return;
     }
     if (missingCount > 0) {
-      alert(`Masih ada ${missingCount} soal belum diisi: nomor ${missingNumbers.slice(0, 12).join(', ')}${missingNumbers.length > 12 ? ', ...' : ''}. Semua soal wajib dijawab sebelum ujian dikirim.`);
+      showToast(`Masih ada ${missingCount} soal belum diisi: nomor ${missingNumbers.slice(0, 12).join(', ')}${missingNumbers.length > 12 ? ', ...' : ''}. Semua soal wajib dijawab sebelum ujian dikirim.`, 'error');
       const firstMissing = missingNumbers[0] - 1;
       if (firstMissing >= 0) setCurrentQuestionIndex(firstMissing);
       return;
@@ -196,7 +197,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          alert('Waktu ujian telah habis! Sistem secara otomatis mengirimkan jawaban Anda.');
+          showToast('Waktu ujian telah habis! Sistem secara otomatis mengirimkan jawaban Anda.', 'info');
           void handleConfirmSubmitTest(true);
           return 0;
         }
@@ -501,7 +502,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
       {/* Finish Confirmation Modal */}
       {showFinishModal && (
-        <Modal onClose={() => setShowFinishModal(false)} tone="dark" className="space-y-4">
+        <Modal onClose={() => setShowFinishModal(false)} tone="dark" className="space-y-4" ariaLabel="Konfirmasi selesaikan ujian" closeOnBackdrop={false}>
           <div className="flex items-center gap-3 text-amber-400">
             <AlertTriangle className="w-8 h-8" />
             <h3 className="text-lg font-bold text-white">Selesaikan Ujian CBT?</h3>

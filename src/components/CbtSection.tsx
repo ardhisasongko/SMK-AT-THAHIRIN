@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { showToast } from './ui/toast';
 import {
   FileText,
   Clock,
@@ -135,7 +136,7 @@ export function CbtSection({
       setIsTestMode(true);
       setSelectedExamForToken(null);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Gagal memulai ujian.');
+      showToast(error instanceof Error ? error.message : 'Gagal memulai ujian.', 'error');
       setSelectedExamForToken(null);
     }
   };
@@ -147,7 +148,7 @@ export function CbtSection({
       setCompletedResult(saved);
       setIsTestMode(false);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Jawaban gagal dikirim.');
+      showToast(error instanceof Error ? error.message : 'Jawaban gagal dikirim.', 'error');
       throw error;
     }
   };
@@ -163,9 +164,9 @@ export function CbtSection({
       setCbtExams(prev => editingExam ? prev.map(item => item.id === saved.id ? saved : item) : [saved, ...prev]);
       setShowCreateExamModal(false);
       setEditingExam(null);
-      alert(editingExam ? 'Ujian berhasil diperbarui.' : `Ujian dibuat. Token pengawas: ${saved.token}`);
+      showToast(editingExam ? 'Ujian berhasil diperbarui.' : `Ujian dibuat. Token pengawas: ${saved.token}`, 'success');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Ujian gagal dibuat.');
+      showToast(error instanceof Error ? error.message : 'Ujian gagal dibuat.', 'error');
     }
   };
 
@@ -176,7 +177,7 @@ export function CbtSection({
       const result = await cbtApi.setExamStatus(exam.id, status);
       setCbtExams(prev => prev.map(item => item.id === exam.id ? { ...item, status: result.status } : item));
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Status ujian gagal diubah.');
+      showToast(error instanceof Error ? error.message : 'Status ujian gagal diubah.', 'error');
     }
   };
 
@@ -186,16 +187,16 @@ export function CbtSection({
       await cbtApi.deleteExam(exam.id);
       setCbtExams(prev => prev.filter(item => item.id !== exam.id));
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Ujian gagal dihapus.');
+      showToast(error instanceof Error ? error.message : 'Ujian gagal dihapus.', 'error');
     }
   };
 
   const handleRotateToken = async (exam: CbtExam) => {
     try {
       const result = await cbtApi.rotateToken(exam.id);
-      alert(`Token baru untuk ${exam.title}: ${result.token}`);
+      showToast(`Token baru untuk ${exam.title}: ${result.token}`, 'success');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Token gagal dirotasi.');
+      showToast(error instanceof Error ? error.message : 'Token gagal dirotasi.', 'error');
     }
   };
 
@@ -208,7 +209,7 @@ export function CbtSection({
     try {
       setAnalytics(await cbtApi.analytics());
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Analitik gagal dimuat.');
+      showToast(error instanceof Error ? error.message : 'Analitik gagal dimuat.', 'error');
     } finally {
       setAnalyticsLoading(false);
     }
@@ -219,7 +220,7 @@ export function CbtSection({
     try {
       await downloadCsv('/api/cbt/export/scores', `nilai-cbt-${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Ekspor nilai gagal.');
+      showToast(error instanceof Error ? error.message : 'Ekspor nilai gagal.', 'error');
     } finally {
       setExportingScores(false);
     }

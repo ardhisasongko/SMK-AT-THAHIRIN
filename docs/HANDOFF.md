@@ -5,6 +5,21 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Backlog audit batch 2 (24 Agustus 2026, commit lokal — belum dideploy)**:
+  (E1) Modal ui/Modal.tsx di-hardening: role="dialog"+aria-modal, Escape menutup,
+  focus trap + fokus awal + kembalikan fokus, body scroll-lock, opsi
+  closeOnBackdrop={false} — dipakai dialog konfirmasi selesai CBT (anti misklik).
+  (E2) Sistem toast non-blocking (ui/toast.tsx: showToast + ToastHost aria-live,
+  auto-hilang 5 detik) dipasang di App; alert() diganti toast di alur CBT
+  (CbtSection 10, CbtTestRunner 3 — termasuk "waktu habis" yang dulu blocking,
+  CbtCreateExamModal 8). Test terkait dimigrasi ke vi.mock modul toast.
+  (E3) Code splitting React.lazy untuk 9 section berat; bundle awal JS
+  343KB -> ~71KB (-79%), sisanya chunk on-demand per section.
+  (E4) strict mode TIDAK diaktifkan: --strict menghasilkan ±5.000 error
+  (implicit any lintas komponen lama); butuh refactor bertahap per-komponen.
+  Sisa backlog: ganti sisa alert() (Forum/Notifikasi/Kelas/Profil), styled
+  confirm modal pengganti window.confirm, dark mode.
+
 - **Backlog audit batch 1 (24 Agustus 2026, commit lokal — belum dideploy)**:
   (A) feat(security): cap pesan WA absensi 3/siswa/hari via 1 query GROUP BY;
   rate limit GET 300/menit per user/IP di middleware (health dikecualikan, cleanup

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showToast } from '../ui/toast';
 import { Plus, Sparkles } from 'lucide-react';
 import { User as UserType, CbtExam, CbtQuestion, Kelas } from '../../types';
 import { Modal } from '../ui/Modal';
@@ -37,7 +38,7 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       setNewQuestions(questions);
     } catch (err: any) {
       console.error('Error generating questions:', err);
-      alert(`Gagal membuat soal AI: ${err.message}`);
+      showToast(`Gagal membuat soal AI: ${err.message}`, 'error');
     } finally {
       setIsAiGenerating(false);
     }
@@ -84,35 +85,35 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
   const handleSaveExamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
-      alert('Judul ujian tidak boleh kosong.');
+      showToast('Judul ujian tidak boleh kosong.', 'error');
       return;
     }
     if (!newSubject.trim()) {
-      alert('Mata pelajaran tidak boleh kosong.');
+      showToast('Mata pelajaran tidak boleh kosong.', 'error');
       return;
     }
     if (newEndDate < newStartDate) {
-      alert('Tanggal akhir tidak boleh sebelum tanggal mulai.');
+      showToast('Tanggal akhir tidak boleh sebelum tanggal mulai.', 'error');
       return;
     }
     if (newExamType === 'ujian') {
       const minSubmit = newMinSubmit ?? Math.round(newDuration * 0.8);
       if (minSubmit < 1 || minSubmit > newDuration) {
-        alert('Waktu minimal kirim harus antara 1 sampai durasi ujian (menit).');
+        showToast('Waktu minimal kirim harus antara 1 sampai durasi ujian (menit).', 'error');
         return;
       }
     }
     if (newOpenTime && newCloseTime && newCloseTime <= newOpenTime) {
-      alert('Jam tutup harus lebih lambat dari jam buka.');
+      showToast('Jam tutup harus lebih lambat dari jam buka.', 'error');
       return;
     }
     if (newQuestions.length === 0) {
-      alert('Harap tambahkan minimal 1 soal ujian.');
+      showToast('Harap tambahkan minimal 1 soal ujian.', 'error');
       return;
     }
     const incompleteEssay = newQuestions.find(q => q.type === 'essai' && !(q.correctAnswer || '').trim());
     if (incompleteEssay) {
-      alert('Setiap soal essai wajib memiliki kunci jawaban teks.');
+      showToast('Setiap soal essai wajib memiliki kunci jawaban teks.', 'error');
       return;
     }
 

@@ -1,21 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { WifiOff } from 'lucide-react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { WifiOff, Loader2 } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { BottomDock } from './components/BottomDock';
 import { Footer } from './components/Footer';
 import { LandingPage } from './components/LandingPage';
 import { LoginForm } from './components/LoginForm';
 import { LoginGate } from './components/LoginGate';
-import { AbsensiSection } from './components/AbsensiSection';
-import { KelasSection } from './components/KelasSection';
-import { ModulAjarSection } from './components/ModulAjarSection';
-import { ForumSection } from './components/ForumSection';
-import { NotifikasiSection } from './components/NotifikasiSection';
-import { ProfilSection } from './components/ProfilSection';
-import { CbtSection } from './components/CbtSection';
-import { UserManagementSection } from './components/UserManagementSection';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
-import { WhatsAppAdminSection } from './components/WhatsAppAdminSection';
+
+// Code splitting: section berat dimuat on-demand agar bundle awal ramping.
+// LandingPage/Login tetap eager untuk first paint.
+const AbsensiSection = lazy(() => import('./components/AbsensiSection').then(m => ({ default: m.AbsensiSection })));
+const CbtSection = lazy(() => import('./components/CbtSection').then(m => ({ default: m.CbtSection })));
+const KelasSection = lazy(() => import('./components/KelasSection').then(m => ({ default: m.KelasSection })));
+const ModulAjarSection = lazy(() => import('./components/ModulAjarSection').then(m => ({ default: m.ModulAjarSection })));
+const ForumSection = lazy(() => import('./components/ForumSection').then(m => ({ default: m.ForumSection })));
+const NotifikasiSection = lazy(() => import('./components/NotifikasiSection').then(m => ({ default: m.NotifikasiSection })));
+const ProfilSection = lazy(() => import('./components/ProfilSection').then(m => ({ default: m.ProfilSection })));
+const UserManagementSection = lazy(() => import('./components/UserManagementSection').then(m => ({ default: m.UserManagementSection })));
+const WhatsAppAdminSection = lazy(() => import('./components/WhatsAppAdminSection').then(m => ({ default: m.WhatsAppAdminSection })));
+
+function SectionLoader(): React.JSX.Element {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center gap-3 text-slate-500" role="status" aria-live="polite">
+      <Loader2 className="w-6 h-6 animate-spin text-emerald-600" aria-hidden="true" />
+      <span className="text-xs font-semibold">Memuat modul...</span>
+    </div>
+  );
+}
 import { 
   INITIAL_KELAS, 
   INITIAL_SISWA, 
@@ -26,6 +38,7 @@ import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, Notification
 import { usePersistedCollection } from './hooks/usePersistedCollection';
 import { authHeaders, loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest, shouldClearSessionOnAuthCheck } from './utils/auth';
 import { canAccessTab, isKnownTab } from './navItems';
+import { ToastHost } from './components/ui/toast';
 import { forumApi, notificationApi } from './utils/community-api';
 
 const AVATAR_BY_ROLE: Record<string, string> = {
@@ -178,6 +191,7 @@ export default function App() {
 
 return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-200 selection:text-emerald-900">
+      <ToastHost />
       {isOffline && (
         <div className="sticky top-0 z-50 bg-amber-500 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-2">
           <WifiOff className="w-3.5 h-3.5" />
@@ -195,12 +209,12 @@ return (
       {/* Main Content Area */}
       <main className="flex-1">
         {(!currentUser && isProtectedTab) || (currentUser && !isAllowedTab) ? (
-          <LoginGate 
+          <LoginGate
             onLoginClick={() => setShowLoginModal(true)}
             onGoHome={() => setActiveTab('landing')}
           />
         ) : (
-          <>
+          <Suspense fallback={<SectionLoader />}>
         {activeTab === 'landing' && (
           <LandingPage 
             setActiveTab={setActiveTab}
@@ -289,7 +303,7 @@ return (
         {activeTab === 'whatsapp' && currentUser && (
           <WhatsAppAdminSection currentUser={currentUser} />
         )}
-          </>
+          </Suspense>
         )}
       </main>
 

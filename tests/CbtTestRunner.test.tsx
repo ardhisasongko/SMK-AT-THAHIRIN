@@ -1,5 +1,7 @@
+vi.mock('../src/components/ui/toast', () => ({ showToast: vi.fn() }));
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { showToast } from '../src/components/ui/toast';
 import { CbtTestRunner } from '../src/components/cbt/CbtTestRunner';
 import type { CbtExam, User } from '../src/types';
 
@@ -103,15 +105,13 @@ describe('CbtTestRunner', () => {
   });
 
   it('menolak submit selama ada soal belum diisi dan tidak memanggil onFinish', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const { onFinish } = renderRunner();
     fireEvent.click(screen.getByRole('button', { name: /Pilihan A/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
 
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('1 soal belum diisi'));
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('1 soal belum diisi'), 'error');
     expect(screen.queryByText('Selesaikan Ujian CBT?')).not.toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   it('submit menghitung skor dan memanggil onFinish setelah semua soal diisi', async () => {
@@ -197,16 +197,14 @@ describe('CbtTestRunner soal essai', () => {
   }
 
   it('menampilkan textarea untuk soal essai dan menolak submit saat essai kosong', () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const { onFinish } = renderEssayRunner();
     expect(screen.getByText('Soal Essai')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Tulis jawaban essai Anda di sini...')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Tulis jawaban essai Anda di sini...'), { target: { value: '   ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Selesaikan' }));
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('2 soal belum diisi'));
+    expect(showToast).toHaveBeenCalledWith(expect.stringContaining('2 soal belum diisi'), 'error');
     expect(onFinish).not.toHaveBeenCalled();
-    alertSpy.mockRestore();
   });
 
   it('submit sukses saat PG dan essai terisi, lalu cache lokal dihapus', async () => {
