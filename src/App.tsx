@@ -24,7 +24,7 @@ import {
 } from './data/initialData';
 import { User, Kelas, Siswa, PresensiRecord, ModulAjar, ForumTopic, NotificationItem, AuthSession } from './types';
 import { usePersistedCollection } from './hooks/usePersistedCollection';
-import { authHeaders, loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest } from './utils/auth';
+import { authHeaders, loadAuthSession, saveAuthSession, clearAuthSession, logoutRequest, shouldClearSessionOnAuthCheck } from './utils/auth';
 import { canAccessTab } from './navItems';
 import { forumApi, notificationApi } from './utils/community-api';
 
@@ -79,15 +79,17 @@ export default function App() {
       .then(async response => ({ response, json: await response.json().catch(() => ({})) as { user?: User } }))
       .then(({ response, json }) => {
         if (cancelled) return;
-        if (!response.ok || !json.user) {
-          setAuthSession(null);
+        if (response.ok && json.user) {
+          const next = { user: { ...json.user!, avatar: authSession?.user.avatar || AVATAR_BY_ROLE[json.user!.role] || AVATAR_BY_ROLE.siswa } };
+          saveAuthSession(next);
+          setAuthSession(next);
           return;
         }
-        const next = { user: { ...json.user!, avatar: authSession?.user.avatar || AVATAR_BY_ROLE[json.user!.role] || AVATAR_BY_ROLE.siswa } };
-        saveAuthSession(next);
-        setAuthSession(next);
+        // Hanya sesi yang benar-benar kadaluarsa/tidak valid (401) yang dihapus.
+        // Error jaringan atau gangguan server (5xx) tidak boleh me-logout user.
+        if (shouldClearSessionOnAuthCheck(response.status)) setAuthSession(null);
       })
-      .catch(() => { if (!cancelled) setAuthSession(null); });
+      .catch(() => { /* offline/gangguan jaringan: pertahankan sesi lokal */ });
     return () => { cancelled = true; };
   }, []); // Validasi cookie sekali saat aplikasi dimuat.
 

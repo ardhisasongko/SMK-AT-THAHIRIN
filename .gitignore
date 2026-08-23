@@ -12,6 +12,7 @@ whatsapp-gateway/.wwebjs_auth/
 whatsapp-gateway/.wwebjs_cache/
 !.env.example
 !.dev.vars.example
-data/
-!src/data/
+# Hanya folder data/ di root (berisi *.xlsx dsb) yang diabaikan —
+# jangan menangkap folder lain bernama "data" seperti src/data atau functions/api/data.
+/data/
 imported/

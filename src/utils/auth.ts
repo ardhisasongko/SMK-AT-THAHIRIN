@@ -113,3 +113,13 @@ export function isPasswordStrong(password: string): { valid: boolean; message: s
   }
   return { valid: true, message: 'Password valid' };
 }
+
+/**
+ * Kebijakan refresh sesi saat cek /api/auth/me gagal:
+ * hanya 401 (sesi kadaluarsa/tidak valid) yang boleh menghapus sesi lokal.
+ * Error jaringan atau gangguan server (5xx) dipertahankan agar user
+ * tidak tiba-tiba ter-logout di koneksi yang tidak stabil.
+ */
+export function shouldClearSessionOnAuthCheck(status: number): boolean {
+  return status === 401;
+}
