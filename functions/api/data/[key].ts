@@ -17,6 +17,7 @@ import {
   RELATIONAL_COLLECTIONS,
   readRelationalCollection,
   validateCollection,
+  writePresensiDelta,
   writeRelationalCollection,
 } from '../../_lib/relational-data';
 import { jsonResponse } from '../../_lib/response';
@@ -138,8 +139,8 @@ export function studentCanEdit(user: AuthUser, record: any): { ok: boolean; erro
   return { ok: true };
 }
 
-/** Tulis log perubahan presensi ke tabel presensi_log. */
-async function writePresensiLog(
+/** Bangun statement INSERT audit log presensi (dijalankan atomik dalam batch tulis). */
+function buildPresensiLogStatement(
   db: D1Database,
   tanggal: string,
   siswaId: string,
@@ -148,16 +149,15 @@ async function writePresensiLog(
   oldValue: string,
   newValue: string,
   changedBy: AuthUser
-): Promise<void> {
+): D1PreparedStatement {
   const id = `log-${crypto.randomUUID()}`;
   const nowWib = new Date(Date.now() + 7 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
-  await db
+  return db
     .prepare(
       `INSERT INTO presensi_log (id, tanggal, siswa_id, siswa_name, field_changed, old_value, new_value, changed_by_name, changed_by_role, changed_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(id, tanggal, siswaId, siswaName, field, oldValue, newValue, changedBy.name, changedBy.role, nowWib)
-    .run();
+    .bind(id, tanggal, siswaId, siswaName, field, oldValue, newValue, changedBy.name, changedBy.role, nowWib);
 }
 
 /**
@@ -170,7 +170,7 @@ async function validateAndPatchPresensi(
   db: D1Database,
   user: AuthUser,
   incoming: unknown
-): Promise<{ ok: boolean; status: number; error?: string; result?: unknown; changedCount?: number; logs?: Array<{ tanggal: string; siswaId: string; siswaName: string; field: string; oldValue: string; newValue: string }> }> {
+): Promise<{ ok: boolean; status: number; error?: string; result?: unknown; changedCount?: number; changedRecords?: any[]; logs?: Array<{ tanggal: string; siswaId: string; siswaName: string; field: string; oldValue: string; newValue: string }> }> {
   if (!Array.isArray(incoming)) {
     return { ok: false, status: 400, error: 'presensi_v1 harus berupa array.' };
   }
@@ -189,6 +189,7 @@ async function validateAndPatchPresensi(
   });
 
   const result: any[] = [];
+  const changedRecords: any[] = [];
   const logs: Array<{ tanggal: string; siswaId: string; siswaName: string; field: string; oldValue: string; newValue: string }> = [];
   let changedCount = 0;
 
@@ -266,6 +267,7 @@ async function validateAndPatchPresensi(
 
       record.inputBy = { id: user.id, name: user.name, role: user.role };
       changedCount++;
+      changedRecords.push(record);
     } else {
       record.inputBy = prev.inputBy;
     }
@@ -284,7 +286,7 @@ async function validateAndPatchPresensi(
     }
   }
 
-  return { ok: true, status: 200, result, changedCount, logs };
+  return { ok: true, status: 200, result, changedCount, changedRecords, logs };
 }
 
 async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], previous: any[], schoolName = 'SMK PLUS AT-THAHIRIN'): Promise<void> {
@@ -412,9 +414,18 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
     if (!checked.ok) {
       return jsonResponse({ success: false, error: checked.error }, checked.status);
     }
+    // Tulis model DELTA: hanya rekaman yang berubah di-upsert (hemat row writes
+    // D1 free tier). Audit log ikut dalam batch yang sama agar atomik.
     let write;
     try {
-      write = await writeRelationalCollection(env.DB, k, checked.result, requested.revision);
+      write = await writePresensiDelta(env.DB, {
+        changed: Array.isArray(checked.changedRecords) ? checked.changedRecords : [],
+        merged: Array.isArray(checked.result) ? checked.result : [],
+        expectedRevision: requested.revision,
+        extraStatements: (checked.logs || []).map(log =>
+          buildPresensiLogStatement(env.DB, log.tanggal, log.siswaId, log.siswaName, log.field, log.oldValue, log.newValue, data.user!)
+        ),
+      });
     } catch (error) {
       if (error instanceof CollectionDataError) return jsonResponse({ success: false, error: error.message }, 400);
       throw error;
@@ -423,14 +434,7 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
       return jsonResponse({ success: false, error: 'Data telah berubah di perangkat lain. Muat ulang sebelum menyimpan.', revision: write.revision }, 409);
     }
     try {
-      for (const log of checked.logs || []) {
-        await writePresensiLog(env.DB, log.tanggal, log.siswaId, log.siswaName, log.field, log.oldValue, log.newValue, data.user);
-      }
-    } catch (error) {
-      console.error('Presensi tersimpan, tetapi audit log gagal:', error);
-    }
-    try {
-      await enqueueAttendanceNotifications(env.DB, Array.isArray(checked.result) ? checked.result : [], previous, env.SCHOOL_NAME);
+      await enqueueAttendanceNotifications(env.DB, Array.isArray(checked.changedRecords) ? checked.changedRecords : [], previous, env.SCHOOL_NAME);
     } catch (error) {
       console.error('Presensi tersimpan, tetapi antrean notifikasi gagal:', error);
     }

@@ -359,6 +359,100 @@ function projectionReplaceStatements(db: D1Database, key: CollectionKey, seriali
   return statements;
 }
 
+export interface PresensiDeltaInput {
+  /** Hanya rekaman yang berubah/baru (sudah tervalidasi & di-stamp inputBy). */
+  changed: JsonObject[];
+  /** Array gabungan lengkap (existing + perubahan) untuk mirror app_data. */
+  merged: JsonObject[];
+  expectedRevision?: number;
+  /** Statement tambahan (mis. audit log) ikut dijalankan atomik dalam batch. */
+  extraStatements?: D1PreparedStatement[];
+}
+
+/**
+ * Tulis presensi model DELTA: hanya upsert rekaman yang berubah via
+ * ON CONFLICT(tanggal, student_id), tanpa DELETE-all + INSERT-all.
+ * Menghemat row writes D1 secara signifikan (C baris alih-alih ~2N).
+ * Baris lama yang tidak dikirim client tetap utuh; tidak ada penghapusan.
+ */
+export async function writePresensiDelta(
+  db: D1Database,
+  input: PresensiDeltaInput,
+): Promise<CollectionWriteResult> {
+  const { changed, merged, expectedRevision, extraStatements } = input;
+  const now = Math.floor(Date.now() / 1000);
+  const serializedMerged = JSON.stringify(merged);
+
+  const statements: D1PreparedStatement[] = [];
+  if (expectedRevision !== undefined) {
+    // Guard CAS atomik yang sama dengan writeRelationalCollection:
+    // INSERT revision -1 melanggar CHECK -> seluruh batch rollback.
+    statements.push(db.prepare(
+      `INSERT INTO academic_collection_revisions(key, revision, initialized, updated_at)
+       SELECT ?1, -1, 0, unixepoch()
+       WHERE (SELECT revision FROM academic_collection_revisions WHERE key = ?1) IS NOT ?2`
+    ).bind('presensi_v1', expectedRevision));
+  }
+  if (changed.length > 0) {
+    statements.push(db.prepare(
+      `INSERT INTO attendance_records
+         (tanggal, student_id, id, position, class_id, student_name, nisn, status, keterangan,
+          waktu_input, foto_url, input_by_json, lokasi_json, fields, source_json)
+       SELECT json_extract(value,'$.tanggal'), json_extract(value,'$.siswaId'), json_extract(value,'$.id'),
+         unixepoch(), json_extract(value,'$.classId'), json_extract(value,'$.siswaName'),
+         json_extract(value,'$.nisn'), json_extract(value,'$.status'), json_extract(value,'$.keterangan'),
+         json_extract(value,'$.waktuInput'), json_extract(value,'$.fotoUrl'),
+         json_extract(value,'$.inputBy'), json_extract(value,'$.lokasi'), json(value), json(value)
+       FROM json_each(?) WHERE 1
+       ON CONFLICT(tanggal, student_id) DO UPDATE SET id=excluded.id,
+         class_id=excluded.class_id, student_name=excluded.student_name, nisn=excluded.nisn,
+         status=excluded.status, keterangan=excluded.keterangan, waktu_input=excluded.waktu_input,
+         foto_url=excluded.foto_url, input_by_json=excluded.input_by_json, lokasi_json=excluded.lokasi_json,
+         fields=excluded.fields, source_json=excluded.source_json`
+    ).bind(JSON.stringify(changed)));
+  }
+  statements.push(...(extraStatements || []));
+  statements.push(db.prepare(
+    `INSERT INTO app_data (key, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+  ).bind('presensi_v1', serializedMerged, now));
+  // Revisi tetap dinaikkan walau tidak ada perubahan agar semantik sama
+  // dengan jalur tulis penuh (client mengandalkan If-Match).
+  statements.push(db.prepare(
+    `INSERT INTO academic_collection_revisions(key, revision, initialized, updated_at)
+     VALUES ('presensi_v1', 1, 1, unixepoch())
+     ON CONFLICT(key) DO UPDATE SET revision = revision + 1, initialized = 1, updated_at = unixepoch()`
+  ));
+
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes(REVISION_GUARD_CHECK)) {
+      const current = await db.prepare('SELECT revision FROM academic_collection_revisions WHERE key=?')
+        .bind('presensi_v1').first<{ revision: number }>();
+      return { conflict: true, revision: Number(current?.revision || 0) };
+    }
+    // Deploy sebelum migrasi 0023: tabel proyeksi belum ada -> tulis legacy
+    // ke app_data saja; statement ekstra (audit log) dijalankan terpisah.
+    if (isMissingProjection(error)) {
+      await db.prepare(
+        `INSERT INTO app_data (key, value, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+      ).bind('presensi_v1', serializedMerged, now).run();
+      for (const statement of extraStatements || []) {
+        try { await statement.run(); } catch (logError) { console.error('Audit log presensi gagal:', logError); }
+      }
+      return { conflict: false, revision: 0 };
+    }
+    throw error;
+  }
+
+  const revision = await db.prepare('SELECT revision FROM academic_collection_revisions WHERE key=?')
+    .bind('presensi_v1').first<{ revision: number }>();
+  return { conflict: false, revision: Number(revision?.revision || 0) };
+}
+
 // Pravalidasi referensi FK agar batch tidak gagal di tengah dengan pesan yang
 // tidak jelas. Kelas/ siswa yang dirujuk bisa saja non-aktif (soft-delete),
 // barisnya tetap ada sehingga FK valid.
