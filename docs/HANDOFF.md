@@ -5,6 +5,22 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Backlog audit batch 1 (24 Agustus 2026, commit lokal — belum dideploy)**:
+  (A) feat(security): cap pesan WA absensi 3/siswa/hari via 1 query GROUP BY;
+  rate limit GET 300/menit per user/IP di middleware (health dikecualikan, cleanup
+  off di jalur GET — safety net cron purge); penilaian essai anti-gaming: semua kata
+  penting kunci (>=3 huruf) wajib ada sebagai kata utuh, kunci pendek cocok token
+  utuh, tanda baca tepi dibersihkan (server + client konsisten).
+  (B) perf(forum,cbt): N+1 dimatikan — forum 2N+1 -> 3 query; CBT: kelas_v1 sekali
+  baca (canTakeExam param preloadedClasses), attempt & jumlah soal batch.
+  (C) feat(profil): tombol admin palsu diganti aksi nyata — reset password via API
+  (password awal tampil sekali di modal), ekspor rekap CSV nyata (buildCsv RFC4180),
+  kartu backup jadi instruksi CLI jujur, log audit /api/users/audit 10 terakhir inline.
+  (D) feat(nav): deep-link '#/tab' via pushState/popstate tanpa library router;
+  hash tak dikenal fallback landing.
+  Fix test flaky lama: fixture AbsensiSection pakai dateWIB() (dulu UTC — gagal saat
+  17:00-24:00 UTC). Verifikasi: 284 test + 10 sync-worker + build OK.
+
 - **Hardening sesi audit (23 Agustus 2026 — LIVE: deploy Pages + sync-worker `866ea18f`)**:
   (1) fix(auth): validasi /api/auth/me hanya menghapus sesi saat 401 pasti — error
   jaringan/5xx tidak lagi me-logout user (`shouldClearSessionOnAuthCheck` + test).
