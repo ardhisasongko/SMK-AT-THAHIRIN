@@ -5,13 +5,15 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
-- **Model tulis presensi DELTA (belum dideploy)**: `PUT /api/data/presensi_v1` tidak lagi
+- **Model tulis presensi DELTA (live 23 Agustus 2026)**: `PUT /api/data/presensi_v1` tidak lagi
   DELETE-all + INSERT-all seluruh koleksi. Baru: `writePresensiDelta()` di
   `functions/_lib/relational-data.ts` — hanya rekaman yang berubah di-upsert via
   `ON CONFLICT(tanggal, student_id)`; audit log kini ikut dalam batch atomik yang sama;
   WA notification queue hanya memproses rekaman berubah. Hemat row writes D1 free tier:
   ~2N → C baris (C = jumlah perubahan). Tanpa migrasi baru (PK sudah ada sejak 0018).
   Kontrak API & respons tidak berubah (client tak perlu update). Test: `tests/presensi-delta.test.ts` (5).
+  Deploy: commit `f7b2838`, backup D1 pra-deploy `/tmp/opencode/backup-presensi-delta-20260823.sql`,
+  smoke test produksi lulus (health ok, situs 200, presensi 401 tanpa auth).
 - **Refactor blueprint multi-sekolah (M1–M5, 18 Agustus 2026)**: identitas sekolah
   tersentral di `src/data/schoolConfig.ts`; `npm run generate:site` menghasilkan
   `index.html`/`site.webmanifest`/`robots.txt`/`sitemap.xml` dari config
