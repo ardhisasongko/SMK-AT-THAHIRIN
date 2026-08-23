@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AbsensiSection } from '../src/components/AbsensiSection';
+import { dateWIB } from '../src/utils/date';
 import type { PresensiRecord, Siswa, Kelas, User } from '../src/types';
 
 vi.mock('../src/utils/photo', () => ({
@@ -37,7 +38,9 @@ const guruUser: User = {
   id: 'g1', name: 'Pak Guru', email: 'guru@test.com', role: 'guru', avatar: '',
 };
 
-const today = new Date().toISOString().split('T')[0];
+// Gunakan tanggal WIB (bukan UTC) agar fixture selalu cocok dengan filter
+// tanggal komponen — test ini pernah flaky saat dijalankan 17:00-24:00 UTC.
+const today = dateWIB();
 const presensiList: PresensiRecord[] = [
   {
     id: 'p1', tanggal: today, classId: 'x-rpl-1', siswaId: 's1',
