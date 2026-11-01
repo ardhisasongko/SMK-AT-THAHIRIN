@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Import massal data siswa & guru dari file Excel (.xlsx) ke sistem informasi sekolah.
  *

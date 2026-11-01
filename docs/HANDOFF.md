@@ -5,6 +5,18 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Migrasi CBT & verifikasi (1 November 2026)**: backup D1 produksi
+  `backup-sebelum-0027.sql` dibuat sebelum perubahan dan di-ignore Git. Migrasi
+  0027, 0028, dan 0029 telah diterapkan ke D1 remote; verifikasi memastikan tidak
+  ada migrasi tertunda dan 2 attempt lama tetap utuh. Node.js 22.23.4 dipakai
+  untuk `npm run verify`: lint bersih, 346 test root + 10 test sync-worker lulus,
+  typecheck sync-worker bersih, build berhasil. Shebang di
+  `scripts/import-data.mjs` dihapus karena Vitest gagal memuat modul `.mjs`
+  dengannya; pemakaian yang didokumentasikan tetap melalui `node`. Aplikasi
+  dideploy ke Pages setelah verifikasi; deployment `13595f04` berstatus sukses.
+  Smoke test deployment: halaman utama tampil dan `/api/health` mengembalikan
+  `status: ok`, `db: ok`.
+
 - **Kesehatan repo & poles landing (1 November 2026)**: (1) nama paket
   `react-example` → `smk-at-thahirin` (package.json + lockfile sinkron).
   (2) `xlsx` dipindah dari tarball CDN SheetJS (0.20.3) ke registry npm resmi

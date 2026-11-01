@@ -1,0 +1,44 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Deploy Pages with Node 22",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"set PATH=%LOCALAPPDATA%\\node22;%PATH% && node --version && npm.cmd run pages:deploy"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Inspect Git before push",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"git status --short && git branch --show-current && git remote -v && git log -5 --oneline --decorate && git diff --stat && git diff --cached --stat"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "Locate Git executable",
+			"type": "shell",
+			"command": "C:\\Windows\\System32\\cmd.exe",
+			"args": [
+				"/d",
+				"/c",
+				"if exist \"C:\\Program Files\\Git\\cmd\\git.exe\" (echo C:\\Program Files\\Git\\cmd\\git.exe) else (echo Git missing from Program Files); if exist \"%LOCALAPPDATA%\\Programs\\Git\\cmd\\git.exe\" (echo %LOCALAPPDATA%\\Programs\\Git\\cmd\\git.exe) else (echo Git missing from Local Programs)"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

@@ -16,3 +16,5 @@ whatsapp-gateway/.wwebjs_cache/
 # jangan menangkap folder lain bernama "data" seperti src/data atau functions/api/data.
 /data/
 imported/
+# Backup database produksi (berisi data siswa) — jangan pernah di-commit.
+backup-*.sql
