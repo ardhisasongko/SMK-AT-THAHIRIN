@@ -29,8 +29,11 @@ export function CbtBankPicker({ defaultSubject, onPick, onClose }: CbtBankPicker
   }, []);
 
   const subjects = useMemo(() => [...new Set(items.map(item => item.subject))].sort(), [items]);
-  const filtered = items.filter(item =>
-    (!subject || item.subject === subject)
+  // Soal esai warisan TIDAK ditampilkan sebagai pilihan: esai tidak lagi
+  // dapat ditambahkan ke paket (pembuatan esai dinonaktifkan).
+  const legacyEssayCount = items.filter(item => item.type === 'essai').length;
+  const filtered = items.filter(item => item.type !== 'essai'
+    && (!subject || item.subject === subject)
     && (!search || item.question.toLowerCase().includes(search.toLowerCase()) || (item.topic || '').toLowerCase().includes(search.toLowerCase())));
 
   const toggle = (id: string) => setSelected(prev => {
@@ -56,6 +59,10 @@ export function CbtBankPicker({ defaultSubject, onPick, onClose }: CbtBankPicker
           {subjects.map(item => <option key={item} value={item}>{item}</option>)}
         </select>
       </div>
+
+      {legacyEssayCount > 0 && (
+        <p className="text-[11px] text-sky-700 italic">{legacyEssayCount} soal esai warisan di bank tidak ditampilkan — soal esai tidak lagi dapat ditambahkan ke paket.</p>
+      )}
 
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">{error}</div>}
 
