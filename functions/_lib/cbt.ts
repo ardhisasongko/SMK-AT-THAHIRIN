@@ -99,15 +99,186 @@ export function isEssayAnswerCorrect(answer: string, key: string): boolean {
   });
 }
 
+// --- Pengacakan deterministik per attempt (Pekerjaan: shuffle soal & opsi) ---
+// PRNG mulberry32: kecil, cepat, dan konsisten antar-runtime (server saja).
+export function createSeededRandom(seed: number): () => number {
+  let state = (Number.isFinite(seed) ? Math.trunc(seed) : 0) >>> 0;
+  return () => {
+    state = (state + 0x6D2B79F5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function shuffleWithSeed<T>(items: T[], seed: number): T[] {
+  const result = [...items];
+  const random = createSeededRandom(seed);
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+const DISPLAY_KEYS = ['A', 'B', 'C', 'D', 'E'];
+
+// Acak urutan soal + opsi PG untuk satu attempt berdasarkan seed tersimpan.
+// Setiap opsi hasil acakan membawa `key` = huruf tampilan (urutan tampil) dan
+// `originalKey` = kunci asal, sehingga jawaban siswa selalu dikirim & dinilai
+// sebagai kunci asal — penilaian server tidak berubah. Kunci jawaban benar &
+// pembahasan TIDAK ikut diubah/dikirim di sini (pemanggil memakai
+// getExamQuestions(..., false)). Seed null/0 = urutan asli (attempt lama).
+export function shuffleQuestionsForAttempt<T extends { id: string; type?: string; options?: any[] }>(questions: T[], seed: number | null | undefined): T[] {
+  if (seed == null || !Number.isFinite(seed) || Number(seed) === 0) return questions;
+  const numericSeed = Math.trunc(Number(seed));
+  const withShuffledOptions = questions.map((question, index) => {
+    if (question.type === 'essai' || !Array.isArray(question.options) || question.options.length === 0) return question;
+    const shuffledOptions = shuffleWithSeed(question.options, numericSeed + 7919 * (index + 1));
+    return {
+      ...question,
+      options: shuffledOptions.map((option: any, optionIndex: number) => ({
+        ...option,
+        originalKey: option.originalKey ?? option.key,
+        key: DISPLAY_KEYS[optionIndex] ?? option.key,
+      })),
+    };
+  });
+  return shuffleWithSeed(withShuffledOptions, numericSeed);
+}
+
+// Petunjuk kata kunci untuk layar koreksi guru (BUKAN nilai): berapa kata
+// penting dari alternatif kunci terbaik yang muncul di jawaban siswa.
+export function essayKeywordHint(answer: string, key: string): { matched: number; total: number; complete: boolean } {
+  const answerTokens = new Set(significantTokens(typeof answer === 'string' ? answer : ''));
+  let best = { matched: 0, total: 0, complete: false };
+  for (const part of String(key || '').split('|')) {
+    const tokens = significantTokens(part).filter(token => token.length >= 3);
+    if (tokens.length === 0) {
+      const normalizedPart = normalizeText(part);
+      const hit = normalizedPart !== '' && answerTokens.has(normalizedPart);
+      const candidate = { matched: hit ? 1 : 0, total: normalizedPart ? 1 : 0, complete: hit };
+      if (candidate.matched > best.matched) best = candidate;
+      continue;
+    }
+    const matched = tokens.filter(token => answerTokens.has(token)).length;
+    const candidate = { matched, total: tokens.length, complete: matched === tokens.length };
+    if (matched > best.matched || (matched === best.matched && candidate.total < best.total)) best = candidate;
+  }
+  return best;
+}
+
+export function pointPerQuestion(totalQuestions: number): number {
+  return totalQuestions > 0 ? 100 / totalQuestions : 0;
+}
+
+export function roundScore1(value: number): number {
+  return Math.round((Number(value) || 0) * 10) / 10;
+}
+
+// Skor resmi BARU: hanya soal PG yang dinilai otomatis. Esai tidak dinilai
+// sistem sama sekali (dinilai guru lewat essay_scores_json). correctCount &
+// wrongCount kini khusus PG; score = poin PG dibulatkan (final bila paket
+// tanpa esai; sementara/"pgScore" bila esai menunggu koreksi guru).
 export function scoreCbtAnswers(questions: Array<{ id: string; type?: string; correctAnswer?: string }>, answers: Record<string, string>) {
-  const correctCount = questions.filter(question => {
+  const pgQuestions = questions.filter(question => question.type !== 'essai');
+  const correctCount = pgQuestions.filter(question => {
     const answer = answers[question.id];
-    if (typeof answer !== 'string' || !answer.trim()) return false;
-    if (question.type === 'essai') return isEssayAnswerCorrect(answer, question.correctAnswer || '');
-    return answer === question.correctAnswer;
+    return typeof answer === 'string' && answer.trim() !== '' && answer === question.correctAnswer;
   }).length;
-  const wrongCount = questions.length - correctCount;
-  return { correctCount, wrongCount, score: questions.length ? Math.round(correctCount / questions.length * 100) : 0 };
+  const wrongCount = pgQuestions.length - correctCount;
+  const perQuestion = pointPerQuestion(questions.length);
+  const pgScore = roundScore1(correctCount * perQuestion);
+  return {
+    correctCount,
+    wrongCount,
+    score: Math.round(correctCount * perQuestion),
+    pgScore,
+    pgCount: pgQuestions.length,
+    essayCount: questions.length - pgQuestions.length,
+    pointPerQuestion: perQuestion,
+  };
+}
+
+export function parseEssayScores(value: unknown): { scores: Record<string, number>; notes: Record<string, string> } {
+  const parsed = parseJson<any>(value, {});
+  const scores: Record<string, number> = {};
+  const notes: Record<string, string> = {};
+  if (parsed && typeof parsed === 'object') {
+    for (const [key, raw] of Object.entries(parsed.scores || {})) {
+      const num = Number(raw);
+      if (Number.isFinite(num)) scores[key] = num;
+    }
+    for (const [key, raw] of Object.entries(parsed.notes || {})) {
+      if (typeof raw === 'string' && raw) notes[key] = raw;
+    }
+  }
+  return { scores, notes };
+}
+
+// Attempt lama tidak punya grading_status (NULL) dan skornya sudah final.
+export function gradingStatusOf(row: { grading_status?: unknown }): 'pending_grading' | 'graded' {
+  return row?.grading_status === 'pending_grading' ? 'pending_grading' : 'graded';
+}
+
+export function parseProctorEvents(value: unknown): { tabSwitch: number; windowBlur: number; fullscreenExit: number } {
+  const parsed = parseJson<any>(value, {});
+  const pick = (raw: unknown) => (Number.isFinite(Number(raw)) && Number(raw) > 0 ? Math.trunc(Number(raw)) : 0);
+  return {
+    tabSwitch: pick(parsed?.tabSwitch),
+    windowBlur: pick(parsed?.windowBlur),
+    fullscreenExit: pick(parsed?.fullscreenExit),
+  };
+}
+
+// Gerbang pembahasan siswa: kunci + penjelasan per soal hanya boleh dibuka
+// bila SELURUH peserta ujian sudah selesai, agar siswa yang selesai lebih
+// dulu tidak membocorkan kunci ke yang belum mengerjakan. Terbuka bila salah
+// satu tercapai lebih dulu:
+// (a) jendela ujian berakhir (status efektif 'completed', atau pada end_date
+//     jam tutup close_time sudah lewat) — attempt tak tersubmit/expired tidak
+//     menahan gerbang; atau
+// (b) semua siswa aktif pada kelas target ujian (target Semua Kelas/'all' =
+//     semua kelas) sudah punya attempt submitted/expired dan tidak ada
+//     attempt in_progress yang masih hidup (in_progress yang expires_at-nya
+//     sudah lewat diperlakukan sebagai expired).
+// Berlaku sama untuk ujian resmi maupun latihan.
+export async function isCbtReviewUnlocked(db: D1Database, exam: any): Promise<boolean> {
+  if (effectiveCbtStatus(exam) === 'completed') return true;
+  if (String(exam.end_date || '') === todayWIB() && exam.close_time && isValidTime(String(exam.close_time))
+    && nowWIBMinutes() >= timeToMinutes(String(exam.close_time))) return true;
+
+  const { results: attemptRows } = await db.prepare(
+    'SELECT student_user_id, status, expires_at FROM cbt_attempts WHERE exam_id=?'
+  ).bind(String(exam.id)).all<any>();
+  const nowIso = new Date().toISOString();
+  const finishedStudentIds = new Set<string>();
+  for (const row of attemptRows as any[]) {
+    const status = String(row.status || '');
+    const expiredLive = status === 'in_progress' && String(row.expires_at || '') !== '' && String(row.expires_at) <= nowIso;
+    if (status === 'in_progress' && !expiredLive) return false; // masih ada yang mengerjakan
+    if (status === 'submitted' || status === 'expired' || expiredLive) finishedStudentIds.add(String(row.student_user_id));
+  }
+
+  const target = String(exam.class_target || '');
+  const coversAll = target === 'all' || target === 'Semua Kelas MPLB';
+  let classIds: string[] = [];
+  if (!coversAll) {
+    const classesRow = await db.prepare("SELECT value FROM app_data WHERE key = 'kelas_v1'").first<{ value: string }>();
+    const classes = parseJson<any[]>(classesRow?.value, []);
+    const byId = classes.find(item => String(item.id) === target);
+    const byName = classes.find(item => String(item.name) === target);
+    classIds = [String(byId?.id ?? byName?.id ?? target)];
+  }
+  const rosterQuery = coversAll
+    ? "SELECT id FROM users WHERE role IN ('siswa','ketua_kelas') AND status='active' AND class_id IS NOT NULL"
+    : `SELECT id FROM users WHERE role IN ('siswa','ketua_kelas') AND status='active' AND class_id IN (${classIds.map(() => '?').join(',')})`;
+  const rosterStatement = coversAll ? db.prepare(rosterQuery) : db.prepare(rosterQuery).bind(...classIds);
+  const { results: roster } = await rosterStatement.all<any>();
+  // Roster kosong (data kelas belum terisi): jatuhkan ke bukti attempt saja —
+  // di atas sudah dipastikan tidak ada attempt yang masih berjalan.
+  if (!roster || roster.length === 0) return true;
+  return (roster as any[]).every(student => finishedStudentIds.has(String(student.id)));
 }
 
 export function resolveMinSubmitSeconds(exam: { exam_type?: unknown; min_submit_minutes?: unknown; duration_minutes?: unknown }): number {
