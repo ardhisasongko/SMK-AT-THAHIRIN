@@ -226,7 +226,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       
       {/* Top Main Profile Card Banner */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900"></div>
+        <div className="absolute top-0 left-0 w-full h-24 bg-slate-900"></div>
 
         <div className="relative pt-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left w-full sm:w-auto">
@@ -815,7 +815,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
       {/* 7. ADMIN - AKSES PENGELOLAAN SISTEM */}
       {(role === 'admin' || role === 'super_admin') && activeSubTab === 'sistem' && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-purple-900 via-slate-900 to-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-2">
+          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-lg space-y-2">
             <h2 className="text-lg font-extrabold flex items-center gap-2">
               <Settings className="w-5 h-5 text-purple-400" />
               <span>Akses Pengelolaan & Integrasi Sistem Sekolah</span>

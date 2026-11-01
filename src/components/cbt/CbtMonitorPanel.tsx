@@ -279,8 +279,8 @@ export function CbtMonitorPanel({ examId, onClose }: CbtMonitorPanelProps) {
 
       {/* Tambah waktu massal + pencarian */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <AlarmClockPlus className="w-4 h-4 text-slate-500" />
+        <div className="flex flex-wrap items-center gap-2">
+          <AlarmClockPlus className="w-4 h-4 shrink-0 text-slate-500" />
           <span className="text-xs font-bold text-slate-700">Tambah waktu semua yang sedang mengerjakan:</span>
           <select
             value={extendAllMinutes}
