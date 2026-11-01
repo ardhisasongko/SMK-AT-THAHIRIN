@@ -53,15 +53,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
   };
 
   return (
-    <div id="landing-page" className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      
+    <div id="landing-page" className="min-h-screen bg-page text-slate-900 font-sans">
+
       {/* HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 py-10 text-white sm:py-16 lg:py-24">
-        {/* Background Decorative Grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30"></div>
-        
-        {/* Glow Effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 blur-3xl rounded-full pointer-events-none"></div>
+      <section className="relative overflow-hidden bg-emerald-950 py-10 text-white sm:py-16 lg:py-24">
+        {/* Dekorasi lingkaran solid (tanpa gradasi) */}
+        <div className="absolute -top-28 -right-28 w-96 h-96 rounded-full border-[2.5rem] border-emerald-900/70 pointer-events-none"></div>
+        <div className="absolute -bottom-32 -left-20 w-72 h-72 rounded-full bg-emerald-900/50 pointer-events-none"></div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12">
@@ -74,7 +72,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
               </div>
 
               <h1 className="mx-auto max-w-3xl text-[2rem] font-extrabold leading-[1.12] tracking-tight text-white sm:text-5xl lg:mx-0 lg:text-6xl">
-                Membangun Generasi Vokasi <span className="bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">Unggul & Siap Kerja</span>
+                Membangun Generasi Vokasi <span className="text-emerald-400">Unggul & Siap Kerja</span>
               </h1>
 
               <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-300 sm:text-lg sm:leading-relaxed lg:mx-0">
@@ -140,7 +138,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                     decoding="async"
                     className="h-64 w-full object-cover sm:h-80 lg:h-96"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+                  <div className="absolute inset-0 bg-slate-950/45"></div>
                   
                   <div className="absolute bottom-0 inset-x-0 p-6 space-y-2 text-white">
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
@@ -200,9 +198,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* SAMBUTAN KEPALA SEKOLAH */}
-      <section className="border-b border-slate-200 bg-white py-10 sm:py-16">
+      <section className="border-b border-slate-200 bg-surface py-10 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 items-center gap-6 rounded-3xl border border-slate-200/80 bg-slate-50 p-5 shadow-xs sm:gap-8 sm:p-8 lg:grid-cols-12 lg:p-12">
+          <div className="grid grid-cols-1 items-center gap-6 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs sm:gap-8 sm:p-8 lg:grid-cols-12 lg:p-12">
             
             <div className="lg:col-span-4 text-center">
               <div className="relative inline-block">
@@ -232,9 +230,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 {SCHOOL_INFO.sambutan}
               </p>
               <div className="grid gap-2 pt-2 text-xs font-bold text-slate-600 sm:grid-cols-3 sm:gap-3">
-                <span className="rounded-lg bg-white px-3 py-2 border border-slate-200">✓ Kurikulum Berbasis Industri</span>
-                <span className="rounded-lg bg-white px-3 py-2 border border-slate-200">✓ Sertifikasi BNSP</span>
-                <span className="rounded-lg bg-white px-3 py-2 border border-slate-200">✓ Pembentukan Karakter Mulia</span>
+                <span className="rounded-lg bg-surface px-3 py-2 border border-slate-200">✓ Kurikulum Berbasis Industri</span>
+                <span className="rounded-lg bg-surface px-3 py-2 border border-slate-200">✓ Sertifikasi BNSP</span>
+                <span className="rounded-lg bg-surface px-3 py-2 border border-slate-200">✓ Pembentukan Karakter Mulia</span>
               </div>
             </div>
 
@@ -243,7 +241,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* JURUSAN / PROGRAM KEAHLIAN SECTION */}
-      <section className="bg-slate-50 py-12 sm:py-20">
+      <section className="bg-page py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="mx-auto mb-9 max-w-3xl space-y-3 text-center sm:mb-14">
@@ -268,7 +266,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                 >
                   <div className="space-y-4 p-5 sm:p-6">
                     <div className="flex items-center justify-between">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${jur.color} text-white flex items-center justify-center shadow-md`}>
+                      <div className={`w-12 h-12 rounded-xl ${jur.color} text-white flex items-center justify-center shadow-md`}>
                         <IconComp className="w-6 h-6" />
                       </div>
                       <span className="text-xs font-extrabold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200">
@@ -296,7 +294,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-start gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col items-start gap-3 border-t border-slate-100 bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-xs font-medium leading-4 text-slate-500">
                       Kaprog: <strong>{jur.kepalaJurusan}</strong>
                     </span>
@@ -317,7 +315,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* QUICK ACCESS PORTAL BANNER */}
-      <section className="bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 py-10 text-white sm:py-12">
+      <section className="bg-emerald-800 py-10 text-white sm:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-white/15 bg-white/10 p-5 backdrop-blur-md sm:p-8 md:flex-row">
             <div className="space-y-2 text-center md:text-left">
@@ -351,7 +349,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ setActiveTab, onOpenLo
       </section>
 
       {/* BERITA & PENGUMUMAN */}
-      <section className="border-b border-slate-200 bg-white py-12 sm:py-20">
+      <section className="border-b border-slate-200 bg-surface py-12 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="mb-9 flex flex-col justify-between gap-4 sm:mb-12 sm:flex-row sm:items-end">
