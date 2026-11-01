@@ -312,11 +312,11 @@ export function CbtSection({
 
   return (
     <div id="cbt-section" className="py-8 bg-slate-50 min-h-[85vh]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {loadError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{loadError}</div>}
 
         {/* SECTION HEADER */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
+        <div className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
           <div className="absolute right-0 top-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -607,25 +607,25 @@ export function CbtSection({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <div className="space-y-3 border-t border-slate-100 pt-3">
                     {mySubmission ? (
-                      <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
                           <span className="text-xs font-bold text-slate-700">Sudah Selesai Dikerjakan</span>
                         </div>
                         <button
                           onClick={() => void handleOpenReview(mySubmission)}
                           className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                         >
-                          <Award className="w-4 h-4" />
+                          <Award className="w-4 h-4 shrink-0" />
                           <span>{mySubmission.gradingStatus === 'pending_grading' ? `PG: ${mySubmission.pgScore ?? mySubmission.score} · Esai menunggu koreksi` : `Nilai: ${mySubmission.score}`}</span>
                         </button>
                       </div>
                     ) : (
                       <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs text-slate-500 flex items-center gap-1">
-                          <Key className="w-3.5 h-3.5 text-amber-500" />
+                          <Key className="w-3.5 h-3.5 shrink-0 text-amber-500" />
                           <span>Token diberikan oleh pengawas</span>
                         </div>
 
@@ -634,7 +634,7 @@ export function CbtSection({
                           : <button
                             id={`start-exam-${exam.id}`}
                             onClick={() => handleStartExam(exam)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.02]"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02]"
                           >
                             <Play className="w-3.5 h-3.5 fill-current" />
                             <span>Kerjakan Ujian</span>
@@ -643,15 +643,15 @@ export function CbtSection({
                       </div>
                     )}
                     {isStaff && (
-                       <div className="ml-2 flex flex-wrap justify-end gap-1.5">
-                         <button type="button" onClick={() => { setEditingExam(exam); setShowCreateExamModal(true); }} title="Edit ujian" className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"><Pencil className="h-3.5 w-3.5" /></button>
-                         <button type="button" onClick={() => { setMonitorExamId(exam.id); requestAnimationFrame(() => document.getElementById('cbt-monitor-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-2 text-[11px] font-bold text-sky-700 hover:bg-sky-100"><MonitorPlay className="h-3.5 w-3.5" />Pantau Ujian</button>
-                         <button type="button" onClick={() => handleRotateToken(exam)} className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100">Rotasi Token</button>
+                       <div className="flex flex-wrap items-center gap-2">
+                         <button type="button" onClick={() => { setEditingExam(exam); setShowCreateExamModal(true); }} title="Edit ujian" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"><Pencil className="h-4 w-4" /></button>
+                         <button type="button" onClick={() => { setMonitorExamId(exam.id); requestAnimationFrame(() => document.getElementById('cbt-monitor-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-3 text-[11px] font-bold text-sky-700 hover:bg-sky-100"><MonitorPlay className="h-4 w-4 shrink-0" />Pantau Ujian</button>
+                         <button type="button" onClick={() => handleRotateToken(exam)} className="inline-flex h-9 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-[11px] font-bold text-amber-700 hover:bg-amber-100">Rotasi Token</button>
                          {exam.status === 'inactive'
-                           ? <button type="button" onClick={() => handleStatusChange(exam, 'active')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100">Aktifkan</button>
-                           : exam.status !== 'completed' && <button type="button" onClick={() => handleStatusChange(exam, 'inactive')} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-100">Nonaktifkan</button>}
-                         {exam.status !== 'completed' && <button type="button" onClick={() => handleStatusChange(exam, 'completed')} className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100">Selesai</button>}
-                         <button type="button" onClick={() => handleDeleteExam(exam)} title="Hapus ujian" className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-rose-700 hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                           ? <button type="button" onClick={() => handleStatusChange(exam, 'active')} className="inline-flex h-9 items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100">Aktifkan</button>
+                           : exam.status !== 'completed' && <button type="button" onClick={() => handleStatusChange(exam, 'inactive')} className="inline-flex h-9 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-[11px] font-bold text-slate-700 hover:bg-slate-100">Nonaktifkan</button>}
+                         {exam.status !== 'completed' && <button type="button" onClick={() => handleStatusChange(exam, 'completed')} className="inline-flex h-9 items-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-[11px] font-bold text-blue-700 hover:bg-blue-100">Selesai</button>}
+                         <button type="button" onClick={() => handleDeleteExam(exam)} title="Hapus ujian" className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
                        </div>
                     )}
                   </div>
