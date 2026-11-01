@@ -69,7 +69,7 @@ export const JURUSAN_LIST: Jurusan[] = [
     kepalaJurusan: 'Dra. Hj. Sri Wahyuni, M.Pd.',
     prospekKerja: ['Staf Administrasi & Administrasi Digital', 'Sekretaris / Asisten Manajemen', 'Customer Service / Front Office / Public Relations', 'Staf Kearsipan Digital', 'Staf Keuangan & SDM (Entry Level)', 'Wirausaha Layanan Bisnis'],
     fasilitas: ['Lab Simulator Kantor Modern', 'Komputer Administrasi & Software Kearsipan', 'Perangkat Telekonferensi HD', 'Mesin Otomatisasi Perkantoran & Scanner Digital'],
-    color: 'from-emerald-600 to-teal-700'
+    color: 'bg-emerald-700'
   }
 ];
 
