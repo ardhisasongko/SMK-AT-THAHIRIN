@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../_lib/auth';
-import { isCbtStaff, parseJson, validateCbtQuestions } from '../../../_lib/cbt';
+import { ESSAY_CREATE_MESSAGE, isCbtStaff, parseJson, validateCbtQuestions } from '../../../_lib/cbt';
 import { jsonResponse } from '../../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -75,6 +75,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   if (!isCbtStaff(data.user)) return jsonResponse({ success: false, error: 'Tidak berwenang.' }, 403);
   let body: any;
   try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
+  // Pembuatan soal esai dinonaktifkan: bank hanya menerima pilihan ganda.
+  if (body?.question?.type === 'essai') return jsonResponse({ success: false, error: ESSAY_CREATE_MESSAGE }, 400);
   const validationError = validateBankInput(body);
   if (validationError) return jsonResponse({ success: false, error: validationError }, 400);
   const fields = questionFields(body);
@@ -93,6 +95,9 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
   const row = await env.DB.prepare('SELECT * FROM cbt_question_bank WHERE id=?').bind(String(body?.id || '')).first<any>();
   if (!row) return jsonResponse({ success: false, error: 'Soal bank tidak ditemukan.' }, 404);
   if (!canManageBankItem(data.user, row)) return jsonResponse({ success: false, error: 'Anda hanya dapat mengelola soal bank milik sendiri.' }, 403);
+  // Baris esai warisan hanya dapat dihapus — tidak dapat diubah sama sekali.
+  if (String(row.question_type || 'pg') === 'essai') return jsonResponse({ success: false, error: 'Soal bank esai warisan tidak dapat diubah; hanya dapat dihapus.' }, 400);
+  if (body?.question?.type === 'essai') return jsonResponse({ success: false, error: ESSAY_CREATE_MESSAGE }, 400);
   const validationError = validateBankInput(body);
   if (validationError) return jsonResponse({ success: false, error: validationError }, 400);
   const fields = questionFields(body);

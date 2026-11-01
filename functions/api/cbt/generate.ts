@@ -14,10 +14,13 @@ interface Env {
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
 
 export function validateGeneratedCbt(value: unknown, expectedCount: number): any[] | null {
-  if (!Array.isArray(value) || value.length !== expectedCount) return null;
-  const questions = value.map((question: any) => {
-    if (!question || typeof question !== 'object' || question.type !== 'pg'
-      || typeof question.id !== 'string' || !question.id.trim()
+  if (!Array.isArray(value)) return null;
+  // Pembuatan soal esai dinonaktifkan: keluaran model yang bukan pilihan
+  // ganda (mis. esai yang lolos) DIBUANG di sini — tidak pernah lolos ke paket.
+  const pgOnly = value.filter((question: any) => question && typeof question === 'object' && question.type === 'pg');
+  if (pgOnly.length < expectedCount) return null;
+  const questions = pgOnly.slice(0, expectedCount).map((question: any) => {
+    if (typeof question.id !== 'string' || !question.id.trim()
       || typeof question.question !== 'string' || !question.question.trim()
       || !Array.isArray(question.options)
       || typeof question.correctAnswer !== 'string'
@@ -25,6 +28,7 @@ export function validateGeneratedCbt(value: unknown, expectedCount: number): any
       || typeof question.explanation !== 'string' || !question.explanation.trim() || question.explanation.length > 2000) return null;
     return {
       id: question.id.trim(),
+      type: 'pg',
       question: question.question.trim(),
       options: question.options.map((option: any) => ({ key: option?.key, text: option?.text })),
       correctAnswer: question.correctAnswer,
@@ -61,7 +65,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     if (!env.GEMINI_API_KEY?.trim()) return errorResponse("Layanan AI belum tersedia.", 503);
     if (!(await consumeRateLimit(env.DB, `ai-cbt:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan soal hari ini habis.", 429);
 
-    const prompt = `Buatkan ${count} soal pilihan ganda untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB). Setiap soal wajib memiliki tepat 5 opsi A-E dengan teks yang tidak kosong.
+    const prompt = `Buatkan ${count} soal pilihan ganda untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB). Setiap soal wajib memiliki tepat 5 opsi A-E dengan teks yang tidak kosong. SEMUA soal HARUS pilihan ganda dengan "type": "pg" — DILARANG membuat soal esai/uraian dalam bentuk apa pun.
 Format JSON murni tanpa markdown/backticks:
 [
   {

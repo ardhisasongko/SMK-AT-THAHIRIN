@@ -63,7 +63,7 @@
 ### 4.3 CBT — `CbtSection` + `cbt/*`
 **Guru/staff** (`CbtCreateExamModal`, `CbtResultsTable`, `CbtResultReviewModal`):
 - Daftar ujian sebagai kartu: badge jenis (`Ujian Resmi · min. kirim X mnt` / `Latihan`), status, jadwal, jumlah soal, aksi (edit/hapus/rotasi token).
-- Form buat/ubah ujian: judul, mapel, kelas target, durasi, tanggal + jam buka/tutup, jenis ujian + waktu minimal kirim (otomatis 80% saat pilih "ujian resmi"), token, editor soal (PG: 5 opsi + kunci; essai: textarea + kunci teks).
+- Form buat/ubah ujian: judul, mapel, kelas target, durasi, tanggal + jam buka/tutup, jenis ujian + waktu minimal kirim (otomatis 80% saat pilih "ujian resmi"), token, editor soal (hanya PG: 5 opsi + kunci; soal essai warisan pada paket lama tampil hanya-baca berpenanda "warisan" dan hanya dapat dihapus — pembuatan essai dinonaktifkan).
 - Tabel hasil per ujian (skor, benar/salah, waktu) + modal review jawaban siswa.
 
 **Siswa** (`CbtTokenModal`, `CbtTestRunner`, `CbtMyResults`):

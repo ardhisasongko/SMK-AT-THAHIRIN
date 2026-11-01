@@ -28,7 +28,7 @@ Produk: Portal sekolah digital (SPA) untuk siswa, guru, dan pengelola — akses 
 - Status akun: active / inactive / archived. Anti user-enumeration + rate limit login.
 
 ### 3.2 CBT — Ujian & Latihan (P0)
-- Guru: buat ujian (judul, mapel, kelas target, durasi 1–300 mnt, jadwal tanggal + jam buka/tutup, token), kelola soal PG/essai, kunci jawaban + pembahasan, rotasi token.
+- Guru: buat ujian (judul, mapel, kelas target, durasi 1–300 mnt, jadwal tanggal + jam buka/tutup, token), kelola soal PG (pembuatan soal essai **dinonaktifkan** sejak 1 Nov 2026 — paket warisan berisi essai tetap didukung penuh: dikerjakan siswa & dikoreksi manual guru), kunci jawaban + pembahasan, rotasi token.
 - **Jenis ujian**: `latihan` (bebas kirim) vs `ujian` (resmi) dengan **waktu minimal kirim** (default 80% durasi) — anti jawaban asal-asalan; enforce di server (409) + UI tombol terkunci.
 - Siswa: kerjakan dengan token, tab Hari Ini/Semua, auto-save jawaban (debounce + pagehide + sebelum submit), tandai ragu, countdown, penilaian otomatis (PG exact, essai substring), riwayat "Nilai Saya" + rekap lintas ujian.
 - Generate soal PG via Gemini (1–50 soal), rate limit 20/hari.

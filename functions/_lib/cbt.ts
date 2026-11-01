@@ -307,6 +307,38 @@ export function validateCbtExamInput(body: any, tokenRequired = true): string | 
   return validateCbtQuestions(questions);
 }
 
+// --- Penonaktifan pembuatan soal esai (keputusan 1 November 2026) ---
+// Demi keamanan proses penilaian & kesederhanaan alur, soal esai TIDAK boleh
+// dibuat lagi — CBT fokus pilihan ganda. Tipe 'essai' tetap dikenali sistem:
+// paket lama yang sudah berisi esai tetap dapat dijalankan, dikoreksi manual
+// guru, dan ditinjau seperti biasa. Yang ditutup hanya JALUR PEMBUATANNYA.
+export const ESSAY_CREATE_MESSAGE = 'Soal esai tidak lagi dapat dibuat; gunakan pilihan ganda.';
+export const ESSAY_LEGACY_EDIT_MESSAGE = 'Soal esai warisan tidak dapat diubah; hanya dapat dihapus dari paket.';
+
+// Memeriksa payload soal terhadap larangan pembuatan esai baru.
+// - Pembuatan paket/bank baru: storedQuestions kosong -> semua esai ditolak.
+// - Edit paket yang belum mulai: esai hanya boleh DIPERTAHANKAN persis seperti
+//   tersimpan (id + teks soal + kunci + pembahasan sama persis). Esai dengan
+//   id baru, atau esai warisan yang diubah isinya, ditolak.
+// Mengembalikan pesan error, atau null bila payload bersih.
+export function findEssayCreationViolation(
+  questions: unknown,
+  storedQuestions: Array<{ id: string; type?: string; question?: string; correctAnswer?: string; explanation?: string }> = [],
+): string | null {
+  if (!Array.isArray(questions)) return null;
+  const storedById = new Map(storedQuestions.map(question => [String(question.id), question]));
+  for (const question of questions as any[]) {
+    if (question?.type !== 'essai') continue;
+    const stored = storedById.get(String(question?.id || ''));
+    if (!stored || stored.type !== 'essai') return ESSAY_CREATE_MESSAGE;
+    const sameText = String(question.question ?? '').trim() === String(stored.question ?? '').trim();
+    const sameKey = String(question.correctAnswer ?? '').trim() === String(stored.correctAnswer ?? '').trim();
+    const sameExplanation = String(question.explanation ?? '').trim() === String(stored.explanation ?? '').trim();
+    if (!sameText || !sameKey || !sameExplanation) return ESSAY_LEGACY_EDIT_MESSAGE;
+  }
+  return null;
+}
+
 export function validateCbtQuestions(questions: unknown): string | null {
   if (!Array.isArray(questions)) return 'Daftar soal tidak valid.';
   if (questions.length < 1 || questions.length > 200) return 'Jumlah soal harus 1-200.';

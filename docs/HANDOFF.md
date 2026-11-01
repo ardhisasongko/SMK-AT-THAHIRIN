@@ -139,6 +139,21 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
 - `11405a8 feat(platform): tuntaskan lifecycle dan integritas domain`
 
+## Perubahan Utama Sesi Ini (1 November 2026) — CBT: Penonaktifan Pembuatan Soal Esai
+
+Keputusan pengguna: demi keamanan proses penilaian & kesederhanaan alur aplikasi, **soal esai tidak boleh dibuat lagi** — CBT ke depan fokus pilihan ganda. Cakupan penutupan: SEMUA jalur pembuatan. Paket warisan yang sudah terlanjur berisi esai **tetap didukung penuh sampai selesai masa pakainya** (tetap dapat dijalankan siswa, dikoreksi manual guru lewat antrean Koreksi Esai, masuk alur pending→final, tampil di review bergate/ekspor/rapor). Tidak ada migrasi dan tidak ada penghapusan data.
+
+1. **Validasi server** — helper baru `findEssayCreationViolation(questions, storedQuestions?)` + pesan `ESSAY_CREATE_MESSAGE`/`ESSAY_LEGACY_EDIT_MESSAGE` di `functions/_lib/cbt.ts`. Validasi struktural esai di `validateCbtQuestions` SENGAJA dipertahankan (payload edit paket warisan melewatinya); penolakan pembuatan ditegakkan di lapisan API:
+   - `POST /api/cbt/exams`: payload berisi esai apa pun → 400 "Soal esai tidak lagi dapat dibuat; gunakan pilihan ganda."
+   - `PATCH /api/cbt/exams` (paket belum mulai): esai payload dicocokkan dengan soal tersimpan — id cocok DAN teks/kunci/pembahasan persis sama → diterima apa adanya; id baru → 400 pesan pembuatan; isi diubah → 400 "Soal esai warisan tidak dapat diubah; hanya dapat dihapus dari paket." Menghapus esai dari payload tetap diperbolehkan.
+   - Bank (`functions/api/cbt/bank`): POST/PATCH bertipe esai → 400; PATCH pada baris bank esai warisan → 400 (baris warisan hanya dapat dihapus).
+2. **UI pembuat ujian** (`CbtCreateExamModal`) — tombol "Tambahkan Essai" dihapus. Saat mengedit paket warisan, soal esai tampil sebagai kartu hanya-baca berpenanda "Esai (warisan — tidak dapat dibuat baru)" (teks + kunci ditampilkan, tanpa kolom ubah, tanpa tombol Simpan ke Bank) dan hanya bisa dihapus. "Simpan Semua ke Bank" kini hanya mengirim soal PG.
+3. **UI bank soal** — form tambah/edit hanya PG (pemilih tipe dihilangkan). Baris esai warisan tampil dengan lencana "Esai (warisan)" + catatan, tanpa tombol edit (hapus tetap ada). `CbtBankPicker` ("Ambil dari Bank Soal") mengecualikan esai warisan dari daftar yang dapat dicentang, dengan catatan jumlah yang disembunyikan.
+4. **Generator AI** (`functions/api/cbt/generate.ts`) — prompt dipertegas (semua soal wajib `type: "pg"`, esai dilarang eksplisit); `validateGeneratedCbt` kini MEMBUANG keluaran non-PG dari model sebelum validasi jumlah — esai tidak pernah lolos ke paket (PG kurang dari jumlah diminta → 502 seperti sebelumnya).
+5. **Test** — file baru `tests/cbt-essay-disabled.test.ts` (12 test: POST ujian esai ditolak & PG murni diterima; PATCH warisan: dipertahankan→200, teks/kunci diubah→400, esai id baru→400, dihapus→200; bank: POST esai→400, PATCH baris warisan→400, PATCH PG→esai→400; generator: campuran esai dibuang, PG kurang→null). `tests/CbtCreateExamModal.test.tsx`: test pembuatan esai via UI DIGANTI test penanda warisan (hanya-baca, dipertahankan saat simpan, dapat dihapus) + test tombol tambah esai sudah tidak ada (5→7 test). Data esai pada test pengerjaan/koreksi warisan memang sudah disemai langsung di lapisan data (mock DB/runner props), bukan lewat jalur pembuatan — tidak ada asersi yang dilemahkan. Lihat "Verifikasi Terakhir" untuk angka final.
+
+**Deploy tetap manual oleh pemilik** (`npm run pages:deploy`) sesuai aturan repo — sesi ini tidak men-deploy; tidak ada migrasi baru pada sesi ini.
+
 ## Perubahan Utama Sesi Ini (1 November 2026) — CBT: Pengacakan, Koreksi Esai Manual, Pembahasan, Proctoring, Bank Soal
 
 Lima pengembangan CBT dalam satu branch `feat/cbt-shuffle-esai-proctor-bank` (migrasi baru **0027** & **0028**; keduanya terverifikasi teraplikasi bersih di D1 lokal — **belum diterapkan ke produksi**; jalankan sebagai bagian dari deploy manual berikutnya sesuai prosedur repo):
@@ -548,7 +563,13 @@ node --check whatsapp-gateway/src/index.js
 npx wrangler deploy --dry-run # dari sync-worker/
 ```
 
-Hasil terakhir (1 November 2026, sesi CBT):
+Hasil terakhir (1 November 2026, sesi penonaktifan esai CBT):
+
+- `npm run verify` hijau penuh: TypeScript lulus, **54 test files / 325 tests aplikasi lulus** (311 baseline + 14 baru: 12 di `tests/cbt-essay-disabled.test.ts` + 2 neto di `CbtCreateExamModal.test.tsx`), 10 tests sync-worker lulus, production build lulus.
+- **Tidak ada migrasi D1 baru** pada sesi ini — penonaktifan esai ditegakkan murni di lapisan aplikasi (validasi API + UI).
+- Test koreksi & pengerjaan esai warisan (PR #3) tetap lulus semua — paket lama berisi esai tetap didukung penuh; yang ditutup hanya jalur pembuatannya.
+
+Hasil sebelumnya (1 November 2026, sesi CBT — PR #3):
 
 - `npm run verify` hijau penuh: TypeScript lulus, **53 test files / 311 tests aplikasi lulus** (284 baseline + 27 baru CBT), 10 tests sync-worker lulus, production build lulus.
 - Migrasi baru **0027 & 0028** teraplikasi bersih di D1 lokal (`npm run db:migrate:local`, semua migrasi ✅). **Belum diterapkan ke D1 produksi** — bagian dari deploy manual berikutnya.
