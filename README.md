@@ -87,13 +87,18 @@ Impor data Excel memakai paket `xlsx` dari registry npm resmi.
 
 ## Deploy
 
-Deploy produksi adalah **Cloudflare Pages terhubung Git**: push/merge ke branch
-`main` memicu build & deploy otomatis ke https://smk-at-tahirin.pages.dev.
-Deploy manual dari CLI juga tersedia:
+Deploy produksi dilakukan **manual dari CLI oleh pemilik project** (pola yang
+tercatat di `docs/HANDOFF.md`; repo hanya memiliki workflow CI *Verify* —
+tidak ada workflow deploy otomatis, dan aturan project mewajibkan persetujuan
+pemilik sebelum deploy produksi):
 
 ```bash
-npm run pages:deploy  # build + wrangler pages deploy
+npm run pages:deploy  # build + wrangler pages deploy ke project smk-at-tahirin
 ```
+
+Hasilnya terbit di https://smk-at-tahirin.pages.dev. Bila suatu saat project
+Pages dihubungkan ke Git dari dashboard Cloudflare, merge ke `main` juga akan
+memicu deploy — periksa status keterhubungan itu di dashboard, bukan dari repo.
 
 Migrasi database produksi (selalu backup D1 lebih dulu — lihat `docs/rules.md`):
 
