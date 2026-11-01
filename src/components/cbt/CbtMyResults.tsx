@@ -70,9 +70,15 @@ export function CbtMyResults({ submissions, exams, onReview }: CbtMyResultsProps
                       <span className="text-emerald-600 font-bold">{sub.correctCount}</span> Benar • <span className="text-rose-500 font-bold">{sub.wrongCount}</span> Salah
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2.5 py-1 rounded-lg font-bold ${sub.score >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {sub.score} / 100
-                      </span>
+                      {sub.gradingStatus === 'pending_grading' ? (
+                        <span className="px-2.5 py-1 rounded-lg font-bold bg-amber-100 text-amber-800" title="Skor sementara dari pilihan ganda; esai menunggu koreksi guru">
+                          PG {sub.pgScore ?? sub.score} · Esai menunggu koreksi
+                        </span>
+                      ) : (
+                        <span className={`px-2.5 py-1 rounded-lg font-bold ${sub.score >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {sub.score} / 100
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <button
