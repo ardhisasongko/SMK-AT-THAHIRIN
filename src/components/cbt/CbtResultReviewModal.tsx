@@ -33,7 +33,7 @@ export function CbtResultReviewModal({ submission, exam, reviewLocked, onClose }
       </div>
 
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-emerald-600 text-white p-6 rounded-2xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <p className="text-xs text-emerald-200 font-bold uppercase tracking-wider">{pendingGrading ? 'Skor PG Sementara' : 'Nilai Akhir Siswa'}</p>
               <h3 className="text-2xl font-extrabold">{submission.siswaName}</h3>
