@@ -1,4 +1,4 @@
-import type { CbtAnalytics, CbtAttempt, CbtBulkPayload, CbtBulkResult, CbtExam, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
+import type { CbtAnalytics, CbtAttempt, CbtAttemptReview, CbtBankItem, CbtBulkPayload, CbtBulkResult, CbtExam, CbtGradingDetail, CbtGradingQueueItem, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
 import { authHeaders } from './auth';
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -21,6 +21,21 @@ export const cbtApi = {
   submitAttempt: (attemptId: string, submission: CbtSubmission) => api<CbtSubmission>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/submit`, { method: 'POST', body: JSON.stringify({ answers: submission.answers, doubtful: submission.doubtful }) }),
   summary: () => api<CbtSummary[]>('/api/cbt/summary'),
   analytics: () => api<CbtAnalytics>('/api/cbt/analytics'),
+  attemptReview: (attemptId: string) => api<CbtAttemptReview>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/review`),
+  proctorEvents: (attemptId: string, events: { type: string; at: string }[]) => api<{ attemptId: string; accepted: number }>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/proctor`, { method: 'POST', body: JSON.stringify({ events }), keepalive: true }),
+  gradingQueue: () => api<CbtGradingQueueItem[]>('/api/cbt/grading'),
+  gradingDetail: (attemptId: string) => api<CbtGradingDetail>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/grade`),
+  saveGrades: (attemptId: string, scores: { [questionId: string]: number }, notes: { [questionId: string]: string }) => api<{ attemptId: string; gradingStatus: 'pending_grading' | 'graded'; pgScore: number; essayScores: { [questionId: string]: number }; essayNotes: { [questionId: string]: string }; score: number }>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/grade`, { method: 'POST', body: JSON.stringify({ scores, notes }) }),
+  bankList: (subject?: string, q?: string) => {
+    const params = new URLSearchParams();
+    if (subject) params.set('subject', subject);
+    if (q) params.set('q', q);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return api<CbtBankItem[]>(`/api/cbt/bank${suffix}`);
+  },
+  bankCreate: (item: { subject: string; topic?: string; question: CbtQuestion }) => api<CbtBankItem>('/api/cbt/bank', { method: 'POST', body: JSON.stringify(item) }),
+  bankUpdate: (id: string, item: { subject: string; topic?: string; question: CbtQuestion }) => api<CbtBankItem>('/api/cbt/bank', { method: 'PATCH', body: JSON.stringify({ id, ...item }) }),
+  bankDelete: (id: string) => api<{ id: string }>('/api/cbt/bank', { method: 'DELETE', body: JSON.stringify({ id }) }),
   createBulkExams: (payload: CbtBulkPayload) => api<CbtBulkResult>('/api/cbt/exams/bulk', { method: 'POST', body: JSON.stringify(payload) }),
   rotateToken: (examId: string) => api<{ token: string }>(`/api/cbt/exams/${encodeURIComponent(examId)}/token`, { method: 'POST' }),
 };
