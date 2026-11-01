@@ -109,7 +109,7 @@ describe('CBT essai scoring', () => {
       .toEqual({ correctCount: 0, wrongCount: 1, score: 0, pgScore: 0, pgCount: 1, essayCount: 2, pointPerQuestion: 100 / 3 });
   });
 
-  it('menerima soal essai pada validasi input ujian', () => {
+  it('validasi struktural tetap menerima format essai (payload edit paket warisan; penolakan pembuatan esai ada di lapisan API)', () => {
     const base = {
       title: 'Ujian', subject: 'Kearsipan', durationMinutes: 30, token: 'ABCD', startDate: '2026-08-15', endDate: '2026-08-16',
       questions: [
