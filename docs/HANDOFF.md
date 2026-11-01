@@ -1,9 +1,32 @@
 # HANDOFF - Status Proyek
 
-Tanggal pembaruan: Selasa, 18 Agustus 2026
+Tanggal pembaruan: Minggu, 1 November 2026
 Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
+
+- **Kesehatan repo & poles landing (1 November 2026)**: (1) nama paket
+  `react-example` → `smk-at-thahirin` (package.json + lockfile sinkron).
+  (2) `xlsx` dipindah dari tarball CDN SheetJS (0.20.3) ke registry npm resmi
+  `^0.18.5` — dipakai hanya oleh `scripts/import-data.mjs`; 26 test impor
+  lulus tanpa perubahan perilaku. Trade-off disadari: versi registry memang
+  tertinggal dari CDN SheetJS, tetapi dapat diaudit & tidak bergantung URL
+  eksternal. (3) `.env.example` root ditulis ulang sesuai variabel yang
+  benar-benar dibaca kode (sebelumnya sisa template AI Studio); tidak ada
+  `.env` ter-commit & tidak ada rahasia tertanam di kode (grep bersih).
+  Audit backend: seluruh query D1 terparameterisasi (interpolasi hanya
+  placeholder `?` & fragmen tetap dengan `.bind()`), endpoint gateway
+  WhatsApp sudah dijaga `X-Gateway-Key`, header keamanan sudah ada di
+  `_lib/response.ts` — tidak ada perubahan perilaku backend.
+  (4) Landing tanpa gradasi: hero solid `emerald-950` (dekorasi lingkaran
+  solid), teks aksen solid, banner solid `emerald-800`, ikon jurusan solid
+  (`schoolConfig.color` kini kelas `bg-*`); token baru di `theme.css`:
+  `--color-page`/`--color-surface` (latar lembut kehijauan & permukaan kartu)
+  dipakai LandingPage; blok `prefers-reduced-motion` global di `index.css`.
+  Gradasi di section pasca-login (CBT/Forum/dll) di luar cakupan sesi ini.
+  (5) README.md root baru (stack, struktur, lokal, deploy, keamanan).
+  Verifikasi: `npm run verify` lulus — tsc bersih, 284 test root + 10
+  sync-worker, build OK. Tanpa migrasi D1.
 
 - **Backlog audit batch 2 (24 Agustus 2026 — LIVE bersama batch 1: deploy `fa57a66d`)**:
   (E1) Modal ui/Modal.tsx di-hardening: role="dialog"+aria-modal, Escape menutup,
