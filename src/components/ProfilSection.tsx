@@ -31,6 +31,7 @@ import { authHeaders } from '../utils/auth';
 import { buildCsv, downloadTextFile } from '../utils/download';
 import { dateWIB } from '../utils/date';
 import { RaporModal } from './RaporModal';
+import { TwoFactorCard } from './TwoFactorCard';
 
 const normalizeName = (s: string) =>
   s
@@ -414,6 +415,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
 
       {/* 1. INFORMASI PRIBADI (UNIVERSAL) */}
       {activeSubTab === 'pribadi' && (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           <div className="min-w-0 bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4">
@@ -488,6 +490,8 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
           </div>
 
         </div>
+        {(role === 'guru' || role === 'admin' || role === 'super_admin') && <TwoFactorCard />}
+        </>
       )}
 
       {/* 2. SISWA - JADWAL PELAJARAN SAYA */}

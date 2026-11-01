@@ -1,6 +1,7 @@
 import { verifyPassword, createSession, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../_lib/rate-limit';
+import { sha256Hex, TWO_FACTOR_ROLES } from '../../_lib/totp';
 
 interface Env extends AuthEnv {}
 const DUMMY_PASSWORD_HASH = 'pbkdf2$100000$4f4e4c5944554d4d5950415353574f52$416f812aa8e8077cf41a5f602ebd520c42b0f276d3439667bfc25e81ce26b8c7';
@@ -47,8 +48,23 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
   }
 
-  const token = await createSession(env, String(row.id));
   await clearRateLimit(env.DB, accountRateKey);
+
+  // Hardening Fase B: akun staf dengan 2FA aktif tidak langsung menerima
+  // sesi. Server menerbitkan tantangan singkat (hash saja yang disimpan);
+  // sesi penuh baru dibuat oleh /api/auth/login/verify-2fa setelah kode
+  // TOTP / kode pemulihan terbukti benar.
+  const role = String(row.role);
+  if (Number(row.totp_enabled || 0) === 1 && (TWO_FACTOR_ROLES as readonly string[]).includes(role)) {
+    const challengeToken = `ct_${crypto.getRandomValues(new Uint8Array(32)).reduce((acc, b) => acc + b.toString(16).padStart(2, '0'), '')}`;
+    await env.DB.prepare('DELETE FROM auth_challenges WHERE user_id = ?').bind(String(row.id)).run();
+    await env.DB.prepare(
+      'INSERT INTO auth_challenges (token_hash, user_id, attempts, expires_at) VALUES (?, ?, 0, ?)'
+    ).bind(await sha256Hex(challengeToken), String(row.id), new Date(Date.now() + 10 * 60 * 1000).toISOString()).run();
+    return jsonResponse({ success: true, twoFactorRequired: true, challengeToken });
+  }
+
+  const token = await createSession(env, String(row.id));
 
   const response = jsonResponse({
     success: true,

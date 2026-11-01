@@ -1,6 +1,7 @@
 import { hashPassword, verifyPassword, type AuthUser } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { prepareUserAudit, writeUserAudit } from '../../_lib/user-audit';
+import { generateRandomPassword } from '../../_lib/password-policy';
 import { classExists, readCollection, RosterDataError, rosterReplaceStatements, syncStudentRoster, type StudentRosterRecord } from '../../_lib/student-roster';
 
 interface Env { DB: D1Database }
@@ -9,7 +10,7 @@ type ManagedRole = 'admin' | 'guru' | 'siswa';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SELECT_FIELDS = `id, name, email, nip_nisn, nik, tanggal_lahir, role, class_id, jabatan,
-  status, must_change_password, archived_at, created_at`;
+  status, must_change_password, archived_at, created_at, totp_enabled`;
 
 function canManage(actor: AuthUser, targetRole: string): boolean {
   if (actor.role === 'super_admin') return ['admin', 'guru', 'siswa', 'ketua_kelas'].includes(targetRole);
@@ -26,17 +27,15 @@ function publicUser(row: any) {
     jabatan: row.jabatan == null ? null : String(row.jabatan),
     status: String(row.status || 'active'),
     mustChangePassword: Number(row.must_change_password || 0) === 1,
+    totpEnabled: Number(row.totp_enabled || 0) === 1,
     archivedAt: row.archived_at == null ? null : String(row.archived_at),
     createdAt: String(row.created_at),
   };
 }
 
-function randomPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
-  const bytes = crypto.getRandomValues(new Uint8Array(14));
-  return Array.from(bytes, b => chars[b % chars.length]).join('');
-}
-
+// Password awal selalu dari generator bersama (hardening Fase B): acak
+// kriptografis tanpa bias modulo dan dijamin lolos kebijakan password,
+// sehingga tidak pernah sama dengan NISN/NIP/email pengguna.
 async function getTarget(db: D1Database, id: string): Promise<any | null> {
   return db.prepare(`SELECT ${SELECT_FIELDS}, password_hash FROM users WHERE id = ?`).bind(id).first();
 }
@@ -110,7 +109,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   }
   const duplicate = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR nip_nisn = ?').bind(email, identifier).first();
   if (duplicate) return jsonResponse({ success: false, error: 'Email atau nomor identitas sudah digunakan.' }, 409);
-  const password = randomPassword();
+  const password = generateRandomPassword();
   const id = `u-${crypto.randomUUID()}`;
   const insert = env.DB.prepare(
     `INSERT INTO users

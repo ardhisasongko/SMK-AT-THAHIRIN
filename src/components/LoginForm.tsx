@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuthSession } from '../types';
-import { LogIn, Lock, Mail, AlertCircle, Eye, EyeOff, Loader2, GraduationCap, BriefcaseBusiness } from 'lucide-react';
-import { loginRequest, isPasswordStrong } from '../utils/auth';
+import { LogIn, Lock, Mail, AlertCircle, Eye, EyeOff, Loader2, GraduationCap, BriefcaseBusiness, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { loginRequest, verifyTwoFactorRequest } from '../utils/auth';
 import { SCHOOL_INFO } from '../data/initialData';
 import { Modal } from './ui/Modal';
 
@@ -17,12 +17,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Langkah kedua login (2FA): token tantangan dari server + kode pengguna.
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   const handleLogin = async (identifier: string, pwd: string) => {
     setLoading(true);
     setErrorMsg('');
     const res = await loginRequest(identifier, pwd);
     setLoading(false);
+    if (res.ok && res.twoFactorRequired && res.challengeToken) {
+      setChallengeToken(res.challengeToken);
+      setTwoFactorCode('');
+      return;
+    }
     if (res.ok && res.session) {
       onLoginSuccess(res.session);
       onClose();
@@ -39,12 +47,36 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
       setErrorMsg('Silakan isi email/NIP/NISN dan password Anda.');
       return;
     }
-    const passwordCheck = isPasswordStrong(password);
-    if (!passwordCheck.valid) {
-      setErrorMsg(passwordCheck.message);
+    // Sengaja TANPA gerbang kekuatan password di sini: kebijakan password
+    // hanya berlaku saat MENETAPKAN password baru. Password lama yang sah
+    // (dibuat sebelum kebijakan baru) tetap harus bisa dipakai login.
+    handleLogin(identifier, password);
+  };
+
+  const handleVerifyTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading || !challengeToken) return;
+    const code = twoFactorCode.trim();
+    if (!code) {
+      setErrorMsg('Silakan isi kode verifikasi dari aplikasi authenticator atau kode pemulihan Anda.');
       return;
     }
-    handleLogin(identifier, password);
+    setLoading(true);
+    setErrorMsg('');
+    const res = await verifyTwoFactorRequest(challengeToken, code);
+    setLoading(false);
+    if (res.ok && res.session) {
+      onLoginSuccess(res.session);
+      onClose();
+    } else {
+      setErrorMsg(res.error || 'Kode verifikasi salah. Silakan coba lagi.');
+    }
+  };
+
+  const backToPasswordStep = () => {
+    setChallengeToken(null);
+    setTwoFactorCode('');
+    setErrorMsg('');
   };
 
   return (
@@ -68,6 +100,58 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
         </button>
       </div>
 
+      {challengeToken ? (
+        <div className="space-y-4">
+        {errorMsg && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+        <form onSubmit={handleVerifyTwoFactor} className="space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-xl flex items-start gap-2">
+            <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>Akun Anda dilindungi verifikasi dua langkah. Masukkan kode 6 digit dari aplikasi authenticator, atau salah satu kode pemulihan Anda.</span>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Kode Verifikasi
+            </label>
+            <div className="relative">
+              <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoFocus
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value)}
+                placeholder="123456 atau XXXX-XXXX"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">Kode berlaku singkat dan hanya dapat dipakai sekali. Kode pemulihan juga hanya berlaku satu kali.</p>
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-sm disabled:opacity-60"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+            <span>{loading ? 'Memverifikasi...' : 'Verifikasi & Masuk'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={backToPasswordStep}
+            className="w-full text-slate-500 hover:text-slate-700 font-semibold py-1 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Kembali ke langkah password</span>
+          </button>
+        </form>
+        </div>
+      ) : (
+      <>
       {/* Role Tab Selector */}
       <div className="flex bg-slate-100 p-1 rounded-xl">
         <button
@@ -140,7 +224,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Password minimal 8 karakter</p>
+          <p className="text-[10px] text-slate-400 mt-1">Gunakan password yang kuat: minimal 10 karakter, kombinasi huruf dan angka.</p>
         </div>
 
         <button
@@ -156,6 +240,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
       <div className="text-center text-xs text-slate-400 pt-2 border-t border-slate-100">
         <p>Lupa kata sandi? Hubungi Unit Layanan IT Tata Usaha {SCHOOL_INFO.name}.</p>
       </div>
+      </>
+      )}
     </Modal>
   );
 };

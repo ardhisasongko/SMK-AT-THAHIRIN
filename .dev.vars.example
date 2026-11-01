@@ -4,3 +4,6 @@
 GEMINI_API_KEY="ISI_GEMINI_API_KEY_ANDA"
 GEMINI_ENABLED="false"
 GEMINI_MODEL="gemini-3.6-flash"
+# Kunci enkripsi 2FA TOTP staf (hardening Fase B) — lokal cukup string acak
+# panjang; produksi diatur sebagai Secret Cloudflare Pages dan harus stabil.
+TOTP_ENCRYPTION_KEY="isi-string-acak-minimal-32-karakter-untuk-lokal"

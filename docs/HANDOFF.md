@@ -1,9 +1,50 @@
 # HANDOFF - Status Proyek
 
-Tanggal pembaruan: Minggu, 1 November 2026
+Tanggal pembaruan: Senin, 2 November 2026
 Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
+
+- **Hardening Fase B — 2FA TOTP staf + kebijakan password (2 November 2026,
+  BELUM deploy, migrasi baru 0030)**: (1) Verifikasi dua langkah TOTP
+  (RFC 6238, HMAC-SHA-1/30 dtk/6 digit, kompatibel aplikasi authenticator)
+  untuk role `guru`/`admin`/`super_admin` saja. Secret disimpan TERENKRIPSI
+  AES-GCM (`functions/_lib/totp.ts`, kunci diturunkan dari secret server
+  `TOTP_ENCRYPTION_KEY`; tanpa secret itu fitur nonaktif aman/503).
+  Migrasi 0030: `users.totp_secret_enc` + `users.totp_enabled`, tabel
+  `totp_recovery_codes` (hanya hash SHA-256, 10 kode, sekali pakai), dan
+  `auth_challenges` (hanya hash token tantangan, TTL 10 menit, maks. 5
+  percobaan). Alur: Profil → kartu "Verifikasi Dua Langkah (2FA)"
+  (`src/components/TwoFactorCard.tsx`) → setup menampilkan secret →
+  aktivasi wajib bukti kode pertama → kode pemulihan tampil SEKALI.
+  Login menjadi dua langkah: password benar menerbitkan tantangan
+  (`POST /api/auth/login` → `twoFactorRequired`), sesi penuh hanya terbit
+  dari `POST /api/auth/login/verify-2fa`; token tantangan BUKAN sesi
+  (ditolak `getUserFromRequest`). Aktivasi mencabut semua sesi lain agar
+  sesi pra-2FA tidak menjadi bypass. Pemilik dapat menonaktifkan sendiri
+  dengan kode TOTP atau password (`POST /api/auth/2fa/disable`, audit
+  `DISABLE_2FA_SELF`); admin/super_admin dapat menonaktifkan 2FA staf
+  terkunci (`POST /api/users/disable-2fa`, audit `DISABLE_2FA`, admin
+  tidak boleh menyentuh akun admin/super_admin, sesi target dicabut).
+  (2) Kebijakan password tunggal `functions/_lib/password-policy.ts` di
+  semua jalur: minimal 10 karakter huruf+angka, dan password tidak boleh
+  sama/mengandung NISN/NIP, email, bagian lokal email, atau nama
+  (pelanggaran → 400). Diterapkan di ganti password sendiri; password
+  awal/reset kini dari `generateRandomPassword()` bersama (acak
+  kriptografis, rejection sampling tanpa bias modulo — menutup temuan
+  terbuka Fase A soal bias generator, 16 karakter, dijamin lolos
+  kebijakan); impor CSV tetap lewat jalur pembuatan akun yang sama.
+  Login TIDAK digerbangi kekuatan password di klien agar password lama
+  yang sah tetap bisa masuk — kebijakan hanya berlaku saat menetapkan
+  password baru. Test baru `tests/security-hardening-fase-b.test.ts`:
+  secret terenkripsi, aktivasi→login dua langkah, kode salah ditolak,
+  tantangan musnah setelah 5 kegagalan, kode pemulihan sekali pakai,
+  token tantangan bukan sesi, sesi lama dicabut, non-staf ditolak,
+  penonaktifan admin teraudit + batas kewenangan, kebijakan password di
+  semua jalur, dan kewajiban ganti password awal tetap menahan endpoint
+  lain (middleware). **Deploy produksi (backup → migrasi 0030 remote →
+  `pages:deploy` + pasang secret `TOTP_ENCRYPTION_KEY`) menunggu instruksi
+  pemilik.**
 
 - **Hardening Fase A — audit keamanan mendalam (1 November 2026, BELUM deploy,
   tanpa migrasi baru)**: audit pola pikir penyerang atas autentikasi/sesi,
