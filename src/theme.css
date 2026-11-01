@@ -5,6 +5,10 @@
    mereka (lihat docs/DEPLOY_SCHOOL.md). Nilai di bawah = palet default Tailwind
    emerald, identik dengan tampilan sebelumnya — jangan diubah tanpa alasan. */
 @theme {
+  /* Latar halaman lembut (kehijauan, tidak silau) & permukaan kartu lembut.
+     Dipakai halaman utama: bg-page untuk latar, bg-surface untuk seksi/kartu. */
+  --color-page: oklch(94.5% 0.018 160);
+  --color-surface: oklch(98.5% 0.008 160);
   --color-emerald-50: oklch(97.9% 0.021 166.113);
   --color-emerald-100: oklch(95% 0.052 163.051);
   --color-emerald-200: oklch(90.5% 0.093 164.15);

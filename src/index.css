@@ -1,5 +1,17 @@
 @import "./theme.css";
 
+/* Hormati preferensi gerak minim: matikan animasi/transisi berulang */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Print styles: sembunyikan navigasi, tampilkan hanya konten saat mencetak laporan */
 @media print {
   nav,
