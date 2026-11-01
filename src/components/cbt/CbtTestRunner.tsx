@@ -11,8 +11,10 @@ import {
   CloudUpload,
   Cloud,
   HardDrive,
+  Megaphone,
+  X,
 } from 'lucide-react';
-import { User as UserType, CbtExam, CbtSubmission } from '../../types';
+import { User as UserType, CbtExam, CbtMonitorAnnouncement, CbtSubmission } from '../../types';
 import { SCHOOL_INFO } from '../../data/initialData';
 import { Modal } from '../ui/Modal';
 import { cbtApi } from '../../utils/cbt-api';
@@ -29,6 +31,10 @@ interface CbtTestRunnerProps {
 }
 
 const CHECKPOINT_INTERVAL_MS = 10 * 60 * 1000;
+// Kanal kendali pengawas (pengumuman, tambah waktu, paksa kumpul) diperiksa
+// berkala selama attempt berjalan — cukup sering agar terasa langsung, cukup
+// jarang agar hemat untuk banyak siswa bersamaan.
+const NOTICES_INTERVAL_MS = 30 * 1000;
 
 function readLocalCache(attemptId: string): { answers: { [questionId: string]: string }; doubtful: { [questionId: string]: boolean } } {
   try {
@@ -72,6 +78,17 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const lastSavedRef = useRef<string>(JSON.stringify({ answers: { ...initialAnswers, ...localCache.answers }, doubtful: { ...initialDoubtful, ...localCache.doubtful } }));
   const finishedRef = useRef(false);
+
+  // --- Kanal kendali pengawas (Ruang Kontrol) ---
+  const [serverAnnouncements, setServerAnnouncements] = useState<CbtMonitorAnnouncement[]>([]);
+  const [dismissedAnnouncementIds, setDismissedAnnouncementIds] = useState<ReadonlySet<string>>(new Set());
+  const [proctorSubmitted, setProctorSubmitted] = useState<{ score: number | null } | null>(null);
+  const knownExpiresAtRef = useRef<string | undefined>(expiresAt);
+  const proctorFinishStartedRef = useRef(false);
+  // Ref nilai terbaru agar callback polling stabil (tidak memicu polling ulang
+  // setiap jawaban berubah).
+  const latestRef = useRef({ answers, doubtful, onFinish });
+  useEffect(() => { latestRef.current = { answers, doubtful, onFinish }; });
 
   // --- Proctoring web (pencatatan + peringatan ramah; TANPA sanksi otomatis) ---
   const rootRef = useRef<HTMLDivElement>(null);
@@ -141,6 +158,79 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
     };
   }, [flushProctorEvents]);
 
+  // Attempt sudah diselesaikan pengawas di server: hentikan semua aktivitas
+  // runner lalu serahkan ke alur selesai yang biasa (onFinish bersifat
+  // idempoten di server — attempt yang sudah submitted dikembalikan apa
+  // adanya), sehingga siswa mendarat di layar hasil yang pantas, bukan error.
+  const finishByProctor = useCallback(async (score: number | null) => {
+    if (proctorFinishStartedRef.current) return;
+    proctorFinishStartedRef.current = true;
+    finishedRef.current = true;
+    clearLocalCache(attemptId);
+    const latest = latestRef.current;
+    const vehicle: CbtSubmission = {
+      id: attemptId,
+      examId: exam.id,
+      siswaId: currentUser.id,
+      siswaName: currentUser.name,
+      nisn: currentUser.nipNisn || '',
+      answers: latest.answers,
+      doubtful: latest.doubtful,
+      score: score ?? 0,
+      correctCount: 0,
+      wrongCount: 0,
+      submittedAt: new Date().toISOString(),
+      timeSpentSeconds: 0,
+      submittedBy: 'proctor',
+    };
+    try {
+      await latest.onFinish(vehicle);
+    } catch {
+      // Server sudah menyimpan hasil final; layar selesai lokal tetap tampil
+      // dan tombol di dalamnya mencoba menyerahkan ulang ke layar hasil.
+      proctorFinishStartedRef.current = false;
+    }
+  }, [attemptId, exam.id, currentUser]);
+
+  // Polling kanal kendali pengawas selama attempt berjalan.
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      if (cancelled || finishedRef.current || document.hidden) return;
+      const notices = await cbtApi.attemptNotices(attemptId).catch(() => null);
+      if (!notices || cancelled || finishedRef.current) return;
+      if (notices.status === 'submitted') {
+        if (notices.submittedBy === 'proctor') {
+          setProctorSubmitted({ score: typeof notices.score === 'number' ? notices.score : null });
+          showToast('Ujianmu telah dikumpulkan oleh pengawas. Terima kasih sudah mengerjakan dengan jujur.', 'info');
+          void finishByProctor(typeof notices.score === 'number' ? notices.score : null);
+        }
+        return;
+      }
+      if (notices.status !== 'in_progress') return;
+      if (Array.isArray(notices.announcements)) setServerAnnouncements(notices.announcements);
+      if (typeof notices.expiresAt === 'string' && notices.expiresAt && notices.expiresAt !== knownExpiresAtRef.current) {
+        const previousMs = knownExpiresAtRef.current ? new Date(knownExpiresAtRef.current).getTime() : NaN;
+        const nextMs = new Date(notices.expiresAt).getTime();
+        if (!Number.isNaN(nextMs)) {
+          knownExpiresAtRef.current = notices.expiresAt;
+          setTimeLeft(Math.max(0, Math.floor((nextMs - Date.now()) / 1000)));
+          if (!Number.isNaN(previousMs) && nextMs > previousMs) {
+            const addedMinutes = Math.max(1, Math.round((nextMs - previousMs) / 60000));
+            showToast(`Waktu ditambah pengawas (+${addedMinutes} menit). Sisa waktumu sudah diperbarui — tetap semangat!`, 'success');
+          }
+        }
+      }
+    };
+    // Polling pertama setelah satu interval (bukan saat mount) agar membuka
+    // runner tidak menambah request jaringan di luar jadwal berkala.
+    const interval = setInterval(() => { void poll(); }, NOTICES_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [attemptId, finishByProctor]);
+
   const persistAnswers = useCallback(async (currentAnswers: typeof answers, currentDoubtful: typeof doubtful) => {
     const payload = JSON.stringify({ answers: currentAnswers, doubtful: currentDoubtful });
     if (payload === lastSavedRef.current) return;
@@ -170,6 +260,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
   useEffect(() => {
     const flush = () => {
+      if (finishedRef.current) return;
       void persistAnswers(answers, doubtful);
     };
     const onHide = () => flush();
@@ -195,7 +286,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
   // Saat waktu habis, submit dipaksa meski belum lengkap agar jawaban yang ada tidak hilang.
   const handleConfirmSubmitTest = useCallback(async (force = false) => {
-    if (submitting) return;
+    if (submitting || finishedRef.current) return;
     setSubmitting(true);
     let correct = 0;
     let wrong = 0;
@@ -260,7 +351,7 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
 
   // Timer countdown
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (timeLeft <= 0 || finishedRef.current) return;
 
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -312,6 +403,33 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
   const isEssay = currentQ.type === 'essai';
 
   const proctorSwitchTotal = proctorCounts.tabSwitch + proctorCounts.windowBlur;
+
+  // Layar selesai khusus: attempt dikumpulkan oleh pengawas dari ruang kontrol.
+  if (proctorSubmitted) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 flex items-center justify-center font-sans p-4">
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-sky-600/20 border border-sky-500/40 flex items-center justify-center">
+            <Megaphone className="w-7 h-7 text-sky-300" />
+          </div>
+          <h1 className="text-lg sm:text-xl font-extrabold text-white">Ujian Telah Dikumpulkan oleh Pengawas</h1>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            Pengawas telah menyelesaikan sesi ujianmu dari ruang kontrol. Jawaban terakhir yang tersimpan
+            sudah dinilai oleh sistem{proctorSubmitted.score != null ? <> — nilai PG kamu: <strong className="text-emerald-300">{proctorSubmitted.score}</strong></> : ''}.
+            Terima kasih sudah mengerjakan dengan jujur.
+          </p>
+          <button
+            onClick={() => { proctorFinishStartedRef.current = false; void finishByProctor(proctorSubmitted.score); }}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm transition-all cursor-pointer"
+          >
+            Lihat Hasil Ujian
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const visibleAnnouncements = serverAnnouncements.filter(item => !dismissedAnnouncementIds.has(item.id));
 
   return (
     <div
@@ -401,6 +519,24 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
           </button>
         </div>
       </header>
+
+      {/* Pengumuman pengawas (Ruang Kontrol) — banner mencolok sampai ditutup siswa */}
+      {visibleAnnouncements.map(item => (
+        <div key={item.id} className="bg-amber-400 text-slate-950 px-3 py-2.5 flex items-start gap-2.5 shadow-md sm:px-4" role="alert">
+          <Megaphone className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+          <p className="flex-1 text-xs sm:text-sm font-semibold leading-snug">
+            <span className="font-extrabold">Pengumuman pengawas{item.authorName ? ` (${item.authorName})` : ''}:</span> {item.message}
+          </p>
+          <button
+            type="button"
+            aria-label="Tutup pengumuman"
+            onClick={() => setDismissedAnnouncementIds(prev => new Set(prev).add(item.id))}
+            className="shrink-0 rounded-lg p-1 hover:bg-amber-500/60 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
 
       {/* Peringatan ramah saat di luar layar penuh */}
       {!isFullscreen && (

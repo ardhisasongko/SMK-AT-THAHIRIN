@@ -329,6 +329,7 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | grading_status (+0027) | TEXT | — (NULL = attempt lama, dianggap final; `pending_grading` = esai belum selesai dikoreksi guru; `graded` = final: `score` = pg_score + total nilai esai) |
 | graded_by / graded_at (+0027) | TEXT | — (guru penilai terakhir & waktunya) |
 | proctor_events_json (+0027) | TEXT | NOT NULL, DEFAULT `'{}'` — agregat counter proctoring web `{ tabSwitch, windowBlur, fullscreenExit, updatedAt }` (pencatatan saja, tanpa sanksi otomatis) |
+| submitted_by (+0029) | TEXT | NOT NULL, DEFAULT `'student'` — siapa yang menyelesaikan attempt: `student` (submit biasa, termasuk semua attempt lama) \| `proctor` (dikumpulkan paksa oleh pengawas dari Ruang Kontrol; tampil sebagai penanda "oleh pengawas") |
 
 #### `cbt_attempt_answers` (0019) — auto-save jawaban
 | Kolom | Tipe | Constraint |
@@ -355,6 +356,30 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | created_at / updated_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
 
 > Bank adalah sumber salinan (snapshot): menyalin soal bank ke paket ujian membuat baris `cbt_questions` baru — mengubah bank tidak mengubah ujian yang sudah dibuat. Guru mengelola miliknya; admin/super_admin semua.
+
+#### `cbt_exam_announcements` (0029) — pengumuman siaran pengawas
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| id | TEXT | PK |
+| exam_id | TEXT | NOT NULL, FK → cbt_exams(id) ON DELETE CASCADE |
+| author_user_id / author_name | TEXT | NOT NULL (pengawas penulis: guru pemilik / admin) |
+| message | TEXT | NOT NULL (teks polos tersanitasi, 1–300 karakter; divalidasi di endpoint) |
+| created_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
+
+> Pengumuman tampil sebagai banner di runner SEMUA siswa yang sedang mengerjakan ujian itu (dijemput via `GET /api/cbt/attempts/[id]/notices`). Dismiss per attempt bersifat client-side (sesi runner) — tidak ada kolom "sudah dibaca".
+
+#### `cbt_monitor_actions` (0029) — audit kendali Ruang Kontrol
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| id | TEXT | PK |
+| exam_id | TEXT | NOT NULL, FK → cbt_exams(id) ON DELETE CASCADE |
+| attempt_id | TEXT | — (NULL untuk aksi tingkat ujian: pengumuman & tambah waktu massal dicatat per attempt; lihat catatan) |
+| actor_user_id / actor_name | TEXT | NOT NULL (pengawas pelaku aksi) |
+| action | TEXT | NOT NULL, CHECK (`extend_time` \| `force_submit` \| `announcement`) |
+| detail_json | TEXT | NOT NULL, DEFAULT `'{}'` (konteks ringkas: menit tambahan + expires_at lama/baru, nilai hasil paksa kumpul, id & kutipan pengumuman) |
+| created_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
+
+> Setiap aksi kendali Ruang Kontrol (`POST /api/cbt/exams/[id]/monitor/actions`) menulis tepat satu baris audit per attempt terdampak; pengumuman menulis satu baris dengan `attempt_id` NULL. Paksa kumpul juga menandai `cbt_attempts.submitted_by='proctor'` dan menilai lewat jalur finalisasi yang sama dengan submit siswa (`finalizeCbtAttempt`).
 
 ### 8. Forum
 
@@ -539,6 +564,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0026 | Penugasan guru ke kelas (teacher class assignments) |
 | 0027 | CBT: `cbt_attempts` +shuffle_seed/pg_score/essay_scores_json/grading_status/graded_by/graded_at/proctor_events_json + index antrean koreksi |
 | 0028 | CBT: tabel baru `cbt_question_bank` (bank soal per guru) + 2 index |
+| 0029 | CBT Ruang Kontrol: tabel `cbt_exam_announcements` + `cbt_monitor_actions` (audit) + `cbt_attempts.submitted_by` + 2 index |
 
 ## Anomali & Catatan Penting (keputusan desain)
 

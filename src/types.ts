@@ -282,6 +282,79 @@ export interface CbtSubmission {
   essayScores?: { [questionId: string]: number };
   essayNotes?: { [questionId: string]: string };
   proctor?: CbtProctorSummary;
+  // 'proctor' bila attempt dikumpulkan paksa oleh pengawas dari ruang kontrol.
+  submittedBy?: 'student' | 'proctor';
+}
+
+// --- Ruang Kontrol Ujian (proctoring live) ---
+export interface CbtMonitorAnnouncement {
+  id: string;
+  authorName: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface CbtMonitorStudent {
+  studentId: string;
+  name: string;
+  nisn: string;
+  className: string;
+  attemptId: string | null;
+  status: 'not_started' | 'in_progress' | 'submitted' | 'expired';
+  answeredCount: number;
+  totalQuestions: number;
+  progressPercent: number;
+  remainingSeconds: number | null;
+  lastActivityAt: string | null;
+  provisionalScore: number | null;
+  finalScore: number | null;
+  gradingStatus: 'pending_grading' | 'graded' | null;
+  hasEssayPending: boolean;
+  submittedBy: 'student' | 'proctor' | null;
+  proctor: CbtProctorSummary;
+  flagged: boolean;
+}
+
+export interface CbtMonitorData {
+  exam: {
+    id: string;
+    title: string;
+    subject: string;
+    classTarget: string;
+    durationMinutes: number;
+    totalQuestions: number;
+    essayCount: number;
+    startDate: string;
+    endDate: string;
+    openTime: string | null;
+    closeTime: string | null;
+    status: string;
+    examType: string;
+  };
+  summary: {
+    totalStudents: number;
+    notStarted: number;
+    inProgress: number;
+    submitted: number;
+    expired: number;
+    flagged: number;
+    averageProvisionalScore: number | null;
+    averageFinalScore: number | null;
+  };
+  students: CbtMonitorStudent[];
+  announcements: CbtMonitorAnnouncement[];
+  serverTime: string;
+}
+
+export interface CbtAttemptNotices {
+  attemptId: string;
+  status: string;
+  submittedBy: 'student' | 'proctor';
+  expiresAt: string;
+  submittedAt: string | null;
+  score: number | null;
+  announcements: CbtMonitorAnnouncement[];
+  serverTime: string;
 }
 
 export interface CbtBankItem {

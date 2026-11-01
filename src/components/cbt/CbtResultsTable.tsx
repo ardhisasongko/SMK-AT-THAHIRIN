@@ -56,6 +56,11 @@ export function CbtResultsTable({ submissions, exams, onReview }: CbtResultsTabl
                           Esai menunggu koreksi
                         </span>
                       )}
+                      {sub.submittedBy === 'proctor' && (
+                        <span className="ml-2 px-2 py-1 rounded-lg text-[10px] font-bold bg-sky-100 text-sky-800" title="Attempt ini dikumpulkan paksa oleh pengawas dari Ruang Kontrol Ujian.">
+                          Oleh pengawas
+                        </span>
+                      )}
                       {sub.proctor && (sub.proctor.tabSwitch > 0 || sub.proctor.fullscreenExit > 0) && (
                         <span className="ml-2 text-[10px] font-semibold text-slate-500" title="Catatan proctoring web: perpindahan tab/aplikasi & keluar layar penuh selama ujian">
                           Proctoring: tab {sub.proctor.tabSwitch}× · layar penuh keluar {sub.proctor.fullscreenExit}×
