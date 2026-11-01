@@ -13,7 +13,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
   const { results } = await env.DB.prepare(`
     SELECT a.nisn, a.student_name, a.submitted_at, a.score, a.correct_count, a.wrong_count,
-           a.time_spent_seconds, e.title, e.subject, e.exam_type
+           a.time_spent_seconds, a.grading_status, a.pg_score, e.title, e.subject, e.exam_type
     FROM cbt_attempts a
     JOIN cbt_exams e ON e.id = a.exam_id
     WHERE a.status = 'submitted' ${isAdmin ? '' : 'AND e.teacher_user_id = ?'}
@@ -21,10 +21,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   `).bind(...(isAdmin ? [] : [user.id])).all<any>();
 
   const rows: Array<Array<unknown>> = [
-    ['NISN', 'Nama Siswa', 'Tanggal Kirim', 'Ujian', 'Mapel', 'Jenis', 'Skor', 'Benar', 'Salah', 'Waktu (detik)'],
+    ['NISN', 'Nama Siswa', 'Tanggal Kirim', 'Ujian', 'Mapel', 'Jenis', 'Skor', 'Skor PG', 'Status Koreksi', 'Benar (PG)', 'Salah (PG)', 'Waktu (detik)'],
     ...(results || []).map(row => [
       row.nisn, row.student_name, row.submitted_at, row.title, row.subject,
-      row.exam_type, row.score, row.correct_count, row.wrong_count, row.time_spent_seconds,
+      row.exam_type, row.score, row.pg_score != null ? row.pg_score : row.score,
+      row.grading_status === 'pending_grading' ? 'Menunggu Koreksi Esai' : 'Final',
+      row.correct_count, row.wrong_count, row.time_spent_seconds,
     ]),
   ];
 
