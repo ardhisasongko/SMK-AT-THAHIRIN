@@ -10,13 +10,16 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
   const isTeacher = data.user.role === 'guru';
   if (!isAdmin && !isTeacher && !['siswa', 'ketua_kelas'].includes(data.user.role)) return jsonResponse({ success: false, error: 'Tidak berwenang.' }, 403);
 
+  // Rekap nilai hanya memakai skor FINAL (grading_status 'graded' atau NULL
+  // untuk attempt lama). Attempt yang esainya menunggu koreksi dihitung
+  // terpisah sebagai pendingCount agar tidak mencemari rata-rata.
   const baseSelect = `
     SELECT attempts.student_user_id AS siswaId, attempts.student_name AS siswaName, attempts.nisn AS nisn,
       COUNT(*) AS examCount, ROUND(AVG(attempts.score), 1) AS avgScore,
       MAX(attempts.score) AS bestScore, MIN(attempts.score) AS worstScore
     FROM cbt_attempts attempts
     JOIN cbt_exams exams ON exams.id = attempts.exam_id
-    WHERE attempts.status='submitted'`;
+    WHERE attempts.status='submitted' AND COALESCE(attempts.grading_status, 'graded') = 'graded'`;
 
   const scope = isAdmin
     ? ''
@@ -30,11 +33,25 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
       .bind(...(isTeacher ? [data.user.id, data.user.name] : [data.user.id]));
 
   const { results } = await statement.all();
+
+  const pendingSelect = `
+    SELECT attempts.student_user_id AS siswaId, COUNT(*) AS pendingCount
+    FROM cbt_attempts attempts
+    JOIN cbt_exams exams ON exams.id = attempts.exam_id
+    WHERE attempts.status='submitted' AND attempts.grading_status='pending_grading'`;
+  const pendingStatement = isAdmin
+    ? env.DB.prepare(`${pendingSelect} GROUP BY attempts.student_user_id`)
+    : env.DB.prepare(`${pendingSelect}${scope} GROUP BY attempts.student_user_id`)
+      .bind(...(isTeacher ? [data.user.id, data.user.name] : [data.user.id]));
+  const { results: pendingRows } = await pendingStatement.all();
+  const pendingByStudent = new Map((pendingRows as any[]).map(row => [String(row.siswaId), Number(row.pendingCount || 0)]));
+
   return jsonResponse({
     success: true,
     data: results.map((row: any) => ({
       siswaId: String(row.siswaId), siswaName: String(row.siswaName), nisn: String(row.nisn),
       examCount: Number(row.examCount), avgScore: Number(row.avgScore), bestScore: Number(row.bestScore), worstScore: Number(row.worstScore),
+      pendingCount: pendingByStudent.get(String(row.siswaId)) || 0,
     })),
   });
 };

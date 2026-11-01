@@ -16,9 +16,11 @@ function formatMinutes(seconds: number): string {
 
 function ExamAnalyticsCard({ exam, fastRatio, suspiciousScore, key }: { key: string; exam: CbtAnalyticsExam; fastRatio: number; suspiciousScore: number }) {
   const [showFlags, setShowFlags] = useState(false);
+  const [showProctor, setShowProctor] = useState(false);
   const maxBucket = Math.max(1, ...exam.buckets.map(bucket => bucket.count));
   const hasFlags = exam.fastAttempts.length > 0;
   const suspiciousCount = exam.fastAttempts.filter(flag => flag.suspicious).length;
+  const proctorFlags = exam.proctorFlags || [];
 
   return (
     <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm space-y-5">
@@ -35,6 +37,11 @@ function ExamAnalyticsCard({ exam, fastRatio, suspiciousScore, key }: { key: str
               <Users className="w-3 h-3" />
               {exam.studentCount} siswa
             </span>
+            {(exam.pendingGradingCount ?? 0) > 0 && (
+              <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                {exam.pendingGradingCount} menunggu koreksi esai
+              </span>
+            )}
           </div>
           <h3 className="font-extrabold text-base text-slate-900 leading-snug break-words">{exam.title}</h3>
         </div>
@@ -139,6 +146,50 @@ function ExamAnalyticsCard({ exam, fastRatio, suspiciousScore, key }: { key: str
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {proctorFlags.length > 0 && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowProctor(!showProctor)}
+            className="w-full flex items-center justify-between gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs font-bold text-sky-800 hover:bg-sky-100 transition-colors cursor-pointer"
+          >
+            <span className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              {proctorFlags.length} indikasi proctoring (perpindahan tab ≥ 3×)
+            </span>
+            <span>{showProctor ? 'Tutup' : 'Lihat'}</span>
+          </button>
+
+          {showProctor && (
+            <div className="overflow-x-auto">
+              <table className="min-w-[560px] w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-3">Siswa</th>
+                    <th className="py-2.5 px-3">NISN</th>
+                    <th className="py-2.5 px-3">Pindah Tab</th>
+                    <th className="py-2.5 px-3">Keluar Layar Penuh</th>
+                    <th className="py-2.5 px-3">Nilai</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                  {proctorFlags.map(flag => (
+                    <tr key={flag.attemptId} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2.5 px-3 font-bold text-slate-900">{flag.studentName}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-500">{flag.nisn}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{flag.tabSwitchCount ?? 0}×</td>
+                      <td className="py-2.5 px-3 text-slate-600">{flag.fullscreenExitCount ?? 0}×</td>
+                      <td className="py-2.5 px-3 font-bold">{flag.score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-[10px] text-slate-400 pt-2">Indikasi dari catatan proctoring web — bahan pertimbangan guru, bukan vonis atau sanksi otomatis.</p>
             </div>
           )}
         </div>

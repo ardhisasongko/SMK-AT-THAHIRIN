@@ -1,4 +1,5 @@
 import type { AuthUser } from '../../../_lib/auth';
+import { parseProctorEvents } from '../../../_lib/cbt';
 import { jsonResponse } from '../../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -17,6 +18,8 @@ export const SCORE_BUCKETS = [
 export const FAST_RATIO = 0.25;
 // "Mencurigakan" bila cepat DAN nilai ≥ 75 (kemungkinan jawaban dibocorkan/asal).
 export const SUSPICIOUS_SCORE = 75;
+// Indikasi proctoring: perpindahan tab ≥ 3 kali dalam satu attempt.
+export const MANY_SWITCHES = 3;
 
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, data }) => {
   if (!data.user) return jsonResponse({ success: false, error: 'Silakan login.' }, 401);
@@ -28,7 +31,8 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
       exams.exam_type AS examType, exams.duration_minutes AS durationMinutes,
       attempts.id AS attemptId, attempts.student_name AS studentName, attempts.nisn AS nisn,
       attempts.score AS score, attempts.time_spent_seconds AS timeSpentSeconds,
-      attempts.submitted_at AS submittedAt
+      attempts.submitted_at AS submittedAt, attempts.grading_status AS gradingStatus,
+      attempts.proctor_events_json AS proctorEventsJson
     FROM cbt_attempts attempts
     JOIN cbt_exams exams ON exams.id = attempts.exam_id
     WHERE attempts.status='submitted'`;
@@ -57,17 +61,28 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
         worstScore: null,
         buckets: SCORE_BUCKETS.map(bucket => ({ label: bucket.label, count: 0 })),
         fastAttempts: [],
+        proctorFlags: [],
+        pendingGradingCount: 0,
       });
     }
     const exam = byExam.get(examId);
     const score = Number(row.score);
     const timeSpentSeconds = Number(row.timeSpentSeconds) || 0;
-    exam.studentCount += 1;
-    exam.avgScore += score;
-    exam.bestScore = exam.bestScore === null ? score : Math.max(exam.bestScore, score);
-    exam.worstScore = exam.worstScore === null ? score : Math.min(exam.worstScore, score);
-    const bucket = SCORE_BUCKETS.find(item => score >= item.min && score <= item.max);
-    if (bucket) exam.buckets[SCORE_BUCKETS.indexOf(bucket)].count += 1;
+    const graded = row.gradingStatus !== 'pending_grading';
+    const proctor = parseProctorEvents(row.proctorEventsJson);
+
+    // Statistik skor hanya dari nilai FINAL; attempt pending koreksi esai
+    // dihitung terpisah (skornya masih sementara dari PG).
+    if (!graded) {
+      exam.pendingGradingCount += 1;
+    } else {
+      exam.studentCount += 1;
+      exam.avgScore += score;
+      exam.bestScore = exam.bestScore === null ? score : Math.max(exam.bestScore, score);
+      exam.worstScore = exam.worstScore === null ? score : Math.min(exam.worstScore, score);
+      const bucket = SCORE_BUCKETS.find(item => score >= item.min && score <= item.max);
+      if (bucket) exam.buckets[SCORE_BUCKETS.indexOf(bucket)].count += 1;
+    }
 
     const fastSeconds = Math.round(exam.durationMinutes * 60 * FAST_RATIO);
     if (fastSeconds > 0 && timeSpentSeconds > 0 && timeSpentSeconds <= fastSeconds) {
@@ -78,7 +93,29 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
         score,
         timeSpentSeconds,
         submittedAt: row.submittedAt ? String(row.submittedAt) : null,
-        suspicious: score >= SUSPICIOUS_SCORE,
+        // Skor sementara (pending koreksi) tidak boleh jadi dasar vonis mencurigakan.
+        suspicious: graded && score >= SUSPICIOUS_SCORE,
+        tabSwitchCount: proctor.tabSwitch,
+        windowBlurCount: proctor.windowBlur,
+        fullscreenExitCount: proctor.fullscreenExit,
+      });
+    }
+
+    // Flag proctoring: banyak perpindahan tab — indikasi untuk dinilai guru,
+    // bukan vonis (tidak ada sanksi otomatis dari peristiwa proctoring).
+    if (proctor.tabSwitch >= MANY_SWITCHES) {
+      exam.proctorFlags.push({
+        attemptId: String(row.attemptId),
+        studentName: String(row.studentName),
+        nisn: String(row.nisn),
+        score,
+        timeSpentSeconds,
+        submittedAt: row.submittedAt ? String(row.submittedAt) : null,
+        suspicious: false,
+        tabSwitchCount: proctor.tabSwitch,
+        windowBlurCount: proctor.windowBlur,
+        fullscreenExitCount: proctor.fullscreenExit,
+        manySwitches: true,
       });
     }
   }
@@ -87,5 +124,5 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
     .map(exam => ({ ...exam, avgScore: exam.studentCount ? Math.round((exam.avgScore / exam.studentCount) * 10) / 10 : 0 }))
     .sort((a, b) => a.title.localeCompare(b.title));
 
-  return jsonResponse({ success: true, data: { exams, fastRatio: FAST_RATIO, suspiciousScore: SUSPICIOUS_SCORE } });
+  return jsonResponse({ success: true, data: { exams, fastRatio: FAST_RATIO, suspiciousScore: SUSPICIOUS_SCORE, manySwitches: MANY_SWITCHES } });
 };

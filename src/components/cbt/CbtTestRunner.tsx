@@ -73,6 +73,74 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
   const lastSavedRef = useRef<string>(JSON.stringify({ answers: { ...initialAnswers, ...localCache.answers }, doubtful: { ...initialDoubtful, ...localCache.doubtful } }));
   const finishedRef = useRef(false);
 
+  // --- Proctoring web (pencatatan + peringatan ramah; TANPA sanksi otomatis) ---
+  const rootRef = useRef<HTMLDivElement>(null);
+  const wasFullscreenRef = useRef(false);
+  const pendingProctorRef = useRef<{ type: string; at: string }[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [proctorCounts, setProctorCounts] = useState({ tabSwitch: 0, windowBlur: 0, fullscreenExit: 0 });
+
+  const recordProctorEvent = useCallback((type: 'tab_switch' | 'window_blur' | 'fullscreen_exit') => {
+    if (finishedRef.current) return;
+    pendingProctorRef.current.push({ type, at: new Date().toISOString() });
+    setProctorCounts(prev => ({
+      tabSwitch: prev.tabSwitch + (type === 'tab_switch' ? 1 : 0),
+      windowBlur: prev.windowBlur + (type === 'window_blur' ? 1 : 0),
+      fullscreenExit: prev.fullscreenExit + (type === 'fullscreen_exit' ? 1 : 0),
+    }));
+  }, []);
+
+  const flushProctorEvents = useCallback(async () => {
+    if (!pendingProctorRef.current.length) return;
+    const events = pendingProctorRef.current.splice(0, pendingProctorRef.current.length);
+    try {
+      await cbtApi.proctorEvents(attemptId, events);
+    } catch {
+      pendingProctorRef.current.unshift(...events);
+    }
+  }, [attemptId]);
+
+  const enterFullscreen = useCallback(() => {
+    const el = rootRef.current;
+    if (el && typeof el.requestFullscreen === 'function') {
+      el.requestFullscreen().catch(() => undefined);
+    }
+  }, []);
+
+  // Minta layar penuh saat runner tampil (best effort; tombol manual tersedia
+  // bila browser menolak permintaan tanpa gestur langsung).
+  useEffect(() => { enterFullscreen(); }, [enterFullscreen]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const active = Boolean(document.fullscreenElement);
+      setIsFullscreen(active);
+      if (active) { wasFullscreenRef.current = true; return; }
+      if (wasFullscreenRef.current) recordProctorEvent('fullscreen_exit');
+    };
+    const onVisibility = () => { if (document.hidden) recordProctorEvent('tab_switch'); };
+    const onBlur = () => recordProctorEvent('window_blur');
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [recordProctorEvent]);
+
+  // Kirim peristiwa proctoring berkala & saat halaman disembunyikan.
+  useEffect(() => {
+    const interval = setInterval(() => { void flushProctorEvents(); }, 30 * 1000);
+    const onHide = () => { void flushProctorEvents(); };
+    window.addEventListener('pagehide', onHide);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('pagehide', onHide);
+    };
+  }, [flushProctorEvents]);
+
   const persistAnswers = useCallback(async (currentAnswers: typeof answers, currentDoubtful: typeof doubtful) => {
     const payload = JSON.stringify({ answers: currentAnswers, doubtful: currentDoubtful });
     if (payload === lastSavedRef.current) return;
@@ -166,13 +234,14 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
     };
 
     try {
+      await flushProctorEvents();
       await onFinish(submission);
       finishedRef.current = true;
       clearLocalCache(attemptId);
     } finally {
       setSubmitting(false);
     }
-  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting, persistAnswers, attemptId]);
+  }, [exam, currentUser, answers, doubtful, timeLeft, onFinish, submitting, persistAnswers, attemptId, flushProctorEvents]);
 
   const handleFinishClick = () => {
     if (submitting) return;
@@ -214,10 +283,12 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSelectOption = (questionId: string, optionKey: 'A' | 'B' | 'C' | 'D' | 'E') => {
+  const handleSelectOption = (questionId: string, option: { key: string; originalKey?: string }) => {
+    // Jawaban selalu disimpan sebagai kunci ASAL opsi (originalKey) agar
+    // penilaian server konsisten meski urutan tampilan diacak per attempt.
     setAnswers(prev => ({
       ...prev,
-      [questionId]: optionKey
+      [questionId]: option.originalKey ?? option.key
     }));
   };
 
@@ -240,8 +311,16 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
   const doubtfulCount = Object.values(doubtful).filter(Boolean).length;
   const isEssay = currentQ.type === 'essai';
 
+  const proctorSwitchTotal = proctorCounts.tabSwitch + proctorCounts.windowBlur;
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900 text-slate-100 flex flex-col font-sans select-none overflow-hidden">
+    <div
+      ref={rootRef}
+      onCopy={event => event.preventDefault()}
+      onCut={event => event.preventDefault()}
+      onContextMenu={event => event.preventDefault()}
+      className="fixed inset-0 z-50 bg-slate-900 text-slate-100 flex flex-col font-sans select-none overflow-hidden"
+    >
       {/* CBT Header Toolbar */}
       <header className="bg-slate-800 border-b border-slate-700 px-2 py-2 flex items-center gap-2 shadow-md sm:px-4 sm:py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
@@ -295,6 +374,15 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
             <span>{formatTime(timeLeft)}</span>
           </div>
 
+          {proctorSwitchTotal > 0 && (
+            <span
+              className="hidden sm:flex bg-amber-500/15 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
+              title="Perpindahan tab/aplikasi tercatat oleh sistem dan diteruskan ke guru sebagai catatan — tetap fokus ya."
+            >
+              Tercatat berpindah {proctorSwitchTotal}× — tetap fokus ya
+            </span>
+          )}
+
           {minSubmitSeconds > 0 && !canSubmitYet && (
             <span className="hidden sm:block bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2.5 py-1.5 rounded-lg">
               Kirim dibuka dalam {formatTime(minSubmitWaitSeconds)}
@@ -313,6 +401,20 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
           </button>
         </div>
       </header>
+
+      {/* Peringatan ramah saat di luar layar penuh */}
+      {!isFullscreen && (
+        <div className="bg-sky-950/80 border-b border-sky-800 px-3 py-2 flex items-center justify-between gap-3 text-[11px] sm:text-xs text-sky-200">
+          <span>Kamu sedang tidak dalam mode layar penuh. Tetap di halaman ini selama ujian berlangsung ya — perpindahan tab/aplikasi tercatat oleh sistem.</span>
+          <button
+            type="button"
+            onClick={enterFullscreen}
+            className="shrink-0 bg-sky-600 hover:bg-sky-500 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+          >
+            Masuk Layar Penuh
+          </button>
+        </div>
+      )}
 
       {/* CBT Main Body Grid */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -376,11 +478,12 @@ export function CbtTestRunner({ exam, currentUser, attemptId, initialAnswers = {
             ) : (
               <div className="space-y-3 max-w-3xl">
                 {currentQ.options.map((opt) => {
-                  const isSelected = answers[currentQ.id] === opt.key;
+                  const answerKey = opt.originalKey ?? opt.key;
+                  const isSelected = answers[currentQ.id] === answerKey;
                   return (
                     <button
                       key={opt.key}
-                      onClick={() => handleSelectOption(currentQ.id, opt.key)}
+                      onClick={() => handleSelectOption(currentQ.id, opt)}
                       className={`w-full text-left p-4 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
                         isSelected
                           ? 'bg-emerald-600/20 border-emerald-500 text-white shadow-md ring-2 ring-emerald-500/30'

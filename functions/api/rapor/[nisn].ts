@@ -35,13 +35,13 @@ export const onRequestGet: PagesFunction<Env, any, Record<string, unknown> & { u
     env.DB.prepare(`
       SELECT e.subject, COUNT(*) AS exam_count, ROUND(AVG(a.score)) AS avg_score, MAX(a.score) AS best_score
       FROM cbt_attempts a JOIN cbt_exams e ON e.id = a.exam_id
-      WHERE a.nisn = ? AND a.status = 'submitted'
+      WHERE a.nisn = ? AND a.status = 'submitted' AND COALESCE(a.grading_status, 'graded') = 'graded'
       GROUP BY e.subject ORDER BY e.subject ASC
     `).bind(nisn).all<any>(),
     env.DB.prepare(`
       SELECT e.title, e.subject, e.exam_type, a.score, a.submitted_at
       FROM cbt_attempts a JOIN cbt_exams e ON e.id = a.exam_id
-      WHERE a.nisn = ? AND a.status = 'submitted'
+      WHERE a.nisn = ? AND a.status = 'submitted' AND COALESCE(a.grading_status, 'graded') = 'graded'
       ORDER BY a.submitted_at DESC LIMIT 50
     `).bind(nisn).all<any>(),
   ]);

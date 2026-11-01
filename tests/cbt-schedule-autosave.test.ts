@@ -96,14 +96,17 @@ describe('CBT essai scoring', () => {
     expect(isEssayAnswerCorrect('Berkas lama yang disimpan.', 'rekaman kegiatan|rekaman informasi')).toBe(false);
   });
 
-  it('menghitung skor campuran PG dan essai', () => {
+  it('menghitung skor resmi hanya dari PG; essai tidak dinilai sistem', () => {
     const questions = [
       { id: 'q1', type: 'pg', correctAnswer: 'A' },
       { id: 'e1', type: 'essai', correctAnswer: 'rekaman kegiatan' },
       { id: 'e2', type: 'essai', correctAnswer: 'surat masuk' },
     ];
-    expect(scoreCbtAnswers(questions, { q1: 'A', e1: 'Semua rekaman kegiatan', e2: 'tidak dijawab' })).toEqual({ correctCount: 2, wrongCount: 1, score: 67 });
-    expect(scoreCbtAnswers(questions, {})).toEqual({ correctCount: 0, wrongCount: 3, score: 0 });
+    // q1 benar (PG) -> 1 x (100/3) = 33,3 poin PG; kedua essai diabaikan sistem.
+    expect(scoreCbtAnswers(questions, { q1: 'A', e1: 'Semua rekaman kegiatan', e2: 'tidak dijawab' }))
+      .toEqual({ correctCount: 1, wrongCount: 0, score: 33, pgScore: 33.3, pgCount: 1, essayCount: 2, pointPerQuestion: 100 / 3 });
+    expect(scoreCbtAnswers(questions, {}))
+      .toEqual({ correctCount: 0, wrongCount: 1, score: 0, pgScore: 0, pgCount: 1, essayCount: 2, pointPerQuestion: 100 / 3 });
   });
 
   it('menerima soal essai pada validasi input ujian', () => {
@@ -130,7 +133,7 @@ describe('CBT essai scoring', () => {
     expect(bad.status).toBe(400);
   });
 
-  it('submit menghitung skor PG + essai dari server', async () => {
+  it('submit menghitung skor PG saja dari server dan menandai esai menunggu koreksi', async () => {
     const startedAt = new Date(Date.now() - 60_000).toISOString();
     const db = saveDb({
       attempt: { id: 'a1', exam_id: 'e1', status: 'in_progress', started_at: startedAt, expires_at: new Date(Date.now() + 600_000).toISOString() },
@@ -143,8 +146,11 @@ describe('CBT essai scoring', () => {
     const response = await submitAttempt({ env: { DB: db }, data: { user: student }, request: req, params: { id: 'a1' } } as any);
     expect(response.status).toBe(200);
     const json = await response.json() as any;
-    expect(json.data.score).toBe(100);
-    expect(json.data.correctCount).toBe(2);
+    // PG benar = 1 x 50 poin; esai TIDAK dinilai sistem -> skor sementara 50.
+    expect(json.data.score).toBe(50);
+    expect(json.data.correctCount).toBe(1);
+    expect(json.data.pgScore).toBe(50);
+    expect(json.data.gradingStatus).toBe('pending_grading');
   });
 });
 
@@ -193,14 +199,14 @@ describe('CBT summary API', () => {
 
   it('aggregates submitted attempts per student for admin', async () => {
     const db = summaryDb([
-      { siswaId: 'u1', siswaName: 'Siswa Satu', nisn: '123', examCount: 4, avgScore: 82.5, bestScore: 95, worstScore: 70 },
+      { siswaId: 'u1', siswaName: 'Siswa Satu', nisn: '123', examCount: 4, avgScore: 82.5, bestScore: 95, worstScore: 70, pendingCount: 0 },
     ]);
     const admin = { ...student, id: 'a1', role: 'admin' } as AuthUser;
     const response = await getSummary({ env: { DB: db }, data: { user: admin } } as any);
     expect(response.status).toBe(200);
     const json = await response.json() as any;
     expect(json.data).toEqual([
-      { siswaId: 'u1', siswaName: 'Siswa Satu', nisn: '123', examCount: 4, avgScore: 82.5, bestScore: 95, worstScore: 70 },
+      { siswaId: 'u1', siswaName: 'Siswa Satu', nisn: '123', examCount: 4, avgScore: 82.5, bestScore: 95, worstScore: 70, pendingCount: 0 },
     ]);
   });
 

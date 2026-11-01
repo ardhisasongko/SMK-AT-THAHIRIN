@@ -6,6 +6,7 @@ import {
   Clock3,
   CalendarDays,
   CheckCircle2,
+  ClipboardCheck,
   Key,
   Play,
   Plus,
@@ -32,6 +33,8 @@ import { CbtResultReviewModal } from './cbt/CbtResultReviewModal';
 import { CbtTokenModal } from './cbt/CbtTokenModal';
 import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
 import { CbtBulkScheduleModal } from './cbt/CbtBulkScheduleModal';
+import { CbtGradingQueue } from './cbt/CbtGradingQueue';
+import { CbtQuestionBank } from './cbt/CbtQuestionBank';
 import { cbtApi } from '../utils/cbt-api';
 import { downloadCsv } from '../utils/download';
 
@@ -58,6 +61,11 @@ export function CbtSection({
   const [editingExam, setEditingExam] = useState<CbtExam | null>(null);
   const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
+  const [showGrading, setShowGrading] = useState<boolean>(false);
+  const [showBank, setShowBank] = useState<boolean>(false);
+  const [gradingPendingCount, setGradingPendingCount] = useState<number>(0);
+  const [reviewExamData, setReviewExamData] = useState<CbtExam | null>(null);
+  const [reviewLocked, setReviewLocked] = useState<boolean>(false);
   const [analytics, setAnalytics] = useState<CbtAnalyticsType | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
   const [exportingScores, setExportingScores] = useState<boolean>(false);
@@ -84,6 +92,19 @@ export function CbtSection({
       .catch(error => { if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Gagal memuat CBT.'); });
     return () => { cancelled = true; };
   }, [currentUser?.id]);
+
+  const refreshGradingCount = React.useCallback(() => {
+    if (!currentUser || !['guru', 'admin', 'super_admin'].includes(currentUser.role)) return;
+    cbtApi.gradingQueue().then(queue => setGradingPendingCount(queue.length)).catch(() => undefined);
+  }, [currentUser?.id, currentUser?.role]);
+
+  useEffect(() => { refreshGradingCount(); }, [refreshGradingCount]);
+
+  const refreshResults = React.useCallback(() => {
+    cbtApi.results().then(setCbtSubmissions).catch(() => undefined);
+    cbtApi.summary().then(setCbtSummary).catch(() => undefined);
+    refreshGradingCount();
+  }, [refreshGradingCount]);
 
   const todayWIB = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
   const sortedExams = [...filteredExams].sort((a, b) => (a.startDate + a.title).localeCompare(b.startDate + b.title));
@@ -147,15 +168,55 @@ export function CbtSection({
       setCbtSubmissions(prev => [saved, ...prev.filter(item => item.id !== saved.id)]);
       setCompletedResult(saved);
       setIsTestMode(false);
+      // Muat pembahasan (kunci + penjelasan) untuk attempt yang baru dikirim.
+      // Pembahasan hanya terbuka setelah SELURUH peserta selesai — selama
+      // terkunci server hanya mengirim ringkasan + penanda reviewLocked.
+      try {
+        const review = await cbtApi.attemptReview(saved.id);
+        setReviewExamData(review.exam ?? null);
+        setReviewLocked(Boolean(review.reviewLocked));
+        setCompletedResult(review.submission);
+        setCbtSubmissions(prev => [review.submission, ...prev.filter(item => item.id !== review.submission.id)]);
+      } catch {
+        // review gagal dimuat: hasil ringkas tetap tampil tanpa pembahasan
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Jawaban gagal dikirim.', 'error');
       throw error;
     }
   };
 
+  // Buka review: staf memakai soal dari daftar ujian (sudah memuat kunci);
+  // siswa memuat pembahasan dari endpoint review attempt miliknya sendiri.
+  const handleOpenReview = async (sub: CbtSubmission) => {
+    const staffExam = isStaff ? cbtExams.find(e => e.id === sub.examId) : undefined;
+    if (staffExam && staffExam.questions.length > 0) {
+      setReviewExamData(null);
+      setReviewLocked(false);
+      setShowReviewModal(sub);
+      return;
+    }
+    if (isStaff) {
+      setReviewExamData(null);
+      setReviewLocked(false);
+      setShowReviewModal(sub);
+      return;
+    }
+    try {
+      const review = await cbtApi.attemptReview(sub.id);
+      setReviewExamData(review.exam ?? null);
+      setReviewLocked(Boolean(review.reviewLocked));
+      setShowReviewModal(review.submission);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Pembahasan gagal dimuat.', 'error');
+    }
+  };
+
   const closeReview = () => {
     setCompletedResult(null);
     setShowReviewModal(null);
+    setReviewExamData(null);
+    setReviewLocked(false);
   };
 
   const handleSaveExam = async (exam: CbtExam) => {
@@ -243,7 +304,7 @@ export function CbtSection({
 
   const reviewTarget = completedResult || showReviewModal;
   const reviewExam = reviewTarget
-    ? cbtExams.find(e => e.id === reviewTarget.examId)
+    ? reviewExamData ?? cbtExams.find(e => e.id === reviewTarget.examId)
     : undefined;
 
   return (
@@ -280,6 +341,27 @@ export function CbtSection({
                   >
                     <BarChart3 className="w-4 h-4 text-emerald-400" />
                     <span>{showResultsTable ? 'Tutup Nilai' : 'Daftar Nilai Siswa'}</span>
+                  </button>
+
+                  <button
+                    id="btn-open-grading"
+                    onClick={() => { setShowGrading(!showGrading); if (showGrading) { setShowResultsTable(false); setShowAnalytics(false); } }}
+                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 shadow-md transition-all cursor-pointer"
+                  >
+                    <ClipboardCheck className="w-4 h-4 text-amber-400" />
+                    <span>{showGrading ? 'Tutup Koreksi Esai' : 'Koreksi Esai'}</span>
+                    {gradingPendingCount > 0 && (
+                      <span className="bg-amber-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md">{gradingPendingCount}</span>
+                    )}
+                  </button>
+
+                  <button
+                    id="btn-open-bank"
+                    onClick={() => setShowBank(!showBank)}
+                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 shadow-md transition-all cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-violet-400" />
+                    <span>{showBank ? 'Tutup Bank Soal' : 'Bank Soal'}</span>
                   </button>
 
                   <button
@@ -330,7 +412,7 @@ export function CbtSection({
             <CbtResultsTable
               submissions={cbtSubmissions}
               exams={cbtExams}
-              onReview={(sub) => setShowReviewModal(sub)}
+              onReview={(sub) => void handleOpenReview(sub)}
             />
             {isStaff && cbtSummary.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-4">
@@ -357,7 +439,10 @@ export function CbtSection({
                         <tr key={sum.siswaId} className="hover:bg-slate-50 transition-colors">
                           <td className="py-3 px-4 font-bold text-slate-900">{sum.siswaName}</td>
                           <td className="py-3 px-4 font-mono text-slate-500">{sum.nisn}</td>
-                          <td className="py-3 px-4 text-slate-600">{sum.examCount} ujian</td>
+                          <td className="py-3 px-4 text-slate-600">
+                            {sum.examCount} ujian
+                            {(sum.pendingCount ?? 0) > 0 && <span className="block text-[10px] font-bold text-amber-600">{sum.pendingCount} menunggu koreksi esai</span>}
+                          </td>
                           <td className="py-3 px-4">
                             <span className={`px-2.5 py-1 rounded-lg font-bold ${sum.avgScore >= 75 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                               {sum.avgScore}
@@ -378,6 +463,16 @@ export function CbtSection({
         {/* ANALYTICS PANEL (STAFF) */}
         {showAnalytics && isStaff && (
           <CbtAnalytics analytics={analytics} loading={analyticsLoading} />
+        )}
+
+        {/* GRADING QUEUE (STAFF) */}
+        {showGrading && isStaff && (
+          <CbtGradingQueue onGraded={refreshResults} />
+        )}
+
+        {/* QUESTION BANK (STAFF) */}
+        {showBank && isStaff && (
+          <CbtQuestionBank />
         )}
 
         {/* SEARCH & EXAM LIST GRID */}
@@ -431,7 +526,7 @@ export function CbtSection({
             <CbtMyResults
               submissions={cbtSubmissions}
               exams={cbtExams}
-              onReview={(sub) => setShowReviewModal(sub)}
+              onReview={(sub) => void handleOpenReview(sub)}
             />
           ) : (
           <>
@@ -510,11 +605,11 @@ export function CbtSection({
                           <span className="text-xs font-bold text-slate-700">Sudah Selesai Dikerjakan</span>
                         </div>
                         <button
-                          onClick={() => setShowReviewModal(mySubmission)}
+                          onClick={() => void handleOpenReview(mySubmission)}
                           className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                         >
                           <Award className="w-4 h-4" />
-                          <span>Nilai: {mySubmission.score}</span>
+                          <span>{mySubmission.gradingStatus === 'pending_grading' ? `PG: ${mySubmission.pgScore ?? mySubmission.score} · Esai menunggu koreksi` : `Nilai: ${mySubmission.score}`}</span>
                         </button>
                       </div>
                     ) : (
@@ -573,6 +668,7 @@ export function CbtSection({
         <CbtResultReviewModal
           submission={reviewTarget}
           exam={reviewExam}
+          reviewLocked={reviewLocked}
           onClose={closeReview}
         />
       )}

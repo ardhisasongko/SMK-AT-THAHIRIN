@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { showToast } from '../ui/toast';
-import { Plus, Sparkles } from 'lucide-react';
-import { User as UserType, CbtExam, CbtQuestion, Kelas } from '../../types';
+import { BookOpen, Library, Plus, Sparkles } from 'lucide-react';
+import { User as UserType, CbtBankItem, CbtExam, CbtQuestion, Kelas } from '../../types';
 import { Modal } from '../ui/Modal';
 import { cbtApi } from '../../utils/cbt-api';
+import { CbtBankPicker } from './CbtBankPicker';
 
 interface CbtCreateExamModalProps {
   currentUser: UserType | null;
@@ -29,6 +30,47 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
   const [newMinSubmit, setNewMinSubmit] = useState<number | null>(initialExam?.minSubmitMinutes ?? null);
   const [newQuestions, setNewQuestions] = useState<CbtQuestion[]>(initialExam?.questions || []);
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+  const [showBankPicker, setShowBankPicker] = useState<boolean>(false);
+  const [savingBank, setSavingBank] = useState<boolean>(false);
+
+  const handlePickFromBank = (items: CbtBankItem[]) => {
+    if (!items.length) return;
+    const stamp = Date.now();
+    const copies: CbtQuestion[] = items.map((item, index) => ({
+      id: `q-bank-${stamp}-${index}-${Math.floor(Math.random() * 100000)}`,
+      question: item.question,
+      type: item.type || 'pg',
+      options: (item.options || []).map(option => ({ key: option.key, text: option.text })),
+      correctAnswer: item.correctAnswer || '',
+      explanation: item.explanation || undefined,
+    }));
+    setNewQuestions(prev => [...prev, ...copies]);
+    showToast(`${copies.length} soal disalin dari bank ke paket ini.`, 'success');
+  };
+
+  const saveQuestionToBank = async (question: CbtQuestion) => {
+    try {
+      await cbtApi.bankCreate({ subject: newSubject, question: { ...question, options: question.options || [] } });
+      showToast('Soal disimpan ke bank.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menyimpan ke bank.', 'error');
+    }
+  };
+
+  const saveAllToBank = async () => {
+    if (!newQuestions.length || savingBank) return;
+    setSavingBank(true);
+    try {
+      for (const question of newQuestions) {
+        await cbtApi.bankCreate({ subject: newSubject, question: { ...question, options: question.options || [] } });
+      }
+      showToast(`${newQuestions.length} soal paket disimpan ke bank.`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menyimpan ke bank.', 'error');
+    } finally {
+      setSavingBank(false);
+    }
+  };
 
   const handleGenerateAiQuestions = async () => {
     setIsAiGenerating(true);
@@ -139,6 +181,7 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
   };
 
   return (
+    <>
     <Modal onClose={onClose} maxWidth="max-w-2xl" scrollable className="space-y-6 sm:p-8">
       <div className="flex items-center justify-between pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2 text-emerald-700 font-bold text-base">
@@ -328,6 +371,25 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
                   <Plus className="w-3.5 h-3.5" />
                   <span>Tambahkan Essai</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBankPicker(true)}
+                  className="bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Ambil dari Bank Soal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void saveAllToBank()}
+                  disabled={savingBank || newQuestions.length === 0}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                >
+                  <Library className="w-3.5 h-3.5" />
+                  <span>{savingBank ? 'Menyimpan…' : 'Simpan Semua ke Bank'}</span>
+                </button>
               </div>
             </div>
 
@@ -344,13 +406,22 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
                         Soal #{idx + 1}
                         {q.type === 'essai' && <span className="ml-2 bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded">Essai</span>}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setNewQuestions(prev => prev.filter((_, i) => i !== idx))}
-                        className="text-rose-500 hover:text-rose-700 font-bold text-[11px]"
-                      >
-                        Hapus
-                      </button>
+                      <span className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => void saveQuestionToBank(q)}
+                          className="text-violet-600 hover:text-violet-800 font-bold text-[11px]"
+                        >
+                          Simpan ke Bank
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewQuestions(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-rose-500 hover:text-rose-700 font-bold text-[11px]"
+                        >
+                          Hapus
+                        </button>
+                      </span>
                     </div>
                     <textarea
                       value={q.question}
@@ -416,5 +487,13 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
           </div>
         </form>
     </Modal>
+    {showBankPicker && (
+      <CbtBankPicker
+        defaultSubject={newSubject}
+        onPick={handlePickFromBank}
+        onClose={() => setShowBankPicker(false)}
+      />
+    )}
+    </>
   );
 }

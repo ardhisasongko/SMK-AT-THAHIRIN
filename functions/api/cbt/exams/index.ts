@@ -52,7 +52,7 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
   const attemptsByExam = new Map<string, any>();
   if (student) {
     const { results: attemptRows } = await env.DB.prepare(
-      `SELECT id,exam_id,status,score,correct_count,wrong_count,submitted_at,time_spent_seconds,answers_json,doubtful_json
+      `SELECT id,exam_id,status,score,correct_count,wrong_count,submitted_at,time_spent_seconds,answers_json,doubtful_json,grading_status,pg_score
          FROM cbt_attempts WHERE student_user_id=? AND exam_id IN (${placeholders})`
     ).bind(user.id, ...ids).all<any>();
     for (const attempt of attemptRows) attemptsByExam.set(String(attempt.exam_id), attempt);
@@ -80,6 +80,8 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
         answers: JSON.parse(String(attempt.answers_json || '{}')), doubtful: JSON.parse(String(attempt.doubtful_json || '{}')),
         score: Number(attempt.score || 0), correctCount: Number(attempt.correct_count || 0), wrongCount: Number(attempt.wrong_count || 0),
         submittedAt: String(attempt.submitted_at || ''), timeSpentSeconds: Number(attempt.time_spent_seconds || 0), status: String(attempt.status),
+        gradingStatus: attempt.grading_status === 'pending_grading' ? 'pending_grading' : 'graded',
+        pgScore: attempt.pg_score != null ? Number(attempt.pg_score) : Number(attempt.score || 0),
       } : null,
     });
   }
