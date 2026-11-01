@@ -46,7 +46,7 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 
 ### 2. Auth & Pengguna
 
-#### `users` (0002, +0006, +0008)
+#### `users` (0002, +0006, +0008, +0030)
 | Kolom | Tipe | Constraint |
 |---|---|---|
 | id | TEXT | PK |
@@ -64,6 +64,8 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | status (+0008) | TEXT | NOT NULL, DEFAULT `'active'` (`active \| inactive \| archived`) |
 | must_change_password (+0008) | INTEGER | NOT NULL, DEFAULT 0 |
 | archived_at / archived_by (+0008) | TEXT | — |
+| totp_secret_enc (+0030) | TEXT | — secret TOTP 2FA staf, **terenkripsi AES-GCM** (kunci dari secret `TOTP_ENCRYPTION_KEY`); NULL = belum menyiapkan 2FA |
+| totp_enabled (+0030) | INTEGER | NOT NULL, DEFAULT 0 — 1 hanya setelah kode pertama terverifikasi |
 | created_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
 
 #### `sessions` (0002)
@@ -79,10 +81,28 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 |---|---|---|
 | id | TEXT | PK |
 | actor_id / actor_name / actor_role | TEXT | NOT NULL |
-| action | TEXT | NOT NULL (CREATE_USER, UPDATE_USER, ARCHIVE_USER, DELETE_USER_PERMANENT, RESET_PASSWORD) |
+| action | TEXT | NOT NULL (CREATE_USER, UPDATE_USER, ARCHIVE_USER, DELETE_USER_PERMANENT, RESET_PASSWORD, DISABLE_2FA, DISABLE_2FA_SELF) |
 | target_user_id / target_name | TEXT | — |
 | before_value / after_value | TEXT | — (JSON) |
 | reason | TEXT | — |
+| created_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
+
+#### `totp_recovery_codes` (0030) — kode pemulihan 2FA sekali pakai
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| id | TEXT | PK |
+| user_id | TEXT | NOT NULL, FK → users(id) |
+| code_hash | TEXT | NOT NULL — hash SHA-256 kode ternormalisasi (plaintext hanya tampil sekali saat aktivasi) |
+| used_at | TEXT | — terisi saat kode dipakai; baris terpakai tidak dapat dipakai lagi |
+| created_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
+
+#### `auth_challenges` (0030) — tantangan langkah kedua login
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| token_hash | TEXT | PK — hash SHA-256 token tantangan (token mentah hanya di respons login) |
+| user_id | TEXT | NOT NULL, FK → users(id) |
+| attempts | INTEGER | NOT NULL, DEFAULT 0 — tantangan dihapus setelah 5 kegagalan |
+| expires_at | TEXT | NOT NULL — TTL 10 menit |
 | created_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
 
 ### 3. Foto
@@ -565,6 +585,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0027 | CBT: `cbt_attempts` +shuffle_seed/pg_score/essay_scores_json/grading_status/graded_by/graded_at/proctor_events_json + index antrean koreksi |
 | 0028 | CBT: tabel baru `cbt_question_bank` (bank soal per guru) + 2 index |
 | 0029 | CBT Ruang Kontrol: tabel `cbt_exam_announcements` + `cbt_monitor_actions` (audit) + `cbt_attempts.submitted_by` + 2 index |
+| 0030 | Hardening Fase B: `users` +`totp_secret_enc`/`totp_enabled` (2FA TOTP staf) + tabel `totp_recovery_codes` (hash, sekali pakai) + `auth_challenges` (tantangan login dua langkah) + 2 index |
 
 ## Anomali & Catatan Penting (keputusan desain)
 

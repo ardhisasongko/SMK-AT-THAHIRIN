@@ -26,3 +26,9 @@ GEMINI_MODEL = "gemini-3.6-flash"
 # GEMINI_API_KEY sebaiknya di-set sebagai SECRET (bukan vars) di Cloudflare Pages:
 #   Dashboard Pages -> Settings -> Variables and Secrets -> Secrets -> GEMINI_API_KEY
 # atau via CLI:  npx wrangler pages secret put GEMINI_API_KEY --project-name smk-at-tahirin
+#
+# TOTP_ENCRYPTION_KEY (hardening Fase B — kunci enkripsi secret 2FA staf)
+# juga WAJIB secret, JANGAN ditulis di [vars]:
+#   npx wrangler pages secret put TOTP_ENCRYPTION_KEY --project-name smk-at-tahirin
+# Kunci harus stabil antar deploy; menggantinya mengharuskan staf mengatur
+# ulang 2FA (dibantu penonaktifan oleh administrator).

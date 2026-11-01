@@ -109,6 +109,33 @@ export async function deleteSession(env: AuthEnv, token: string): Promise<void> 
   await env.DB.prepare('DELETE FROM sessions WHERE token = ? OR token = ?').bind(await hashSessionToken(token), token).run();
 }
 
+/** Token sesi mentah dari header Authorization / cookie (untuk perbandingan sesi aktif). */
+export function getSessionTokenFromRequest(request: Request): string | null {
+  const auth = request.headers.get('Authorization') || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7).trim() || null;
+  const cookieToken = request.headers.get('Cookie')
+    ?.split(';')
+    .map(value => value.trim())
+    .find(value => value.startsWith('smk_session='))
+    ?.slice('smk_session='.length);
+  return cookieToken || null;
+}
+
+/**
+ * Hapus semua sesi pengguna SELAIN sesi pada request ini.
+ * Dipakai saat aktivasi 2FA: sesi lama yang dibuat sebelum 2FA aktif tidak
+ * boleh menjadi jalan pintas melewati langkah verifikasi kedua.
+ */
+export async function deleteOtherSessions(env: AuthEnv, userId: string, request: Request): Promise<void> {
+  const current = getSessionTokenFromRequest(request);
+  if (!current) {
+    await env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run();
+    return;
+  }
+  const currentHash = await hashSessionToken(current);
+  await env.DB.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').bind(userId, currentHash).run();
+}
+
 function mapUser(row: any): AuthUser | null {
   if (!row) return null;
   return {
