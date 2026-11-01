@@ -22,6 +22,10 @@ SCHOOL_EMAIL_DOMAIN = "smksplusatthahirin.sch.id"
 # nonaktifkan dari dashboard bila diperlukan tanpa deploy ulang.
 GEMINI_ENABLED = "true"
 GEMINI_MODEL = "gemini-3.6-flash"
+# Kuota AI per deployment (hardening Fase D): batas permintaan Gemini
+# HARIAN (WIB) untuk seluruh sekolah. Kosong (bawaan) = tanpa batas;
+# contoh nilai wajar per sekolah: "200". Dihitung di D1 (gemini_daily_usage).
+GEMINI_DAILY_LIMIT = ""
 # Cloudflare Turnstile di login (hardening Fase C) — site key bersifat publik.
 # Kosong (bawaan) = fitur MATI dan login seperti biasa. Isi site key dari
 # dashboard Cloudflare (Turnstile) untuk mengaktifkan; secret pasangannya

@@ -3,11 +3,13 @@ import { callGeminiJson, GeminiError, isGeminiEnabled } from "../../_lib/gemini"
 import { jsonResponse, errorResponse } from "../../_lib/response";
 import type { AuthUser } from "../../_lib/auth";
 import { consumeRateLimit } from "../../_lib/rate-limit";
+import { consumeGeminiQuota } from "../../_lib/gemini-quota";
 
 interface Env {
   GEMINI_API_KEY?: string;
   GEMINI_ENABLED?: string;
   GEMINI_MODEL?: string;
+  GEMINI_DAILY_LIMIT?: string;
   APP_NAME?: string;
   DB: D1Database;
 }
@@ -94,6 +96,10 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     }
     if (!env.GEMINI_API_KEY?.trim()) return errorResponse("Layanan AI belum tersedia.", 503);
     if (!(await consumeRateLimit(env.DB, `ai-modul:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan modul hari ini habis.", 429);
+    // Kuota AI per deployment (hardening Fase D): anggaran harian WIB yang
+    // sama dengan generate CBT — satu kunci Gemini per sekolah.
+    const deploymentQuota = await consumeGeminiQuota(env.DB, env);
+    if (!deploymentQuota.allowed) return errorResponse(`Kuota AI harian sekolah (${deploymentQuota.limit} permintaan per hari) sudah tercapai. Silakan coba lagi besok.`, 429);
 
     const schoolName = env.APP_NAME || 'SMK PLUS AT-THAHIRIN';
     const prompt = `Buatkan Modul Ajar Kurikulum Merdeka lengkap dan terstruktur profesional untuk ${schoolName}.
