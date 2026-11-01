@@ -10,7 +10,6 @@ const EMPTY_OPTIONS = ['A', 'B', 'C', 'D', 'E'].map(key => ({ key: key as 'A' | 
 interface BankFormState {
   subject: string;
   topic: string;
-  type: 'pg' | 'essai';
   question: string;
   options: { key: 'A' | 'B' | 'C' | 'D' | 'E'; text: string }[];
   correctAnswer: string;
@@ -18,7 +17,7 @@ interface BankFormState {
 }
 
 const blankForm = (subject = ''): BankFormState => ({
-  subject, topic: '', type: 'pg', question: '',
+  subject, topic: '', question: '',
   options: EMPTY_OPTIONS.map(option => ({ ...option })), correctAnswer: 'A', explanation: '',
 });
 
@@ -55,7 +54,7 @@ export function CbtQuestionBank() {
   const openEdit = (item: CbtBankItem) => {
     setEditingId(item.id);
     setForm({
-      subject: item.subject, topic: item.topic || '', type: item.type || 'pg', question: item.question,
+      subject: item.subject, topic: item.topic || '', question: item.question,
       options: item.options && item.options.length === 5 ? item.options.map(option => ({ key: option.key, text: option.text })) : EMPTY_OPTIONS.map(option => ({ ...option })),
       correctAnswer: item.correctAnswer || 'A', explanation: item.explanation || '',
     });
@@ -65,13 +64,13 @@ export function CbtQuestionBank() {
     if (!form) return;
     if (!form.subject.trim()) { showToast('Mata pelajaran wajib diisi.', 'error'); return; }
     if (!form.question.trim()) { showToast('Pertanyaan wajib diisi.', 'error'); return; }
-    if (form.type === 'pg' && form.options.some(option => !option.text.trim())) { showToast('Semua opsi A–E wajib diisi.', 'error'); return; }
-    if (form.type === 'essai' && !form.correctAnswer.trim()) { showToast('Kunci jawaban esai wajib diisi.', 'error'); return; }
+    if (form.options.some(option => !option.text.trim())) { showToast('Semua opsi A–E wajib diisi.', 'error'); return; }
+    // Bank hanya menerima pilihan ganda — pembuatan soal esai dinonaktifkan.
     const question: CbtQuestion = {
       id: editingId || 'bank-form',
       question: form.question,
-      type: form.type,
-      options: form.type === 'essai' ? [] : form.options,
+      type: 'pg',
+      options: form.options,
       correctAnswer: form.correctAnswer,
       explanation: form.explanation || undefined,
     };
@@ -143,14 +142,15 @@ export function CbtQuestionBank() {
                 <div className="flex flex-wrap items-center gap-1.5 mb-1">
                   <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-lg">{item.subject}</span>
                   {item.topic && <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-lg">{item.topic}</span>}
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${item.type === 'essai' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'}`}>{item.type === 'essai' ? 'Esai' : 'PG'}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${item.type === 'essai' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'}`}>{item.type === 'essai' ? 'Esai (warisan)' : 'PG'}</span>
                   {item.ownerName && <span className="text-[10px] text-slate-400">oleh {item.ownerName}</span>}
                 </div>
                 <p className="font-semibold text-slate-800 line-clamp-2">{item.question}</p>
                 <p className="text-[11px] text-slate-500 mt-0.5">Kunci: <strong className="text-emerald-700">{item.type === 'essai' ? (item.correctAnswer || '-').split('|').join(' ATAU ') : item.correctAnswer}</strong></p>
+                {item.type === 'essai' && <p className="text-[11px] text-sky-700 italic mt-0.5">Soal warisan — soal esai tidak lagi dapat dibuat/diedit/disalin ke paket; soal ini hanya dapat dihapus.</p>}
               </div>
               <div className="flex shrink-0 gap-1.5">
-                <button type="button" onClick={() => openEdit(item)} title="Edit soal" className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100 cursor-pointer"><Pencil className="h-3.5 w-3.5" /></button>
+                {item.type !== 'essai' && <button type="button" onClick={() => openEdit(item)} title="Edit soal" className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100 cursor-pointer"><Pencil className="h-3.5 w-3.5" /></button>}
                 <button type="button" onClick={() => void handleDelete(item)} title="Hapus soal" className="rounded-lg border border-rose-200 bg-rose-50 p-2 text-rose-700 hover:bg-rose-100 cursor-pointer"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
@@ -165,7 +165,7 @@ export function CbtQuestionBank() {
             <button onClick={() => { setForm(null); setEditingId(null); }} className="text-slate-400 hover:text-slate-600 text-lg font-bold cursor-pointer">✕</button>
           </div>
           <div className="space-y-3 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Mata Pelajaran</label>
                 <input type="text" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900" />
@@ -174,44 +174,31 @@ export function CbtQuestionBank() {
                 <label className="block font-bold text-slate-700 mb-1">Topik (opsional)</label>
                 <input type="text" value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900" />
               </div>
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Tipe Soal</label>
-                <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as 'pg' | 'essai' })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900">
-                  <option value="pg">Pilihan Ganda</option>
-                  <option value="essai">Esai</option>
-                </select>
-              </div>
             </div>
+            <p className="text-[11px] text-slate-400 -mt-1">Bank soal hanya untuk pilihan ganda — soal esai tidak lagi dapat dibuat.</p>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Pertanyaan</label>
               <textarea value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} rows={3} maxLength={2000} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 resize-y" />
             </div>
-            {form.type === 'pg' ? (
-              <div className="space-y-2">
-                {form.options.map(option => (
-                  <div key={option.key} className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700">{option.key}</span>
-                    <input
-                      type="text" value={option.text} maxLength={1000}
-                      onChange={e => setForm({ ...form, options: form.options.map(o => o.key === option.key ? { ...o, text: e.target.value } : o) })}
-                      className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-slate-800"
-                      placeholder={`Teks opsi ${option.key}`}
-                    />
-                  </div>
-                ))}
-                <label className="flex items-center gap-2 font-bold text-slate-700 pt-1">
-                  Kunci jawaban:
-                  <select value={form.correctAnswer} onChange={e => setForm({ ...form, correctAnswer: e.target.value })} className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">
-                    {['A', 'B', 'C', 'D', 'E'].map(key => <option key={key} value={key}>{key}</option>)}
-                  </select>
-                </label>
-              </div>
-            ) : (
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Kunci Jawaban Esai — pisahkan alternatif dengan tanda |</label>
-                <input type="text" value={form.correctAnswer} onChange={e => setForm({ ...form, correctAnswer: e.target.value })} maxLength={2000} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900" />
-              </div>
-            )}
+            <div className="space-y-2">
+              {form.options.map(option => (
+                <div key={option.key} className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700">{option.key}</span>
+                  <input
+                    type="text" value={option.text} maxLength={1000}
+                    onChange={e => setForm({ ...form, options: form.options.map(o => o.key === option.key ? { ...o, text: e.target.value } : o) })}
+                    className="flex-1 p-2 bg-white border border-slate-200 rounded-lg text-slate-800"
+                    placeholder={`Teks opsi ${option.key}`}
+                  />
+                </div>
+              ))}
+              <label className="flex items-center gap-2 font-bold text-slate-700 pt-1">
+                Kunci jawaban:
+                <select value={form.correctAnswer} onChange={e => setForm({ ...form, correctAnswer: e.target.value })} className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">
+                  {['A', 'B', 'C', 'D', 'E'].map(key => <option key={key} value={key}>{key}</option>)}
+                </select>
+              </label>
+            </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Pembahasan (opsional)</label>
               <input type="text" value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} maxLength={2000} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900" />
