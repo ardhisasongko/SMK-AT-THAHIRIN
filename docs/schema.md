@@ -39,6 +39,13 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | locked_until | TEXT | — NULL = tidak terkunci; kunci tidak pernah permanen |
 | updated_at | TEXT | NOT NULL — baris yang tidak tersentuh >24 jam dianggap basi dan di-reset |
 
+#### `gemini_daily_usage` (0032) — pemakaian AI harian per deployment
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| day | TEXT | PK — hari kalender WIB `YYYY-MM-DD` (Asia/Jakarta) |
+| request_count | INTEGER | NOT NULL, DEFAULT 0 — panggilan endpoint AI hari itu (termasuk yang ditolak kuota) |
+| updated_at | TEXT | NOT NULL |
+
 #### `domain_migrations` (0012) — marker migrasi data domain
 | Kolom | Tipe | Constraint |
 |---|---|---|
@@ -596,6 +603,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0029 | CBT Ruang Kontrol: tabel `cbt_exam_announcements` + `cbt_monitor_actions` (audit) + `cbt_attempts.submitted_by` + 2 index |
 | 0030 | Hardening Fase B: `users` +`totp_secret_enc`/`totp_enabled` (2FA TOTP staf) + tabel `totp_recovery_codes` (hash, sekali pakai) + `auth_challenges` (tantangan login dua langkah) + 2 index |
 | 0031 | Hardening Fase C: tabel `login_lockouts` — lockout login bertahap per akun + per IP (durasi naik per level, tidak pernah permanen) |
+| 0032 | Hardening Fase D: tabel `gemini_daily_usage` — penghitung pemakaian Gemini harian (WIB) per deployment untuk kuota `GEMINI_DAILY_LIMIT` |
 
 ## Anomali & Catatan Penting (keputusan desain)
 

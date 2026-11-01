@@ -5,6 +5,28 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Hardening Fase D — kuota AI per deployment (2 November 2026, BELUM
+  deploy, migrasi baru 0032)**: penghitung pemakaian Gemini harian (hari
+  kalender WIB) per deployment di tabel `gemini_daily_usage`
+  (`functions/_lib/gemini-quota.ts`), dinaikkan atomik oleh kedua endpoint
+  AI (`/api/cbt/generate` dan `/api/modul-ajar/generate`) setelah gerbang
+  per-pengguna 20/hari yang sudah ada. Batas dari variabel biasa
+  `GEMINI_DAILY_LIMIT` ([vars]): kosong/0/tidak valid = TANPA batas
+  (bawaan aman — deployment lama hanya mendapat penghitung, perilaku
+  tidak berubah); permintaan melewati batas ditolak 429 sopan "Kuota AI
+  harian sekolah … sudah tercapai. Silakan coba lagi besok." sampai hari
+  WIB berikutnya. Penghitung mencatat juga percobaan yang ditolak agar
+  panel status (Fase E) mencerminkan beban nyata. Fail-open bila tabel
+  belum ada (deployment pra-migrasi tidak kehilangan fitur AI). Catatan
+  penomoran: migrasi kuota adalah 0032 karena 0031 dipakai lockout login
+  Fase C (urutan tetap runtut tanpa celah). SOP kunci per sekolah (satu
+  `GEMINI_API_KEY` per deployment + cara memasang/rotasi + rekomendasi
+  nilai batas) ditulis di dokumen operasi Fase F. Test baru
+  `tests/security-hardening-fase-d.test.ts` (6 test): kalender WIB,
+  parser batas, penghitung naik/batas menolak/reset harian, fail-open,
+  integrasi kedua endpoint berbagi satu penghitung, dan mode tanpa batas.
+  **Deploy produksi menunggu instruksi pemilik.**
+
 - **Hardening Fase C — Turnstile login + lockout bertahap + cakupan rate
   limit (2 November 2026, BELUM deploy, migrasi baru 0031)**: (1) Turnstile
   siap-env (`functions/_lib/turnstile.ts`): aktif HANYA bila

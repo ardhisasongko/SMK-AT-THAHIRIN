@@ -3,12 +3,14 @@ import { callGeminiJson, GeminiError, isGeminiEnabled } from "../../_lib/gemini"
 import { jsonResponse, errorResponse } from "../../_lib/response";
 import type { AuthUser } from "../../_lib/auth";
 import { consumeRateLimit } from "../../_lib/rate-limit";
+import { consumeGeminiQuota } from "../../_lib/gemini-quota";
 import { validateCbtQuestions } from "../../_lib/cbt";
 
 interface Env {
   GEMINI_API_KEY?: string;
   GEMINI_ENABLED?: string;
   GEMINI_MODEL?: string;
+  GEMINI_DAILY_LIMIT?: string;
   DB: D1Database;
 }
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -64,6 +66,10 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     }
     if (!env.GEMINI_API_KEY?.trim()) return errorResponse("Layanan AI belum tersedia.", 503);
     if (!(await consumeRateLimit(env.DB, `ai-cbt:${data.user.id}`, 20, 24 * 60 * 60))) return errorResponse("Kuota pembuatan soal hari ini habis.", 429);
+    // Kuota AI per deployment (hardening Fase D): satu anggaran harian WIB
+    // untuk seluruh sekolah; kosong/0 pada env = tanpa batas.
+    const deploymentQuota = await consumeGeminiQuota(env.DB, env);
+    if (!deploymentQuota.allowed) return errorResponse(`Kuota AI harian sekolah (${deploymentQuota.limit} permintaan per hari) sudah tercapai. Silakan coba lagi besok.`, 429);
 
     const prompt = `Buatkan ${count} soal pilihan ganda untuk mata pelajaran "${subject}" untuk tingkat SMK Manajemen Perkantoran dan Layanan Bisnis (MPLB). Setiap soal wajib memiliki tepat 5 opsi A-E dengan teks yang tidak kosong. SEMUA soal HARUS pilihan ganda dengan "type": "pg" — DILARANG membuat soal esai/uraian dalam bentuk apa pun.
 Format JSON murni tanpa markdown/backticks:
