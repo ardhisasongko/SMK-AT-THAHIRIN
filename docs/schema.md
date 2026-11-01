@@ -46,6 +46,13 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | request_count | INTEGER | NOT NULL, DEFAULT 0 — panggilan endpoint AI hari itu (termasuk yang ditolak kuota) |
 | updated_at | TEXT | NOT NULL |
 
+#### `login_failure_stats` (0033) — statistik kegagalan login per jam
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| hour | TEXT | PK — ember jam UTC `YYYY-MM-DDTHH` |
+| failures | INTEGER | NOT NULL, DEFAULT 0 — kegagalan login pada jam itu (agregat anonim, tanpa identifier/IP) |
+| updated_at | TEXT | NOT NULL — ember >48 jam dibersihkan oportunistik saat pencatatan |
+
 #### `domain_migrations` (0012) — marker migrasi data domain
 | Kolom | Tipe | Constraint |
 |---|---|---|
@@ -604,6 +611,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0030 | Hardening Fase B: `users` +`totp_secret_enc`/`totp_enabled` (2FA TOTP staf) + tabel `totp_recovery_codes` (hash, sekali pakai) + `auth_challenges` (tantangan login dua langkah) + 2 index |
 | 0031 | Hardening Fase C: tabel `login_lockouts` — lockout login bertahap per akun + per IP (durasi naik per level, tidak pernah permanen) |
 | 0032 | Hardening Fase D: tabel `gemini_daily_usage` — penghitung pemakaian Gemini harian (WIB) per deployment untuk kuota `GEMINI_DAILY_LIMIT` |
+| 0033 | Hardening Fase E: tabel `login_failure_stats` — ember kegagalan login per jam (agregat anonim) untuk panel status & pemantauan 24 jam |
 
 ## Anomali & Catatan Penting (keputusan desain)
 

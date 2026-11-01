@@ -32,6 +32,7 @@ import { buildCsv, downloadTextFile } from '../utils/download';
 import { dateWIB } from '../utils/date';
 import { RaporModal } from './RaporModal';
 import { TwoFactorCard } from './TwoFactorCard';
+import { SystemStatusCard } from './SystemStatusCard';
 
 const normalizeName = (s: string) =>
   s
@@ -828,6 +829,8 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
               Panel kendali admin untuk mengunduh laporan rekapitulasi, mengelola database, dan memantau kesehatan server.
             </p>
           </div>
+
+          <SystemStatusCard />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 shadow-xs">
