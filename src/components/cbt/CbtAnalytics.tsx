@@ -78,7 +78,7 @@ function ExamAnalyticsCard({ exam, fastRatio, suspiciousScore, key }: { key: str
             <div key={bucket.label} className="flex-1 flex flex-col items-center gap-1" title={`${bucket.label}: ${bucket.count} siswa`}>
               <span className="text-[10px] font-bold text-slate-600">{bucket.count}</span>
               <div
-                className="w-full rounded-t-lg bg-gradient-to-t from-emerald-700 to-emerald-400 min-h-[4px]"
+                className="w-full rounded-t-lg bg-emerald-500 min-h-[4px]"
                 style={{ height: `${Math.max(4, Math.round((bucket.count / maxBucket) * 72))}px` }}
               />
               <span className="text-[9px] font-bold text-slate-400">{bucket.label}</span>
