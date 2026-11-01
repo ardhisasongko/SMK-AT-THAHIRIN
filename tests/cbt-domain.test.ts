@@ -18,7 +18,7 @@ describe('CBT domain security', () => {
     expect(scoreCbtAnswers([
       { id: 'q1', correctAnswer: 'A' },
       { id: 'q2', correctAnswer: 'C' },
-    ], { q1: 'A', q2: 'B' })).toEqual({ correctCount: 1, wrongCount: 1, score: 50 });
+    ], { q1: 'A', q2: 'B' })).toEqual({ correctCount: 1, wrongCount: 1, score: 50, pgScore: 50, pgCount: 2, essayCount: 0, pointPerQuestion: 50 });
   });
 
   it('limits teachers to their own exams while admins retain oversight', () => {
