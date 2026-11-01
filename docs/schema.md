@@ -311,7 +311,7 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | correct_answer | TEXT | NOT NULL — **CHECK A–E dilepas di 0021** agar bisa kunci jawaban teks essai |
 | explanation | TEXT | — |
 
-#### `cbt_attempts` (0010) — UNIQUE (exam_id, student_user_id): 1 attempt/siswa/ujian
+#### `cbt_attempts` (0010, +0027) — UNIQUE (exam_id, student_user_id): 1 attempt/siswa/ujian
 | Kolom | Tipe | Constraint |
 |---|---|---|
 | id | TEXT | PK |
@@ -322,7 +322,13 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | started_at / expires_at | TEXT | NOT NULL |
 | submitted_at | TEXT | — |
 | answers_json / doubtful_json | TEXT | NOT NULL, DEFAULT `'{}'` (snapshot saat submit) |
-| score / correct_count / wrong_count / time_spent_seconds | INTEGER | — |
+| score / correct_count / wrong_count / time_spent_seconds | INTEGER | — (`correct_count`/`wrong_count` kini khusus PG sejak 0027) |
+| shuffle_seed (+0027) | INTEGER | — (seed acak per attempt untuk pengacakan soal & opsi PG; NULL = attempt lama, urutan asli) |
+| pg_score (+0027) | REAL | — (poin PG hasil penilaian otomatis server; skor resmi sementara bila esai menunggu koreksi) |
+| essay_scores_json (+0027) | TEXT | NOT NULL, DEFAULT `'{}'` — `{ scores: {qid: poin}, notes: {qid: catatan} }` dari koreksi guru |
+| grading_status (+0027) | TEXT | — (NULL = attempt lama, dianggap final; `pending_grading` = esai belum selesai dikoreksi guru; `graded` = final: `score` = pg_score + total nilai esai) |
+| graded_by / graded_at (+0027) | TEXT | — (guru penilai terakhir & waktunya) |
+| proctor_events_json (+0027) | TEXT | NOT NULL, DEFAULT `'{}'` — agregat counter proctoring web `{ tabSwitch, windowBlur, fullscreenExit, updatedAt }` (pencatatan saja, tanpa sanksi otomatis) |
 
 #### `cbt_attempt_answers` (0019) — auto-save jawaban
 | Kolom | Tipe | Constraint |
@@ -333,6 +339,22 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | saved_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
 
 > Dua sumber kebenaran jawaban: `cbt_attempts.answers_json` (snapshot submit) vs `cbt_attempt_answers` (auto-save per-request) — sinkronisasi eksplisit dilakukan aplikasi.
+
+#### `cbt_question_bank` (0028) — bank soal per guru
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| id | TEXT | PK |
+| owner_user_id / owner_name | TEXT | NOT NULL (referensi logis ke `users.id`; guru pemilik soal) |
+| subject | TEXT | NOT NULL |
+| topic | TEXT | — (opsional) |
+| question_type | TEXT | NOT NULL, DEFAULT `'pg'` (`pg` \| `essai`, enforced aplikasi) |
+| question | TEXT | NOT NULL |
+| options_json | TEXT | NOT NULL, DEFAULT `'[]'` |
+| correct_answer | TEXT | NOT NULL |
+| explanation | TEXT | — |
+| created_at / updated_at | TEXT | NOT NULL, DEFAULT `datetime('now')` |
+
+> Bank adalah sumber salinan (snapshot): menyalin soal bank ke paket ujian membuat baris `cbt_questions` baru — mengubah bank tidak mengubah ujian yang sudah dibuat. Guru mengelola miliknya; admin/super_admin semua.
 
 ### 8. Forum
 
@@ -513,6 +535,10 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0022 | `cbt_exams`: +exam_type, +min_submit_minutes |
 | 0023 | Tutup lapisan tulis `app_data` akademik: re-sync akhir proyeksi, drop 8 trigger sync 0018 |
 | 0024 | Hardening D1: 8 index tambahan sesuai pola query produksi (hasil/analitik CBT, rapor NISN, hapus user) |
+| 0025 | `photos`: kolom data dibuat nullable |
+| 0026 | Penugasan guru ke kelas (teacher class assignments) |
+| 0027 | CBT: `cbt_attempts` +shuffle_seed/pg_score/essay_scores_json/grading_status/graded_by/graded_at/proctor_events_json + index antrean koreksi |
+| 0028 | CBT: tabel baru `cbt_question_bank` (bank soal per guru) + 2 index |
 
 ## Anomali & Catatan Penting (keputusan desain)
 
@@ -527,3 +553,5 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 9. **`sessions` FK tanpa ON DELETE CASCADE** — hapus user dengan sesi aktif harus bersihkan sesi dulu.
 10. **0007 data-fix** — migrasi juga dipakai untuk perbaikan data, bukan hanya skema.
 11. **Seeder admin tunggal** — guru/siswa diimpor via `scripts/import-data.mjs`; `users.class_id` tidak ber-FK.
+12. **Penilaian CBT dua tahap (0027)** — skor resmi = PG otomatis (`pg_score`) + nilai esai manual guru. Attempt lama (`grading_status` NULL) dianggap final agar nilai rapor lama tidak berubah; rapor/summary/analitik/ekspor hanya memakai attempt final, attempt `pending_grading` tidak masuk rapor sama sekali (bukan ditampilkan sebagai sementara) sampai guru menyelesaikan koreksi esai.
+13. **Gerbang pembahasan siswa** — endpoint review siswa mengirim kunci+penjelasan hanya bila seluruh peserta selesai: jendela ujian berakhir (status efektif `completed` atau `close_time` pada `end_date` terlewati), atau semua siswa aktif di kelas target sudah submit/expired tanpa attempt `in_progress` yang masih hidup (in_progress lewat `expires_at` diperlakukan expired). Selama terkunci server hanya mengirim ringkasan + `reviewLocked: 'waiting_all_students'`. Berlaku sama untuk `latihan` dan `ujian`.
