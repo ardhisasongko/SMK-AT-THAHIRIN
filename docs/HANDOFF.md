@@ -139,6 +139,20 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 - `7a59177 feat(cbt): jadwal harian (tab hari ini, jam buka/tutup), auto-save jawaban, dan rekap nilai lintas ujian`
 - `11405a8 feat(platform): tuntaskan lifecycle dan integritas domain`
 
+## Perubahan Utama Sesi Ini (1 November 2026) — CBT: Pengacakan, Koreksi Esai Manual, Pembahasan, Proctoring, Bank Soal
+
+Lima pengembangan CBT dalam satu branch `feat/cbt-shuffle-esai-proctor-bank` (migrasi baru **0027** & **0028**; keduanya terverifikasi teraplikasi bersih di D1 lokal — **belum diterapkan ke produksi**; jalankan sebagai bagian dari deploy manual berikutnya sesuai prosedur repo):
+
+1. **Pengacakan soal & opsi per siswa** — setiap attempt baru menyimpan `shuffle_seed` acak (kolom 0027). Soal & opsi PG disajikan teracak deterministik dari seed (mulberry32 + Fisher-Yates di `functions/_lib/cbt.ts`); setiap opsi membawa `originalKey`, jawaban siswa selalu disimpan sebagai kunci asal sehingga **penilaian server tidak berubah**. Resume menghasilkan urutan yang sama persis; review staf memakai urutan asli; attempt lama (seed NULL) tetap urutan asli. Kunci/pembahasan tidak pernah dikirim selama attempt berjalan.
+2. **Penilaian baru: PG otomatis, esai manual guru** — skor resmi saat submit kini **hanya dari PG** (`scoreCbtAnswers` ditulis ulang; `correct_count`/`wrong_count` khusus PG). Penilaian esai otomatis (`isEssayAnswerCorrect`) **dihentikan untuk skor resmi** dan hanya tampil sebagai *petunjuk kata kunci non-mengikat* ("petunjuk, bukan nilai") di layar koreksi guru. Bobot per soal tetap 100 ÷ total soal; guru memberi nilai esai 0 s.d. bobot soal itu (1 desimal) + catatan opsional per soal lewat endpoint baru `GET/POST /api/cbt/attempts/[id]/grade` (otorisasi `canManageCbtExam`) dan antrean `GET /api/cbt/grading`. Status: paket tanpa esai → langsung final; ada esai belum lengkap → `grading_status='pending_grading'` (skor tampil = `pg_score` sementara, terlabel "Esai menunggu koreksi guru"); lengkap → `graded`, `score` = PG + total esai. Attempt lama (`grading_status` NULL) dianggap final. **Rapor/summary/analitik/ekspor hanya memakai nilai final** — attempt pending tidak masuk rapor sama sekali sampai final (pilihan aman agar nilai rapor lama tidak berubah). Ekspor CSV menambah kolom Skor PG & Status Koreksi.
+3. **Pembahasan siswa dengan gerbang seluruh-peserta-selesai** — endpoint baru `GET /api/cbt/attempts/[id]/review` mengirim kunci + `explanation` per soal hanya untuk attempt **milik siswa sendiri yang sudah submitted**, DAN hanya setelah gerbang terbuka (`isCbtReviewUnlocked`): (a) jendela ujian berakhir (status efektif `completed`, atau `close_time` pada `end_date` sudah lewat) — attempt tak tersubmit tidak menahan; atau (b) semua siswa aktif di kelas target (target "Semua Kelas"/`all` = semua kelas) sudah submit/expired dan tak ada attempt `in_progress` yang masih hidup (in_progress yang `expires_at`-nya lewat diperlakukan expired). Selama terkunci server **tidak mengirim data per soal sama sekali** — respons hanya ringkasan hasil siswa + `reviewLocked: 'waiting_all_students'`, dan UI menampilkan pesan "Pembahasan dibuka setelah semua peserta menyelesaikan ujian". Aturan yang sama berlaku untuk paket **latihan** maupun ujian resmi (keseragaman anti-bocor). Selama attempt masih berjalan endpoint menolak (403) — tidak ada kebocoran kunci.
+4. **Proctoring web (pencatatan + peringatan ramah, TANPA sanksi otomatis)** — runner meminta layar penuh saat mulai (dengan tombol masuk lagi + banner peringatan bila keluar), mencatat pindah tab (`visibilitychange`), blur jendela, dan keluar layar penuh lewat `POST /api/cbt/attempts/[id]/proctor` (agregat counter di `proctor_events_json`), mencegah copy/cut/contextmenu di area runner, dan memberi tahu siswa hitungan perpindahannya dengan bahasa tenang. **Tidak ada auto-submit/auto-gagal** karena pelanggaran; guru melihat ringkasan proctoring di tabel hasil dan flag analitik "banyak perpindahan" (pindah tab ≥ 3) sebagai bahan pertimbangan, bukan vonis. Proctoring kamera di luar cakupan.
+5. **Bank soal** — tabel baru `cbt_question_bank` (0028): soal per guru (admin/super_admin semua) dengan CRUD `functions/api/cbt/bank` (validasi memakai ulang `validateCbtQuestions`), UI tab "Bank Soal" (cari + filter mapel), dan integrasi di pembuat ujian: "Ambil dari Bank Soal" (multi-centang) + "Simpan ke Bank" per soal/semua soal. Penyalinan bersifat **snapshot** — mengubah bank tidak mengubah ujian yang sudah dibuat.
+
+Test: file baru `tests/cbt-shuffle-grading-bank.test.ts` (27 test: shuffle deterministik & pemetaan originalKey, skor PG-saja + alur pending→final + otorisasi koreksi, gerbang pembahasan (terkunci bila ada yang belum selesai / terbuka bila semua selesai / terbuka saat jendela berakhir & attempt menggantung lewat expires_at), proctoring, bank CRUD & kepemilikan); test lama yang menegaskan penilaian esai otomatis diperbarui ke semantik baru. `npm run verify` hijau penuh (lihat "Verifikasi Terakhir").
+
+**Deploy tetap manual oleh pemilik** (`npm run pages:deploy`) sesuai aturan repo — sesi ini tidak men-deploy dan tidak menerapkan migrasi ke D1 produksi.
+
 ## Perubahan Utama Sesi Ini (17 Agustus 2026)
 
 ### Analitik Nilai Guru
@@ -534,7 +548,13 @@ node --check whatsapp-gateway/src/index.js
 npx wrangler deploy --dry-run # dari sync-worker/
 ```
 
-Hasil terakhir (17 Agustus 2026):
+Hasil terakhir (1 November 2026, sesi CBT):
+
+- `npm run verify` hijau penuh: TypeScript lulus, **53 test files / 311 tests aplikasi lulus** (284 baseline + 27 baru CBT), 10 tests sync-worker lulus, production build lulus.
+- Migrasi baru **0027 & 0028** teraplikasi bersih di D1 lokal (`npm run db:migrate:local`, semua migrasi ✅). **Belum diterapkan ke D1 produksi** — bagian dari deploy manual berikutnya.
+- Fitur CBT baru (pengacakan, koreksi esai manual, gerbang pembahasan, proctoring, bank soal) terverifikasi di level unit/API test; belum di-deploy ke produksi.
+
+Hasil sebelumnya (17 Agustus 2026):
 
 - 49 test files aplikasi lulus.
 - 269 tests aplikasi lulus (262 + 7 baru: rapor/ekspor).
