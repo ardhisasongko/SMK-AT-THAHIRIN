@@ -2,12 +2,17 @@ import { verifyPassword, createSession, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { clearRateLimit, consumeRateLimit } from '../../_lib/rate-limit';
 import { sha256Hex, TWO_FACTOR_ROLES } from '../../_lib/totp';
+import {
+  accountLockoutKey, clearLoginLockout, getLoginLockoutUntil, ipLockoutKey,
+  recordLoginFailure, ACCOUNT_FAILURE_THRESHOLD, IP_FAILURE_THRESHOLD,
+} from '../../_lib/login-lockout';
+import { isTurnstileEnabled, verifyTurnstileToken, type TurnstileEnv } from '../../_lib/turnstile';
 
-interface Env extends AuthEnv {}
+interface Env extends AuthEnv, TurnstileEnv {}
 const DUMMY_PASSWORD_HASH = 'pbkdf2$100000$4f4e4c5944554d4d5950415353574f52$416f812aa8e8077cf41a5f602ebd520c42b0f276d3439667bfc25e81ce26b8c7';
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
-  let body: { identifier?: string; password?: string };
+  let body: { identifier?: string; password?: string; turnstileToken?: string };
   try {
     const declaredLength = Number(request.headers.get('Content-Length') || 0);
     if (declaredLength > 8192) return jsonResponse({ success: false, error: 'Ukuran permintaan terlalu besar.' }, 413);
@@ -34,21 +39,44 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     return jsonResponse({ success: false, error: 'Terlalu banyak percobaan login. Coba lagi beberapa menit.' }, 429);
   }
 
+  // Hardening Fase C(2): lockout bertahap per akun + per IP. Akun/IP yang
+  // sedang terkunci ditolak SEBELUM verifikasi password — password yang
+  // benar pun tidak diterima sampai kunci berakhir / admin mereset akun.
+  const accountLockKey = accountLockoutKey(identifier);
+  const ipLockKey = ipLockoutKey(clientIp);
+  if (await getLoginLockoutUntil(env.DB, [accountLockKey, ipLockKey])) {
+    return jsonResponse({ success: false, error: 'Terlalu banyak percobaan login gagal. Tunggu beberapa menit, atau hubungi administrator untuk mereset password Anda.' }, 429);
+  }
+
+  // Hardening Fase C(1): Turnstile — hanya aktif bila site key + secret
+  // terpasang (env kosong = lewati, perilaku persis seperti sebelumnya).
+  if (isTurnstileEnabled(env)) {
+    const turnstileOk = await verifyTurnstileToken(env, typeof body.turnstileToken === 'string' ? body.turnstileToken : '', clientIp);
+    if (!turnstileOk) {
+      return jsonResponse({ success: false, error: 'Verifikasi keamanan gagal. Silakan coba lagi.' }, 401);
+    }
+  }
+
   // Cari user berdasarkan email atau NIP/NISN
   const row = await env.DB.prepare(
     'SELECT * FROM users WHERE email = ? OR nip_nisn = ?'
   ).bind(identifier, identifier).first();
   if (!row) {
     await verifyPassword(password, DUMMY_PASSWORD_HASH);
+    await recordLoginFailure(env.DB, accountLockKey, ACCOUNT_FAILURE_THRESHOLD);
+    await recordLoginFailure(env.DB, ipLockKey, IP_FAILURE_THRESHOLD);
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
   }
 
   const ok = await verifyPassword(password, String(row.password_hash));
   if (!ok || String(row.status || 'active') !== 'active') {
+    await recordLoginFailure(env.DB, accountLockKey, ACCOUNT_FAILURE_THRESHOLD);
+    await recordLoginFailure(env.DB, ipLockKey, IP_FAILURE_THRESHOLD);
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
   }
 
   await clearRateLimit(env.DB, accountRateKey);
+  await clearLoginLockout(env.DB, accountLockKey);
 
   // Hardening Fase B: akun staf dengan 2FA aktif tidak langsung menerima
   // sesi. Server menerbitkan tantangan singkat (hash saja yang disimpan);

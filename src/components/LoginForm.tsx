@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AuthSession } from '../types';
 import { LogIn, Lock, Mail, AlertCircle, Eye, EyeOff, Loader2, GraduationCap, BriefcaseBusiness, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { loginRequest, verifyTwoFactorRequest } from '../utils/auth';
@@ -10,6 +10,18 @@ interface LoginFormProps {
   onClose: () => void;
 }
 
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (element: HTMLElement, options: Record<string, unknown>) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
+
+const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose }) => {
   const [loginType, setLoginType] = useState<'guru' | 'siswa'>('guru');
   const [emailOrNip, setEmailOrNip] = useState('');
@@ -20,11 +32,75 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
   // Langkah kedua login (2FA): token tantangan dari server + kode pengguna.
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  // Turnstile (hardening Fase C): site key hanya ada bila fitur aktif di
+  // server; kosong = widget tidak dirender dan login seperti biasa.
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/login-config');
+        const json = await res.json() as { data?: { turnstileSiteKey?: string | null } };
+        if (!cancelled && json?.data?.turnstileSiteKey) setTurnstileSiteKey(json.data.turnstileSiteKey);
+      } catch { /* fitur mati = login biasa */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!turnstileSiteKey || !turnstileContainerRef.current) return;
+    let disposed = false;
+    const renderWidget = () => {
+      if (disposed || !window.turnstile || !turnstileContainerRef.current) return;
+      if (turnstileWidgetIdRef.current) return;
+      try {
+        turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+          sitekey: turnstileSiteKey,
+          callback: (token: string) => setTurnstileToken(token),
+          'expired-callback': () => setTurnstileToken(''),
+          'error-callback': () => setTurnstileToken(''),
+        });
+      } catch { /* widget gagal render = server tetap memverifikasi */ }
+    };
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      const existing = document.querySelector<HTMLScriptElement>('script[data-turnstile-script]');
+      if (existing) {
+        existing.addEventListener('load', renderWidget);
+      } else {
+        const script = document.createElement('script');
+        script.src = TURNSTILE_SCRIPT_SRC;
+        script.async = true;
+        script.dataset.turnstileScript = 'true';
+        script.addEventListener('load', renderWidget);
+        document.head.appendChild(script);
+      }
+    }
+    return () => {
+      disposed = true;
+      if (window.turnstile && turnstileWidgetIdRef.current) {
+        try { window.turnstile.remove(turnstileWidgetIdRef.current); } catch { /* abaikan */ }
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [turnstileSiteKey]);
+
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    if (window.turnstile && turnstileWidgetIdRef.current) {
+      try { window.turnstile.reset(turnstileWidgetIdRef.current); } catch { /* abaikan */ }
+    }
+  };
 
   const handleLogin = async (identifier: string, pwd: string) => {
     setLoading(true);
     setErrorMsg('');
-    const res = await loginRequest(identifier, pwd);
+    const res = await loginRequest(identifier, pwd, turnstileToken || undefined);
     setLoading(false);
     if (res.ok && res.twoFactorRequired && res.challengeToken) {
       setChallengeToken(res.challengeToken);
@@ -35,6 +111,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
       onLoginSuccess(res.session);
       onClose();
     } else {
+      resetTurnstile();
       setErrorMsg(res.error || 'Login gagal. Silakan coba lagi.');
     }
   };
@@ -45,6 +122,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
     const identifier = emailOrNip.trim();
     if (!identifier || !password) {
       setErrorMsg('Silakan isi email/NIP/NISN dan password Anda.');
+      return;
+    }
+    if (turnstileSiteKey && !turnstileToken) {
+      setErrorMsg('Silakan selesaikan verifikasi keamanan (centang Turnstile) terlebih dahulu.');
       return;
     }
     // Sengaja TANPA gerbang kekuatan password di sini: kebijakan password
@@ -226,6 +307,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onClose })
           </div>
           <p className="text-[10px] text-slate-400 mt-1">Gunakan password yang kuat: minimal 10 karakter, kombinasi huruf dan angka.</p>
         </div>
+
+        {turnstileSiteKey && (
+          <div className="flex justify-center">
+            <div ref={turnstileContainerRef} />
+          </div>
+        )}
 
         <button
           type="submit"

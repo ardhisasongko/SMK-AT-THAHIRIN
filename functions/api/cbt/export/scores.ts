@@ -1,6 +1,7 @@
 import { getUserFromRequest, type AuthEnv } from '../../../_lib/auth';
 import { isCbtStaff } from '../../../_lib/cbt';
 import { csvResponse, toCsv } from '../../../_lib/csv';
+import { consumeRateLimit } from '../../../_lib/rate-limit';
 
 interface Env extends AuthEnv {}
 
@@ -9,6 +10,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   const user = await getUserFromRequest(env, request);
   if (!user) return Response.json({ success: false, error: 'Tidak terautentikasi.' }, { status: 401 });
   if (!isCbtStaff(user)) return Response.json({ success: false, error: 'Tidak berwenang.' }, { status: 403 });
+  // Hardening Fase C: ekspor adalah endpoint mahal (seluruh attempt) —
+  // ember khusus di luar rate limit baca global.
+  if (!(await consumeRateLimit(env.DB, `export:${user.id}`, 10, 60 * 60))) {
+    return Response.json({ success: false, error: 'Terlalu banyak ekspor. Coba lagi dalam satu jam.' }, { status: 429 });
+  }
 
   const isAdmin = user.role === 'admin' || user.role === 'super_admin';
   const { results } = await env.DB.prepare(`

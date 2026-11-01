@@ -23,6 +23,8 @@ function makeDb(options: { role?: string; attempts?: any[]; students?: any[]; cl
     attendance: options.attendance ?? [{ status: 'Hadir', jumlah: 12 }, { status: 'Sakit', jumlah: 1 }],
   };
   const firstBySql = (sql: string, binds: unknown[]) => {
+    // Ember rate limit ekspor (hardening Fase C): selalu di bawah batas.
+    if (sql.includes('api_rate_limits')) return { request_count: 1 };
     if (sql.includes('sessions WHERE token')) return SESSION;
     if (sql.includes('FROM users u WHERE')) return { ...state.userRow };
     if (sql.includes('FROM students WHERE')) {

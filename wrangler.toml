@@ -22,6 +22,12 @@ SCHOOL_EMAIL_DOMAIN = "smksplusatthahirin.sch.id"
 # nonaktifkan dari dashboard bila diperlukan tanpa deploy ulang.
 GEMINI_ENABLED = "true"
 GEMINI_MODEL = "gemini-3.6-flash"
+# Cloudflare Turnstile di login (hardening Fase C) — site key bersifat publik.
+# Kosong (bawaan) = fitur MATI dan login seperti biasa. Isi site key dari
+# dashboard Cloudflare (Turnstile) untuk mengaktifkan; secret pasangannya
+# WAJIB dipasang sebagai Secret TURNSTILE_SECRET_KEY (lihat bawah). Fitur
+# hanya aktif bila KEDUANYA terisi.
+TURNSTILE_SITE_KEY = ""
 
 # GEMINI_API_KEY sebaiknya di-set sebagai SECRET (bukan vars) di Cloudflare Pages:
 #   Dashboard Pages -> Settings -> Variables and Secrets -> Secrets -> GEMINI_API_KEY
@@ -32,3 +38,7 @@ GEMINI_MODEL = "gemini-3.6-flash"
 #   npx wrangler pages secret put TOTP_ENCRYPTION_KEY --project-name smk-at-tahirin
 # Kunci harus stabil antar deploy; menggantinya mengharuskan staf mengatur
 # ulang 2FA (dibantu penonaktifan oleh administrator).
+#
+# TURNSTILE_SECRET_KEY (hardening Fase C — verifikasi Turnstile login)
+# juga WAJIB secret; pasangannya TURNSTILE_SITE_KEY ada di [vars] atas:
+#   npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name smk-at-tahirin
