@@ -1,4 +1,4 @@
-import type { CbtAnalytics, CbtAttempt, CbtAttemptReview, CbtBankItem, CbtBulkPayload, CbtBulkResult, CbtExam, CbtGradingDetail, CbtGradingQueueItem, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
+import type { CbtAnalytics, CbtAttempt, CbtAttemptNotices, CbtAttemptReview, CbtBankItem, CbtBulkPayload, CbtBulkResult, CbtExam, CbtGradingDetail, CbtGradingQueueItem, CbtMonitorData, CbtQuestion, CbtSubmission, CbtSummary } from '../types';
 import { authHeaders } from './auth';
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -38,4 +38,9 @@ export const cbtApi = {
   bankDelete: (id: string) => api<{ id: string }>('/api/cbt/bank', { method: 'DELETE', body: JSON.stringify({ id }) }),
   createBulkExams: (payload: CbtBulkPayload) => api<CbtBulkResult>('/api/cbt/exams/bulk', { method: 'POST', body: JSON.stringify(payload) }),
   rotateToken: (examId: string) => api<{ token: string }>(`/api/cbt/exams/${encodeURIComponent(examId)}/token`, { method: 'POST' }),
+  monitor: (examId: string) => api<CbtMonitorData>(`/api/cbt/exams/${encodeURIComponent(examId)}/monitor`),
+  monitorAnnouncement: (examId: string, message: string) => api<{ id: string; message: string; createdAt: string }>(`/api/cbt/exams/${encodeURIComponent(examId)}/monitor/actions`, { method: 'POST', body: JSON.stringify({ action: 'announcement', message }) }),
+  monitorExtendTime: (examId: string, minutes: 5 | 10 | 15, attemptId?: string) => api<{ extended: { attemptId: string; studentName: string; expiresAt: string }[] }>(`/api/cbt/exams/${encodeURIComponent(examId)}/monitor/actions`, { method: 'POST', body: JSON.stringify({ action: 'extend_time', minutes, ...(attemptId ? { attemptId } : {}) }) }),
+  monitorForceSubmit: (examId: string, attemptId: string) => api<{ attemptId: string; studentName: string; score: number; pgScore: number; gradingStatus: 'pending_grading' | 'graded'; submittedBy: 'proctor'; submittedAt: string }>(`/api/cbt/exams/${encodeURIComponent(examId)}/monitor/actions`, { method: 'POST', body: JSON.stringify({ action: 'force_submit', attemptId }) }),
+  attemptNotices: (attemptId: string) => api<CbtAttemptNotices>(`/api/cbt/attempts/${encodeURIComponent(attemptId)}/notices`),
 };
