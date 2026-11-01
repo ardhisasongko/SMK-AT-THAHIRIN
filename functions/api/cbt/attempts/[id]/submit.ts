@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../../_lib/auth';
-import { ANSWER_KEYS, getExamQuestions, isCbtStudent, parseJson, resolveMinSubmitSeconds, scoreCbtAnswers } from '../../../../_lib/cbt';
+import { ANSWER_KEYS, getExamQuestions, isCbtStudent, parseJson, resolveMinSubmitSeconds, finalizeCbtAttempt } from '../../../../_lib/cbt';
 import { jsonResponse } from '../../../../_lib/response';
 
 interface Env { DB: D1Database }
@@ -39,18 +39,14 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
       return jsonResponse({ success: false, error: 'Jawaban memuat soal atau opsi yang tidak valid.' }, 400);
     }
   }
-  const { correctCount: correct, wrongCount: wrong, score, pgScore, essayCount } = scoreCbtAnswers(questions, body.answers);
-  const submittedAt = new Date().toISOString();
-  const timeSpent = Math.max(0, Math.min(Math.round((Date.now() - new Date(attempt.started_at).getTime()) / 1000), Math.round((new Date(attempt.expires_at).getTime() - new Date(attempt.started_at).getTime()) / 1000)));
-  // Penilaian baru: PG dinilai otomatis sekarang; esai menunggu koreksi guru.
-  // Paket tanpa esai langsung final (graded) seperti perilaku lama.
-  const gradingStatus = essayCount > 0 ? 'pending_grading' : 'graded';
-  const gradedAt = essayCount > 0 ? null : submittedAt;
-  await env.DB.prepare(`UPDATE cbt_attempts SET status='submitted',submitted_at=?,answers_json=?,doubtful_json=?,score=?,correct_count=?,wrong_count=?,time_spent_seconds=?,pg_score=?,grading_status=?,graded_at=? WHERE id=? AND student_user_id=? AND status='in_progress'`).bind(submittedAt, JSON.stringify(body.answers), JSON.stringify(body.doubtful || {}), score, correct, wrong, timeSpent, pgScore, gradingStatus, gradedAt, attempt.id, data.user.id).run();
-  const saved = { ...attempt, status: 'submitted', submitted_at: submittedAt, answers_json: JSON.stringify(body.answers), doubtful_json: JSON.stringify(body.doubtful || {}), score, correct_count: correct, wrong_count: wrong, time_spent_seconds: timeSpent, pg_score: pgScore, grading_status: gradingStatus };
+  // Finalisasi memakai jalur resmi bersama (juga dipakai paksa kumpul pengawas):
+  // PG dinilai otomatis sekarang; esai menunggu koreksi guru. Paket tanpa esai
+  // langsung final (graded) seperti perilaku lama.
+  const result = await finalizeCbtAttempt(env.DB, attempt, body.answers, body.doubtful || {}, 'student');
+  const saved = { ...attempt, status: 'submitted', submitted_at: result.submittedAt, answers_json: JSON.stringify(body.answers), doubtful_json: JSON.stringify(body.doubtful || {}), score: result.score, correct_count: result.correctCount, wrong_count: result.wrongCount, time_spent_seconds: result.timeSpentSeconds, pg_score: result.pgScore, grading_status: result.gradingStatus, submitted_by: 'student' };
   return jsonResponse({ success: true, data: toSubmission(saved) });
 };
 
 function toSubmission(row: any) {
-  return { id: String(row.id), examId: String(row.exam_id), siswaId: String(row.student_user_id), siswaName: String(row.student_name), nisn: String(row.nisn), answers: parseJson(row.answers_json, {}), doubtful: parseJson(row.doubtful_json, {}), score: Number(row.score || 0), correctCount: Number(row.correct_count || 0), wrongCount: Number(row.wrong_count || 0), submittedAt: String(row.submitted_at || ''), timeSpentSeconds: Number(row.time_spent_seconds || 0), gradingStatus: row.grading_status === 'pending_grading' ? 'pending_grading' : 'graded', pgScore: row.pg_score != null ? Number(row.pg_score) : Number(row.score || 0) };
+  return { id: String(row.id), examId: String(row.exam_id), siswaId: String(row.student_user_id), siswaName: String(row.student_name), nisn: String(row.nisn), answers: parseJson(row.answers_json, {}), doubtful: parseJson(row.doubtful_json, {}), score: Number(row.score || 0), correctCount: Number(row.correct_count || 0), wrongCount: Number(row.wrong_count || 0), submittedAt: String(row.submitted_at || ''), timeSpentSeconds: Number(row.time_spent_seconds || 0), gradingStatus: row.grading_status === 'pending_grading' ? 'pending_grading' : 'graded', pgScore: row.pg_score != null ? Number(row.pg_score) : Number(row.score || 0), submittedBy: row.submitted_by === 'proctor' ? 'proctor' : 'student' };
 }
