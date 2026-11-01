@@ -18,7 +18,7 @@ export const LoginGate: React.FC<LoginGateProps> = ({
   return (
     <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20">
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-        <div className="bg-gradient-to-tr from-emerald-700 to-teal-800 px-6 py-8 sm:px-10 text-center">
+        <div className="bg-emerald-800 px-6 py-8 sm:px-10 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-4">
             <Lock className="w-8 h-8 text-white" />
           </div>
