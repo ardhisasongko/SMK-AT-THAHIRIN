@@ -5,6 +5,7 @@ import { useFilter } from '../hooks/useFilter';
 import { validateNISN } from '../utils/validation';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
 import { uploadPhoto } from '../utils/photo';
+import { escapeCsvCell } from '../utils/download';
 import { StudentAbsensiCard } from './StudentAbsensiCard';
 import { dateWIB } from '../utils/date';
 import { authHeaders } from '../utils/auth';
@@ -426,9 +427,11 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
       ];
     });
 
+    // Setiap sel wajib di-escape: nama siswa/kelas kiriman pengguna dapat
+    // memuat koma/kutip (merusak kolom) atau awalan formula spreadsheet.
     const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
+      headers.map(escapeCsvCell).join(','),
+      ...rows.map(row => row.map(escapeCsvCell).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

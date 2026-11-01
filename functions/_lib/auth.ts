@@ -147,17 +147,10 @@ export async function getUserFromRequest(env: AuthEnv, request: Request): Promis
   if (!token) return null;
 
   const tokenHash = await hashSessionToken(token);
-  let session = await env.DB.prepare(
+  const session = await env.DB.prepare(
     'SELECT token, user_id, expires_at FROM sessions WHERE token = ?'
   ).bind(tokenHash).first<any>();
-  if (!session && /^st_[0-9a-f]{64}$/.test(token)) {
-    session = await env.DB.prepare('SELECT token, user_id, expires_at FROM sessions WHERE token = ?').bind(token).first<any>();
-  }
   if (!session) return null;
-
-  if (session.token === token) {
-    await env.DB.prepare('UPDATE sessions SET token = ? WHERE token = ?').bind(tokenHash, token).run();
-  }
 
   const expiresAt = new Date(String(session.expires_at)).getTime();
   if (Number.isNaN(expiresAt) || expiresAt < Date.now()) return null;

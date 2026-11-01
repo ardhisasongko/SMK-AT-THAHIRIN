@@ -1,5 +1,6 @@
 import { runSync } from './sync';
 import { runPurge } from './purge';
+import { secretEquals } from './secret-compare';
 import { Env, JobName } from './types';
 
 const CRON_JOBS: Record<string, JobName> = {
@@ -29,7 +30,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method !== 'POST') return json({ ok: false, error: 'Not found' }, 404);
     const authorization = request.headers.get('Authorization');
-    if (!env.SYNC_TOKEN || authorization !== `Bearer ${env.SYNC_TOKEN}`) {
+    if (!env.SYNC_TOKEN || !(await secretEquals(authorization || '', `Bearer ${env.SYNC_TOKEN}`))) {
       return json({ ok: false, error: 'Unauthorized' }, 401);
     }
     const job = new URL(request.url).searchParams.get('job');

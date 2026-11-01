@@ -1,7 +1,7 @@
 import { hashPassword, verifyPassword, type AuthUser } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
 import { prepareUserAudit, writeUserAudit } from '../../_lib/user-audit';
-import { classExists, readCollection, rosterReplaceStatements, syncStudentRoster, type StudentRosterRecord } from '../../_lib/student-roster';
+import { classExists, readCollection, RosterDataError, rosterReplaceStatements, syncStudentRoster, type StudentRosterRecord } from '../../_lib/student-roster';
 
 interface Env { DB: D1Database }
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -104,7 +104,8 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
       if (!classExists(classes, classId)) return jsonResponse({ success: false, error: 'Kelas siswa tidak ditemukan.' }, 400);
       roster = currentRoster;
     } catch (error) {
-      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data roster tidak dapat diproses.' }, 500);
+      console.error('Gagal memproses roster:', error);
+      return jsonResponse({ success: false, error: error instanceof RosterDataError ? error.message : 'Data roster tidak dapat diproses.' }, 500);
     }
   }
   const duplicate = await env.DB.prepare('SELECT id FROM users WHERE email = ? OR nip_nisn = ?').bind(email, identifier).first();
@@ -143,6 +144,9 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
   if (!canManage(actor, String(target.role))) return jsonResponse({ success: false, error: 'Anda tidak boleh mengelola akun ini.' }, 403);
   const nextRole = body.role || String(target.role);
   if (!canManage(actor, nextRole)) return jsonResponse({ success: false, error: 'Anda tidak boleh menetapkan role tersebut.' }, 403);
+  if (body.status !== undefined && !['active', 'inactive', 'archived'].includes(body.status)) {
+    return jsonResponse({ success: false, error: 'Status pengguna tidak valid.' }, 400);
+  }
   const next = {
     name: body.name?.trim() || String(target.name),
     email: body.email?.trim().toLowerCase() || String(target.email),
@@ -183,7 +187,8 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
       });
       rosterStatements.push(...rosterReplaceStatements(env.DB, nextRoster));
     } catch (error) {
-      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data roster tidak dapat diproses.' }, 500);
+      console.error('Gagal memproses roster:', error);
+      return jsonResponse({ success: false, error: error instanceof RosterDataError ? error.message : 'Data roster tidak dapat diproses.' }, 500);
     }
   }
   if (String(target.role) === 'siswa' && next.role !== 'siswa') {
@@ -196,6 +201,12 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
       archived_at = CASE WHEN ? = 'active' THEN NULL ELSE archived_at END WHERE id = ?`
   ).bind(next.name, next.email, next.identifier, next.role, next.classId, next.jabatan, next.status, next.status, body.id);
   const statements = [update, ...rosterStatements];
+  // Akun yang menjadi non-aktif harus kehilangan sesi seketika DAN permanen:
+  // tanpa penghapusan ini token lama hidup lagi begitu akun diaktifkan
+  // kembali (getUserById hanya menyembunyikan user non-aktif sementara).
+  if (next.status !== 'active') {
+    statements.push(env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(body.id));
+  }
   statements.push(prepareUserAudit(env.DB, actor, 'UPDATE_USER', { id: body.id, name: next.name }, publicUser(target), next, body.reason));
   try {
     await env.DB.batch(statements);

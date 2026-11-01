@@ -5,6 +5,54 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Hardening Fase A — audit keamanan mendalam (1 November 2026, BELUM deploy,
+  tanpa migrasi baru)**: audit pola pikir penyerang atas autentikasi/sesi,
+  matriks RBAC 5 role × seluruh endpoint `functions/api/**`, rate limit, CSRF,
+  XSS, unggah file, endpoint AI/Gemini, ekspor CSV, header, pesan error, token
+  CBT, dan perbandingan secret. 8 perbaikan aman (tanpa perubahan perilaku
+  sah), masing-masing dengan test regresi di
+  `tests/security-hardening-fase-a.test.ts` (+19 test root, +1 test
+  sync-worker): (1) formula injection CSV dinetralkan di SEMUA jalur ekspor
+  (server `functions/_lib/csv.ts`, klien `src/utils/download.ts`, ekspor rekap
+  AbsensiSection yang sebelumnya tanpa escaping sama sekali) — sel teks
+  berawalan `=`/`+`/`-`/`@` (termasuk setelah spasi/tab) diawali apostrof,
+  nilai numerik tidak disentuh; (2) perbandingan secret konstan-waktu
+  (`functions/_lib/secret-compare.ts`: hash SHA-256 lalu banding digest) untuk
+  X-Gateway-Key WhatsApp, hash token ujian CBT, dan SYNC_TOKEN sync-worker
+  (helper `sync-worker/src/secret-compare.ts`); (3) fallback sesi legacy
+  plaintext di `getUserFromRequest` dihapus — sesi hanya diterima dari hash
+  SHA-256 (TTL sesi 7 hari membuat tidak ada sesi plaintext aktif yang sah);
+  (4) PATCH `/api/users` kini memvalidasi enum status dan menghapus sesi
+  target dalam batch yang sama bila akun menjadi non-aktif (sebelumnya sesi
+  lama hidup lagi saat akun diaktifkan kembali); (5) pesan error 500 di
+  data/users/nisn tidak lagi membocorkan `error.message` mentah — hanya
+  pesan rancangan `CollectionDataError`/`RosterDataError` (kelas error baru
+  di student-roster) yang diteruskan, sisanya generik + console.error;
+  (6) ketua_kelas yang belum `approved` kini hanya membaca data/foto dirinya
+  sendiri (sebelumnya membaca presensi & foto sekelas, tidak selaras hak
+  tulisnya); (7) upload jalur lampiran thumbnail: ember rate limit sendiri
+  30/jam, cap 512 KB, dan tidak lagi menimpa mime foto penuh; (8) CSP
+  `default-src 'none'` pada respons JSON API (`_lib/response.ts`).
+  TEMUAN TERBUKA (butuh keputusan produk, TIDAK diubah): limit login per-IP
+  500/15 mnt masih memungkinkan password spraying lintas akun (menurunkan
+  berisiko mengunci login massal satu sekolah di balik NAT); guru dapat
+  menulis ulang SELURUH koleksi `modulAjar_v1` termasuk modul guru lain
+  (otorisasi level koleksi — perlu desain kepemilikan per rekaman); GET
+  `kelas_v1`/`modulAjar_v1` dapat dibaca semua role terautentikasi; foto
+  presensi dapat dibaca guru lintas kelas (sesuai desain `canEditClass`,
+  belum mengikuti penugasan 0026); bias modulo kecil pada generator password
+  awal (entropi ±84 bit, dampak dapat diabaikan); sesi paralel per akun
+  belum dibatasi. Terverifikasi aman tanpa perubahan: cookie
+  HttpOnly/Secure/SameSite=Strict, token sesi hash SHA-256 TTL 7 hari,
+  logout/reset/arsip/ketua mencabut sesi server-side, anti-enumerasi login
+  (dummy hash + pesan generik), CSRF Origin untuk semua mutasi ber-cookie,
+  tidak ada `dangerouslySetInnerHTML`/`innerHTML` di seluruh repo, unggah
+  foto (magic bytes, 2 MB, kuota), token CBT (hash + rate limit + rotasi),
+  endpoint AI (role guru+, kuota 20/hari, output tervalidasi skema, kunci
+  tidak masuk konteks prompt). Verifikasi: `npm run verify` hijau —
+  365 test root + 11 sync-worker, typecheck bersih, build OK. Tanpa migrasi
+  (0030 dicadangkan fase berikutnya), tanpa deploy.
+
 - **Migrasi CBT & verifikasi (1 November 2026)**: backup D1 produksi
   `backup-sebelum-0027.sql` dibuat sebelum perubahan dan di-ignore Git. Migrasi
   0027, 0028, dan 0029 telah diterapkan ke D1 remote; verifikasi memastikan tidak

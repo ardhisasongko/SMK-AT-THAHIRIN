@@ -19,16 +19,28 @@ export async function downloadCsv(url: string, filename: string): Promise<void> 
   link.remove();
   URL.revokeObjectURL(link.href);
 }
+/**
+ * Netralkan formula injection CSV: sel TEKS yang diawali (setelah spasi/tab
+ * opsional) dengan =, +, -, atau @ ditafsirkan spreadsheet sebagai formula.
+ * Awali apostrof agar dibaca sebagai teks. Nilai non-string tidak disentuh.
+ */
+export function neutralizeCsvFormula(text: string): string {
+  return /^[ \t]*[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
+/** Escape satu sel CSV (netralisasi formula + kutip RFC 4180 dasar). */
+export function escapeCsvCell(value: unknown): string {
+  const raw = value == null ? '' : String(value);
+  const text = typeof value === 'string' ? neutralizeCsvFormula(raw) : raw;
+  return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
 /** Bangun string CSV dengan escaping kutip/koma/baris baru (RFC 4180 dasar). */
 export function buildCsv(rows: Array<Record<string, unknown>>): string {
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
-  const escape = (value: unknown): string => {
-    const text = value == null ? '' : String(value);
-    return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
   const lines = [headers.join(',')];
-  for (const row of rows) lines.push(headers.map(header => escape(row[header])).join(','));
+  for (const row of rows) lines.push(headers.map(header => escapeCsvCell(row[header])).join(','));
   return '\uFEFF' + lines.join('\r\n');
 }
 
