@@ -262,7 +262,7 @@ export const ModulAjarSection: React.FC<ModulAjarSectionProps> = ({
               <button
                 type="submit"
                 disabled={isGenerating}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold py-3.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-xs"
               >
                 {isGenerating ? (
                   <>
