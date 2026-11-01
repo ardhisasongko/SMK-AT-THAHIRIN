@@ -4,7 +4,7 @@ import { clearRateLimit, consumeRateLimit } from '../../_lib/rate-limit';
 import { sha256Hex, TWO_FACTOR_ROLES } from '../../_lib/totp';
 import {
   accountLockoutKey, clearLoginLockout, getLoginLockoutUntil, ipLockoutKey,
-  recordLoginFailure, ACCOUNT_FAILURE_THRESHOLD, IP_FAILURE_THRESHOLD,
+  recordLoginFailure, recordLoginFailureStat, ACCOUNT_FAILURE_THRESHOLD, IP_FAILURE_THRESHOLD,
 } from '../../_lib/login-lockout';
 import { isTurnstileEnabled, verifyTurnstileToken, type TurnstileEnv } from '../../_lib/turnstile';
 
@@ -65,6 +65,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     await verifyPassword(password, DUMMY_PASSWORD_HASH);
     await recordLoginFailure(env.DB, accountLockKey, ACCOUNT_FAILURE_THRESHOLD);
     await recordLoginFailure(env.DB, ipLockKey, IP_FAILURE_THRESHOLD);
+    await recordLoginFailureStat(env.DB);
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
   }
 
@@ -72,6 +73,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!ok || String(row.status || 'active') !== 'active') {
     await recordLoginFailure(env.DB, accountLockKey, ACCOUNT_FAILURE_THRESHOLD);
     await recordLoginFailure(env.DB, ipLockKey, IP_FAILURE_THRESHOLD);
+    await recordLoginFailureStat(env.DB);
     return jsonResponse({ success: false, error: 'Email/NIP/NISN atau password salah.' }, 401);
   }
 

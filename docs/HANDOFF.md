@@ -5,6 +5,39 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Hardening Fase E — monitoring: health kaya + panel status admin
+  (2 November 2026, BELUM deploy, migrasi baru 0033)**: (1) `GET
+  /api/health` diperkaya lewat `functions/_lib/system-status.ts`:
+  status ok/degraded (503 bila DB gagal), `dbLatencyMs` dari `SELECT 1`,
+  `migration.latestKnown` (konstanta kode `LATEST_KNOWN_MIGRATION` —
+  perbarui setiap migrasi baru; saat ini `0033_login_failure_stats`),
+  status komponen boolean (Gemini aktif/terkonfigurasi, 2FA
+  terkonfigurasi, Turnstile aktif), dan pemakaian kuota AI hari ini.
+  Tetap publik untuk uptime monitor tetapi TANPA nilai rahasia/identitas
+  akun (test menegaskan tidak ada nilai secret yang bocor). (2) Panel
+  status admin: endpoint `GET /api/integrations/status`
+  (admin/super_admin) kini menggabungkan status integrasi lama dengan
+  bagian `system` — kesehatan DB + latensi, sesi aktif, kegagalan login
+  24 jam, lockout aktif, kuota AI hari ini, migrasi dikenal, status fitur
+  — dan tab "sistem" Profil menampilkan `SystemStatusCard` (termasuk
+  status + heartbeat gateway WhatsApp). (3) Sumber data kegagalan login:
+  migrasi 0033 tabel `login_failure_stats` (ember agregat per jam UTC,
+  anonim tanpa identifier/IP; dicatat endpoint login pada setiap
+  kegagalan, dibersihkan oportunistik >48 jam, fail-open). (4) RUNBOOK
+  MONITORING (versi lengkap masuk dokumen Fase F): per sekolah pasang
+  monitor gratis UptimeRobot/Better Stack ke `https://<domain
+  sekolah>/api/health` interval 5 menit, kata kunci `"status":"ok"`,
+  alert ke email/WhatsApp operator vendor bila down >5 menit atau 503;
+  ambang tindak lanjut: login gagal 24 jam > 100 (panel admin) → periksa
+  lockout & pertimbangkan Turnstile/WAF; kuota AI > 80% sebelum jam 12:00
+  WIB → naikkan `GEMINI_DAILY_LIMIT` atau periksa penyalahgunaan; cek
+  kuota D1 (reads/writes/storage) di dashboard Cloudflare mingguan;
+  jadwal cek mingguan operator: buka panel status admin (DB sehat, sesi,
+  kegagalan login, kuota), cek status monitor eksternal, cek heartbeat
+  gateway WhatsApp, pastikan backup D1 terakhir < 7 hari. Test baru
+  `tests/security-hardening-fase-e.test.ts` (6 test). **Deploy produksi
+  menunggu instruksi pemilik.**
+
 - **Hardening Fase D — kuota AI per deployment (2 November 2026, BELUM
   deploy, migrasi baru 0032)**: penghitung pemakaian Gemini harian (hari
   kalender WIB) per deployment di tabel `gemini_daily_usage`

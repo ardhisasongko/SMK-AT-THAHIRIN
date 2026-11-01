@@ -1,12 +1,17 @@
 import type { AuthUser } from '../../_lib/auth';
 import { isGeminiEnabled } from '../../_lib/gemini';
 import { jsonResponse } from '../../_lib/response';
+import { getSystemStatus } from '../../_lib/system-status';
 
 interface Env {
   DB: D1Database;
   GEMINI_API_KEY?: string;
   GEMINI_ENABLED?: string;
   GEMINI_MODEL?: string;
+  GEMINI_DAILY_LIMIT?: string;
+  TOTP_ENCRYPTION_KEY?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 type AuthData = Record<string, unknown> & { user: AuthUser | null };
@@ -64,5 +69,12 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, dat
   if (!data.user || !['admin', 'super_admin'].includes(data.user.role)) {
     return jsonResponse({ success: false, error: 'Akses ditolak.' }, 403);
   }
-  return jsonResponse({ success: true, data: await getIntegrationStatus(env) });
+  // Panel status admin (hardening Fase E): status integrasi yang sudah ada
+  // + ringkasan sistem (kesehatan DB, sesi aktif, kegagalan login 24 jam,
+  // lockout aktif, kuota AI hari ini, migrasi terakhir yang dikenal kode).
+  const [integration, system] = await Promise.all([
+    getIntegrationStatus(env),
+    getSystemStatus(env),
+  ]);
+  return jsonResponse({ success: true, data: { ...integration, system } });
 };

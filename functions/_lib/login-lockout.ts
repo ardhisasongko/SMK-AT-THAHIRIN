@@ -103,3 +103,52 @@ export async function clearLoginLockout(db: D1Database, key: string): Promise<vo
     console.error('Gagal membersihkan lockout login (fail-open):', error);
   }
 }
+
+/** Kunci ember jam UTC: 'YYYY-MM-DDTHH'. */
+export function loginFailureHourKey(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 13);
+}
+
+/**
+ * Catat satu kegagalan login ke ember statistik jam ini (Fase E) dan
+ * bersihkan ember yang lebih tua dari 48 jam. Fail-open seperti fungsi
+ * lockout lain: telemetri tidak boleh mengganggu alur login.
+ */
+export async function recordLoginFailureStat(db: D1Database, now: Date = new Date()): Promise<void> {
+  try {
+    await db.prepare(`
+      INSERT INTO login_failure_stats (hour, failures, updated_at)
+      VALUES (?, 1, ?)
+      ON CONFLICT(hour) DO UPDATE SET failures = failures + 1, updated_at = excluded.updated_at
+    `).bind(loginFailureHourKey(now), now.toISOString()).run();
+    const cutoff = loginFailureHourKey(new Date(now.getTime() - 48 * 60 * 60 * 1000));
+    await db.prepare('DELETE FROM login_failure_stats WHERE hour < ?').bind(cutoff).run();
+  } catch (error) {
+    console.error('Gagal mencatat statistik kegagalan login (fail-open):', error);
+  }
+}
+
+/** Total kegagalan login 24 jam terakhir (jumlah 24 ember jam terakhir). */
+export async function getLoginFailuresLast24h(db: D1Database, now: Date = new Date()): Promise<number | null> {
+  try {
+    const cutoff = loginFailureHourKey(new Date(now.getTime() - 23 * 60 * 60 * 1000));
+    const row = await db.prepare('SELECT COALESCE(SUM(failures), 0) AS total FROM login_failure_stats WHERE hour >= ?')
+      .bind(cutoff).first<{ total: number }>();
+    return Number(row?.total || 0);
+  } catch (error) {
+    console.error('Gagal membaca statistik kegagalan login:', error);
+    return null;
+  }
+}
+
+/** Jumlah kunci lockout yang sedang aktif (akun + IP). */
+export async function countActiveLockouts(db: D1Database, now: Date = new Date()): Promise<number | null> {
+  try {
+    const row = await db.prepare('SELECT COUNT(*) AS total FROM login_lockouts WHERE locked_until > ?')
+      .bind(now.toISOString()).first<{ total: number }>();
+    return Number(row?.total || 0);
+  } catch (error) {
+    console.error('Gagal menghitung lockout aktif:', error);
+    return null;
+  }
+}
