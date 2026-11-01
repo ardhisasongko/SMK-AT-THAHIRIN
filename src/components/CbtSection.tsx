@@ -21,6 +21,7 @@ import {
   Trash2,
   TrendingUp,
   Download,
+  MonitorPlay,
 } from 'lucide-react';
 import { User as UserType, CbtExam, CbtSubmission, CbtSummary, CbtAnalytics as CbtAnalyticsType, Kelas } from '../types';
 import { SCHOOL_INFO } from '../data/initialData';
@@ -35,6 +36,7 @@ import { CbtCreateExamModal } from './cbt/CbtCreateExamModal';
 import { CbtBulkScheduleModal } from './cbt/CbtBulkScheduleModal';
 import { CbtGradingQueue } from './cbt/CbtGradingQueue';
 import { CbtQuestionBank } from './cbt/CbtQuestionBank';
+import { CbtMonitorPanel } from './cbt/CbtMonitorPanel';
 import { cbtApi } from '../utils/cbt-api';
 import { downloadCsv } from '../utils/download';
 
@@ -63,6 +65,7 @@ export function CbtSection({
   const [showAnalytics, setShowAnalytics] = useState<boolean>(false);
   const [showGrading, setShowGrading] = useState<boolean>(false);
   const [showBank, setShowBank] = useState<boolean>(false);
+  const [monitorExamId, setMonitorExamId] = useState<string | null>(null);
   const [gradingPendingCount, setGradingPendingCount] = useState<number>(0);
   const [reviewExamData, setReviewExamData] = useState<CbtExam | null>(null);
   const [reviewLocked, setReviewLocked] = useState<boolean>(false);
@@ -475,6 +478,13 @@ export function CbtSection({
           <CbtQuestionBank />
         )}
 
+        {/* RUANG KONTROL UJIAN / MONITOR (STAFF) */}
+        {monitorExamId && isStaff && (
+          <div id="cbt-monitor-anchor">
+            <CbtMonitorPanel examId={monitorExamId} onClose={() => setMonitorExamId(null)} />
+          </div>
+        )}
+
         {/* SEARCH & EXAM LIST GRID */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -635,6 +645,7 @@ export function CbtSection({
                     {isStaff && (
                        <div className="ml-2 flex flex-wrap justify-end gap-1.5">
                          <button type="button" onClick={() => { setEditingExam(exam); setShowCreateExamModal(true); }} title="Edit ujian" className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100"><Pencil className="h-3.5 w-3.5" /></button>
+                         <button type="button" onClick={() => { setMonitorExamId(exam.id); requestAnimationFrame(() => document.getElementById('cbt-monitor-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }} className="flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-2 text-[11px] font-bold text-sky-700 hover:bg-sky-100"><MonitorPlay className="h-3.5 w-3.5" />Pantau Ujian</button>
                          <button type="button" onClick={() => handleRotateToken(exam)} className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] font-bold text-amber-700 hover:bg-amber-100">Rotasi Token</button>
                          {exam.status === 'inactive'
                            ? <button type="button" onClick={() => handleStatusChange(exam, 'active')} className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100">Aktifkan</button>
