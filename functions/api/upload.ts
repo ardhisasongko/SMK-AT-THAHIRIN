@@ -44,6 +44,13 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
     return jsonResponse({ success: false, error: 'Batas upload per jam tercapai.' }, 429);
   }
 
+  // Jalur lampiran thumbnail punya ember rate limit sendiri (lebih longgar
+  // dari upload foto baru karena alur sah = 1 thumbnail per foto) agar tidak
+  // bisa dipakai menulis ulang thumbnail tanpa batas.
+  if (attachId && !(await consumeRateLimit(env.DB, `upload-thumb:${data.user.id}`, 30, 60 * 60))) {
+    return jsonResponse({ success: false, error: 'Batas upload thumbnail per jam tercapai.' }, 429);
+  }
+
   if (!attachId) {
     const daily = await env.DB.prepare("SELECT COUNT(*) AS total FROM photos WHERE created_by = ? AND created_at >= datetime('now', '-1 day')")
       .bind(data.user.id).first<{ total: number }>();
@@ -59,6 +66,12 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
   const bytes = await request.arrayBuffer();
   const sizeMB = bytes.byteLength / (1024 * 1024);
 
+  // Thumbnail klien hanya 160px (beberapa KB); batas 512 KB memberi ruang
+  // lega sekaligus menutup penyalahgunaan jalur lampiran sebagai unggahan
+  // foto penuh kedua.
+  if (attachId && bytes.byteLength > 512 * 1024) {
+    return jsonResponse({ success: false, error: 'Ukuran thumbnail melebihi 512KB.' }, 413);
+  }
   if (sizeMB > 2) {
     return jsonResponse({ success: false, error: 'Ukuran foto melebihi 2MB.' }, 413);
   }
@@ -82,9 +95,11 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, re
       if (!row) {
         return jsonResponse({ success: false, error: 'Foto tidak ditemukan.' }, 404);
       }
+      // Jangan timpa mime foto penuh dengan mime thumbnail — kolom mime
+      // menggambarkan data penuh yang disajikan endpoint foto.
       await env.DB
-        .prepare('UPDATE photos SET thumb = ?, mime = ? WHERE id = ?')
-        .bind(base64, contentType, attachId)
+        .prepare('UPDATE photos SET thumb = ? WHERE id = ?')
+        .bind(base64, attachId)
         .run();
       return jsonResponse({ success: true, id: attachId, url: `/api/photo/${attachId}` });
     }

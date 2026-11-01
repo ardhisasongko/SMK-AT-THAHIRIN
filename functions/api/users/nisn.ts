@@ -3,7 +3,7 @@
 // Hanya admin. Menyesuaikan nip_nisn + email (`s<NISN>@smksplusatthahirin.sch.id`).
 import { getUserFromRequest, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse, errorResponse } from '../../_lib/response';
-import { readCollection, rosterReplaceStatements } from '../../_lib/student-roster';
+import { readCollection, RosterDataError, rosterReplaceStatements } from '../../_lib/student-roster';
 
 interface Env extends AuthEnv {
   SCHOOL_EMAIL_DOMAIN?: string;
@@ -49,7 +49,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, request }) => {
   try {
     roster = await readCollection(env.DB, 'siswa_v1');
   } catch (error) {
-    return errorResponse(error instanceof Error ? error.message : 'Data roster tidak dapat diproses.', 500);
+    console.error('Gagal membaca roster:', error);
+    return errorResponse(error instanceof RosterDataError ? error.message : 'Data roster tidak dapat diproses.', 500);
   }
   const rosterIndex = roster?.findIndex(item => item && typeof item === 'object' && String((item as any).nisn) === oldNisn) ?? -1;
   if (rosterIndex < 0) return errorResponse(`Siswa dengan NISN ${oldNisn} tidak ditemukan di roster.`, 404);

@@ -1,6 +1,7 @@
 import type { AuthUser } from '../../../../_lib/auth';
 import { canTakeExam, cbtWindowOpen, effectiveCbtStatus, getExamQuestions, hashCbtToken, isCbtStudent, parseJson, shuffleQuestionsForAttempt } from '../../../../_lib/cbt';
 import { jsonResponse } from '../../../../_lib/response';
+import { secretEquals } from '../../../../_lib/secret-compare';
 import { clearRateLimit, consumeRateLimit } from '../../../../_lib/rate-limit';
 
 interface Env { DB: D1Database }
@@ -19,7 +20,7 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   if (!windowCheck.open) return jsonResponse({ success: false, error: windowCheck.reason || 'Ujian belum dibuka.' }, 403);
   const rateKey = `cbt-token:${exam.id}:${data.user.id}`;
   if (!(await consumeRateLimit(env.DB, rateKey, 10, 15 * 60))) return jsonResponse({ success: false, error: 'Terlalu banyak percobaan token. Coba lagi beberapa menit.' }, 429);
-  if (await hashCbtToken(body.token) !== exam.token_hash) return jsonResponse({ success: false, error: 'Token ujian tidak valid.' }, 403);
+  if (!(await secretEquals(await hashCbtToken(body.token), String(exam.token_hash)))) return jsonResponse({ success: false, error: 'Token ujian tidak valid.' }, 403);
   await clearRateLimit(env.DB, rateKey);
   let attempt = await env.DB.prepare('SELECT * FROM cbt_attempts WHERE exam_id=? AND student_user_id=?').bind(exam.id, data.user.id).first<any>();
   if (attempt?.status === 'submitted') return jsonResponse({ success: false, error: 'Ujian sudah pernah diselesaikan.' }, 409);

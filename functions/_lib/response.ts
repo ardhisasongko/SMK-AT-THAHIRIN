@@ -7,6 +7,9 @@ export function jsonResponse(data: unknown, status = 200): Response {
     status,
     headers: {
       'Content-Type': 'application/json',
+      // Respons API adalah JSON murni, bukan dokumen: CSP paling ketat aman
+      // di sini dan menutup penyalahgunaan respons sebagai halaman/objek.
+      'Content-Security-Policy': "default-src 'none'",
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',

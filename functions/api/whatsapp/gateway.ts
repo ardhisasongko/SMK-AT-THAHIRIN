@@ -1,10 +1,11 @@
 import { jsonResponse } from '../../_lib/response';
+import { secretEquals } from '../../_lib/secret-compare';
 import { enqueueMessage, normalizeIndonesianPhone, wibDateParts } from '../../_lib/whatsapp';
 
 interface Env { DB:D1Database; WHATSAPP_GATEWAY_KEY?:string }
 const MAX_ATTEMPTS=2;
 const STALE_MINUTES=10;
-const authorized=(env:Env,req:Request)=>!!env.WHATSAPP_GATEWAY_KEY&&req.headers.get('X-Gateway-Key')===env.WHATSAPP_GATEWAY_KEY;
+const authorized=async(env:Env,req:Request)=>!!env.WHATSAPP_GATEWAY_KEY&&await secretEquals(req.headers.get('X-Gateway-Key')||'',env.WHATSAPP_GATEWAY_KEY);
 
 export function isWithinActiveHours(time:string,start:string,end:string):boolean{
   return start<=end?time>=start&&time<=end:time>=start||time<=end;
@@ -89,7 +90,7 @@ async function heartbeat(db:D1Database,body:any,now:string):Promise<Response>{
 }
 
 export const onRequestPost:PagesFunction<Env>=async({env,request})=>{
-  if(!authorized(env,request))return jsonResponse({success:false,error:'Gateway key tidak valid.'},401);
+  if(!(await authorized(env,request)))return jsonResponse({success:false,error:'Gateway key tidak valid.'},401);
   let body:any;try{body=await request.json();}catch{return jsonResponse({success:false,error:'Body harus JSON.'},400);}
   const now=new Date().toISOString();
   if(body.action==='heartbeat')return heartbeat(env.DB,body,now);

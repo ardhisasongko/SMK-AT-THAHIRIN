@@ -1,5 +1,17 @@
+/**
+ * Netralkan formula injection CSV: sel TEKS yang diawali (setelah spasi/tab
+ * opsional) dengan =, +, -, atau @ akan ditafsirkan spreadsheet sebagai
+ * formula. Awali dengan apostrof agar selalu dibaca sebagai teks.
+ * Nilai non-string (angka) tidak disentuh — spreadsheet tidak menafsirkan
+ * sel numerik sebagai formula.
+ */
+export function neutralizeCsvFormula(text: string): string {
+  return /^[ \t]*[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
 export function csvEscape(value: unknown): string {
-  const text = value == null ? '' : String(value);
+  const raw = value == null ? '' : String(value);
+  const text = typeof value === 'string' ? neutralizeCsvFormula(raw) : raw;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

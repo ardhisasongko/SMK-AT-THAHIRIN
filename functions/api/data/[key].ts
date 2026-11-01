@@ -102,10 +102,15 @@ async function save(db: D1Database, key: string, value: unknown): Promise<void> 
     .run();
 }
 
-function filterCollectionForUser(value: unknown, key: string, user: AuthUser): unknown {
+export function filterCollectionForUser(value: unknown, key: string, user: AuthUser): unknown {
   if (!Array.isArray(value) || (user.role !== 'siswa' && user.role !== 'ketua_kelas')) return value;
   if (key === 'siswa_v1' || key === 'presensi_v1') {
-    if (user.role === 'ketua_kelas') return value.filter((item: any) => item.classId === user.classId);
+    // Hak baca sekelas hanya untuk ketua yang SUDAH disetujui — selaras hak
+    // tulisnya (canEditClass mensyaratkan ketuaStatus 'approved'). Ketua
+    // yang belum disetujui hanya membaca datanya sendiri, seperti siswa.
+    if (user.role === 'ketua_kelas' && user.ketuaStatus === 'approved') {
+      return value.filter((item: any) => item.classId === user.classId);
+    }
     return value.filter((item: any) => item.nisn === user.nipNisn);
   }
   if (key === 'cbtSubmissions_v1') {
@@ -392,7 +397,7 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
     return jsonResponse({ success: true, data: filterCollectionForUser(value, k, data.user) });
   } catch (error) {
     console.error(`Gagal membaca koleksi ${k}:`, error);
-    return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data koleksi tidak dapat diproses.' }, 500);
+    return jsonResponse({ success: false, error: error instanceof CollectionDataError ? error.message : 'Data koleksi tidak dapat diproses.' }, 500);
   }
 };
 
@@ -439,7 +444,8 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
       previous = (await getCurrent(env.DB, k)) as any[] || [];
       checked = await validateAndPatchPresensi(env.DB, data.user, body);
     } catch (error) {
-      return jsonResponse({ success: false, error: error instanceof Error ? error.message : 'Data presensi tidak dapat diproses.' }, 500);
+      console.error('Gagal memproses presensi:', error);
+      return jsonResponse({ success: false, error: error instanceof CollectionDataError ? error.message : 'Data presensi tidak dapat diproses.' }, 500);
     }
     if (!checked.ok) {
       return jsonResponse({ success: false, error: checked.error }, checked.status);

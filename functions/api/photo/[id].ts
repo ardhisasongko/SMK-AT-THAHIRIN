@@ -49,7 +49,12 @@ export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, par
   if (data.user.role === 'siswa' && row.created_by !== data.user.id) {
     return new Response('Anda tidak berwenang melihat foto ini.', { status: 403 });
   }
+  // Ketua hanya boleh melihat foto teman sekelasnya bila SUDAH disetujui
+  // (selaras hak tulis presensinya); foto sendiri selalu boleh.
   if (data.user.role === 'ketua_kelas' && row.created_by !== data.user.id) {
+    if (data.user.ketuaStatus !== 'approved') {
+      return new Response('Anda tidak berwenang melihat foto ini.', { status: 403 });
+    }
     const attendanceRow = await env.DB.prepare("SELECT value FROM app_data WHERE key = 'presensi_v1'").first<{ value: string }>();
     const attendance = attendanceRow ? JSON.parse(attendanceRow.value) as Array<{ classId?: string; fotoUrl?: string }> : [];
     if (!attendance.some(item => item.classId === data.user!.classId && item.fotoUrl === `/api/photo/${id}`)) {

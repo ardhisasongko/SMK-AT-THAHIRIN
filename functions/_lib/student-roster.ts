@@ -1,3 +1,6 @@
+/** Error data roster yang pesannya AMAN ditampilkan ke klien (dirancang). */
+export class RosterDataError extends Error {}
+
 export interface StudentRosterRecord {
   id: string;
   nisn: string;
@@ -18,9 +21,9 @@ export async function readCollection(db: D1Database, key: string): Promise<unkno
   try {
     value = JSON.parse(String(row.value));
   } catch {
-    throw new Error(`Data ${key} rusak dan tidak dapat diproses.`);
+    throw new RosterDataError(`Data ${key} rusak dan tidak dapat diproses.`);
   }
-  if (!Array.isArray(value)) throw new Error(`Data ${key} harus berupa array.`);
+  if (!Array.isArray(value)) throw new RosterDataError(`Data ${key} harus berupa array.`);
   return value;
 }
 
