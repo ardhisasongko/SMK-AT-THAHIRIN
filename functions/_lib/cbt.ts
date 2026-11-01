@@ -396,3 +396,98 @@ export async function canTakeExam(db: D1Database, user: AuthUser, exam: any, pre
   return classes.some(item => item.id === user.classId && item.name === exam.class_target);
 }
 
+// --- Ruang Kontrol Ujian (proctoring live) ---
+
+// Ambang flag proctoring "banyak perpindahan" — konsisten dengan MANY_SWITCHES
+// di endpoint analitik (indikasi untuk dinilai guru, bukan vonis).
+export const PROCTOR_FLAG_TAB_SWITCHES = 3;
+
+// Kelas-kelas yang dicakup target ujian: target 'all'/'Semua Kelas MPLB'
+// mencakup semua kelas; selain itu satu kelas (dicocokkan via id atau nama di
+// kelas_v1, jatuh ke nilai target itu sendiri bila tak ditemukan).
+export async function resolveTargetClassIds(db: D1Database, exam: { class_target?: unknown }): Promise<{ coversAll: boolean; classIds: string[] }> {
+  const target = String(exam.class_target || '');
+  if (target === 'all' || target === 'Semua Kelas MPLB') return { coversAll: true, classIds: [] };
+  const classesRow = await db.prepare("SELECT value FROM app_data WHERE key = 'kelas_v1'").first<{ value: string }>();
+  const classes = parseJson<any[]>(classesRow?.value, []);
+  const byId = classes.find(item => String(item.id) === target);
+  const byName = classes.find(item => String(item.name) === target);
+  return { coversAll: false, classIds: [String(byId?.id ?? byName?.id ?? target)] };
+}
+
+export interface CbtRosterStudent {
+  id: string;
+  name: string;
+  nisn: string;
+  classId: string;
+  className: string;
+}
+
+// Roster peserta ujian: SELURUH siswa aktif (role siswa/ketua_kelas) pada
+// kelas target — dipakai gerbang pembahasan & monitor ruang kontrol agar
+// siswa yang belum mulai attempt pun terlihat.
+export async function getExamRoster(db: D1Database, exam: { class_target?: unknown }): Promise<CbtRosterStudent[]> {
+  const { coversAll, classIds } = await resolveTargetClassIds(db, exam);
+  const base = "SELECT id, name, nip_nisn, class_id FROM users WHERE role IN ('siswa','ketua_kelas') AND status='active' AND class_id IS NOT NULL";
+  const statement = coversAll ? db.prepare(`${base} ORDER BY name`) : db.prepare(`${base} AND class_id IN (${classIds.map(() => '?').join(',')}) ORDER BY name`).bind(...classIds);
+  const { results } = await statement.all<any>();
+  const classesRow = await db.prepare("SELECT value FROM app_data WHERE key = 'kelas_v1'").first<{ value: string }>();
+  const classes = parseJson<any[]>(classesRow?.value, []);
+  const nameById = new Map(classes.map(item => [String(item.id), String(item.name || item.id)]));
+  return (results as any[]).map(row => ({
+    id: String(row.id),
+    name: String(row.name),
+    nisn: row.nip_nisn != null ? String(row.nip_nisn) : '',
+    classId: String(row.class_id),
+    className: nameById.get(String(row.class_id)) || String(row.class_id),
+  }));
+}
+
+// Jumlah soal yang sudah dijawab (konsisten dengan isQuestionAnswered di
+// frontend): PG wajib kunci A–E yang valid; esai wajib teks tak kosong.
+export function countAnsweredQuestions(questions: Array<{ id: string; type?: string }>, answers: Record<string, unknown>): number {
+  let count = 0;
+  for (const question of questions) {
+    const answer = answers?.[question.id];
+    if (typeof answer !== 'string' || !answer.trim()) continue;
+    if (question.type === 'essai' || ANSWER_KEYS.has(answer)) count += 1;
+  }
+  return count;
+}
+
+// Sanitasi pesan pengumuman pengawas: teks polos saja (tag HTML dibuang,
+// whitespace dirapikan), wajib 1–300 karakter setelah dibersihkan.
+export function sanitizeAnnouncementMessage(raw: unknown): { message: string } | { error: string } {
+  if (typeof raw !== 'string') return { error: 'Pesan pengumuman wajib berupa teks.' };
+  const message = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!message) return { error: 'Pesan pengumuman tidak boleh kosong.' };
+  if (message.length > 300) return { error: 'Pesan pengumuman maksimal 300 karakter.' };
+  return { message };
+}
+
+// Menyelesaikan satu attempt menjadi 'submitted' dengan penilaian resmi yang
+// SAMA seperti submit siswa: hanya PG yang dinilai otomatis; paket ber-esai
+// masuk 'pending_grading' (menunggu koreksi guru), selain itu langsung final.
+// Dipakai endpoint submit siswa DAN paksa kumpul (force submit) pengawas —
+// bedanya hanya penanda submittedBy ('student' | 'proctor') dan, untuk paksa
+// kumpul, pemanggil yang memutuskan pengabaian aturan lain (waktu minimal /
+// jendela) sebelum memanggil fungsi ini. Attempt yang sudah expired TIDAK
+// boleh diselesaikan lewat fungsi ini (pemanggil wajib menolak lebih dulu).
+export async function finalizeCbtAttempt(
+  db: D1Database,
+  attempt: { id: string; exam_id: string; started_at: string; expires_at: string },
+  answers: Record<string, string>,
+  doubtful: Record<string, boolean>,
+  submittedBy: 'student' | 'proctor',
+): Promise<{ correctCount: number; wrongCount: number; score: number; pgScore: number; essayCount: number; gradingStatus: 'pending_grading' | 'graded'; submittedAt: string; timeSpentSeconds: number }> {
+  const questions = await getExamQuestions(db, String(attempt.exam_id), true);
+  const { correctCount: correct, wrongCount: wrong, score, pgScore, essayCount } = scoreCbtAnswers(questions, answers);
+  const submittedAt = new Date().toISOString();
+  const timeSpent = Math.max(0, Math.min(Math.round((Date.now() - new Date(attempt.started_at).getTime()) / 1000), Math.round((new Date(attempt.expires_at).getTime() - new Date(attempt.started_at).getTime()) / 1000)));
+  const gradingStatus = essayCount > 0 ? 'pending_grading' : 'graded';
+  const gradedAt = essayCount > 0 ? null : submittedAt;
+  await db.prepare(`UPDATE cbt_attempts SET status='submitted',submitted_at=?,answers_json=?,doubtful_json=?,score=?,correct_count=?,wrong_count=?,time_spent_seconds=?,pg_score=?,grading_status=?,graded_at=?,submitted_by=? WHERE id=? AND status='in_progress'`).bind(submittedAt, JSON.stringify(answers), JSON.stringify(doubtful || {}), score, correct, wrong, timeSpent, pgScore, gradingStatus, gradedAt, submittedBy, attempt.id).run();
+  return { correctCount: correct, wrongCount: wrong, score, pgScore, essayCount, gradingStatus, submittedAt, timeSpentSeconds: timeSpent };
+}
+
+
