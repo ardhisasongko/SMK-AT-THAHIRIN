@@ -223,6 +223,9 @@ export interface NotificationItem {
 export interface CbtOption {
   key: 'A' | 'B' | 'C' | 'D' | 'E';
   text: string;
+  // Kunci asal sebelum opsi diacak per attempt; jawaban siswa selalu memakai
+  // originalKey agar penilaian server konsisten. key = huruf tampilan.
+  originalKey?: 'A' | 'B' | 'C' | 'D' | 'E';
 }
 
 export interface CbtQuestion {
@@ -253,6 +256,12 @@ export interface CbtExam {
   questionCount?: number;
 }
 
+export interface CbtProctorSummary {
+  tabSwitch: number;
+  windowBlur: number;
+  fullscreenExit: number;
+}
+
 export interface CbtSubmission {
   id: string;
   examId: string;
@@ -266,6 +275,77 @@ export interface CbtSubmission {
   wrongCount: number;
   submittedAt: string;
   timeSpentSeconds: number;
+  // Penilaian esai manual: 'pending_grading' = skor masih sementara (PG saja),
+  // 'graded' = final. pgScore = poin dari soal PG.
+  gradingStatus?: 'pending_grading' | 'graded';
+  pgScore?: number;
+  essayScores?: { [questionId: string]: number };
+  essayNotes?: { [questionId: string]: string };
+  proctor?: CbtProctorSummary;
+}
+
+export interface CbtBankItem {
+  id: string;
+  subject: string;
+  topic?: string;
+  type?: 'pg' | 'essai';
+  question: string;
+  options: CbtOption[];
+  correctAnswer?: string;
+  explanation?: string;
+  ownerUserId?: string;
+  ownerName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CbtGradingQueueItem {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  subject: string;
+  siswaName: string;
+  nisn: string;
+  submittedAt: string;
+  pgScore: number;
+  essayCount: number;
+}
+
+export interface CbtGradingEssay {
+  questionId: string;
+  question: string;
+  studentAnswer: string;
+  correctAnswer: string;
+  explanation?: string;
+  maxScore: number;
+  // Petunjuk kata kunci untuk guru — BUKAN nilai resmi.
+  hint: { matched: number; total: number; complete: boolean; autoMatch: boolean };
+  score: number | null;
+  note: string;
+}
+
+export interface CbtGradingDetail {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  subject: string;
+  siswaId: string;
+  siswaName: string;
+  nisn: string;
+  submittedAt: string;
+  gradingStatus: 'pending_grading' | 'graded';
+  pgScore: number;
+  score: number;
+  pointPerQuestion: number;
+  essays: CbtGradingEssay[];
+}
+
+export interface CbtAttemptReview {
+  exam?: CbtExam;
+  submission: CbtSubmission;
+  // Terisi 'waiting_all_students' selama pembahasan masih terkunci karena
+  // belum semua peserta menyelesaikan ujian (exam tidak dikirim server).
+  reviewLocked?: string;
 }
 
 export interface CbtAttempt {
@@ -285,6 +365,7 @@ export interface CbtSummary {
   avgScore: number;
   bestScore: number;
   worstScore: number;
+  pendingCount?: number;
 }
 
 export interface CbtAnalyticsFlag {
@@ -295,6 +376,10 @@ export interface CbtAnalyticsFlag {
   timeSpentSeconds: number;
   submittedAt: string | null;
   suspicious: boolean;
+  tabSwitchCount?: number;
+  windowBlurCount?: number;
+  fullscreenExitCount?: number;
+  manySwitches?: boolean;
 }
 
 export interface CbtAnalyticsExam {
@@ -310,12 +395,15 @@ export interface CbtAnalyticsExam {
   worstScore: number | null;
   buckets: { label: string; count: number }[];
   fastAttempts: CbtAnalyticsFlag[];
+  proctorFlags?: CbtAnalyticsFlag[];
+  pendingGradingCount?: number;
 }
 
 export interface CbtAnalytics {
   exams: CbtAnalyticsExam[];
   fastRatio: number;
   suspiciousScore: number;
+  manySwitches?: number;
 }
 
 export interface CbtBulkSubject {
