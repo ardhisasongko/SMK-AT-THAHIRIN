@@ -58,13 +58,18 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
   };
 
   const saveAllToBank = async () => {
-    if (!newQuestions.length || savingBank) return;
+    // Bank hanya menerima pilihan ganda; soal esai warisan dilewati.
+    const pgQuestions = newQuestions.filter(question => question.type !== 'essai');
+    if (!pgQuestions.length || savingBank) {
+      if (!pgQuestions.length && newQuestions.length) showToast('Tidak ada soal pilihan ganda untuk disimpan ke bank.', 'error');
+      return;
+    }
     setSavingBank(true);
     try {
-      for (const question of newQuestions) {
+      for (const question of pgQuestions) {
         await cbtApi.bankCreate({ subject: newSubject, question: { ...question, options: question.options || [] } });
       }
-      showToast(`${newQuestions.length} soal paket disimpan ke bank.`, 'success');
+      showToast(`${pgQuestions.length} soal paket disimpan ke bank.`, 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Gagal menyimpan ke bank.', 'error');
     } finally {
@@ -106,20 +111,6 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
     ]);
   };
 
-  const handleAddEssayQuestion = () => {
-    const qId = `q-essai-${Date.now()}`;
-    setNewQuestions(prev => [
-      ...prev,
-      {
-        id: qId,
-        question: 'Tuliskan pertanyaan essai di sini...',
-        type: 'essai',
-        options: [],
-        correctAnswer: ''
-      }
-    ]);
-  };
-
   const handleUpdateQuestion = (qId: string, patch: Partial<CbtQuestion>) => {
     setNewQuestions(prev => prev.map(q => q.id === qId ? { ...q, ...patch } : q));
   };
@@ -153,12 +144,6 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
       showToast('Harap tambahkan minimal 1 soal ujian.', 'error');
       return;
     }
-    const incompleteEssay = newQuestions.find(q => q.type === 'essai' && !(q.correctAnswer || '').trim());
-    if (incompleteEssay) {
-      showToast('Setiap soal essai wajib memiliki kunci jawaban teks.', 'error');
-      return;
-    }
-
     const createdExam: CbtExam = {
       id: initialExam?.id || `cbt-${Date.now()}`,
       title: newTitle,
@@ -365,15 +350,6 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
 
                 <button
                   type="button"
-                  onClick={handleAddEssayQuestion}
-                  className="bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambahkan Essai</span>
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => setShowBankPicker(true)}
                   className="bg-violet-100 hover:bg-violet-200 text-violet-800 font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1"
                 >
@@ -399,12 +375,38 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
               </p>
             ) : (
               <div className="space-y-3 max-h-60 overflow-y-auto p-1">
-                {newQuestions.map((q, idx) => (
+                {newQuestions.map((q, idx) => q.type === 'essai' ? (
+                  // Soal esai WARISAN dari paket lama: pembuatan esai sudah
+                  // dinonaktifkan, jadi soal ini hanya ditampilkan apa adanya
+                  // dan hanya bisa DIHAPUS — tidak dapat diubah teks/kuncinya,
+                  // tidak dapat ditambah lagi, dan tidak dapat disimpan ke bank.
+                  <div key={q.id} className="p-3 bg-sky-50/60 border border-sky-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-800">
+                        Soal #{idx + 1}
+                        <span className="ml-2 bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded">Esai (warisan — tidak dapat dibuat baru)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setNewQuestions(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-rose-500 hover:text-rose-700 font-bold text-[11px]"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                    <p className="text-xs font-medium text-slate-800 whitespace-pre-wrap">{q.question}</p>
+                    <p className="text-[11px] text-slate-600">
+                      Kunci jawaban (warisan): <strong className="text-emerald-700">{(q.correctAnswer || '-').split('|').join(' ATAU ')}</strong>
+                    </p>
+                    <p className="text-[11px] text-sky-700 italic">
+                      Soal warisan dari paket lama. Soal esai tidak lagi dapat dibuat; soal ini hanya dapat dihapus dari paket.
+                    </p>
+                  </div>
+                ) : (
                   <div key={q.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-emerald-800">
                         Soal #{idx + 1}
-                        {q.type === 'essai' && <span className="ml-2 bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded">Essai</span>}
                       </span>
                       <span className="flex items-center gap-3">
                         <button
@@ -430,40 +432,26 @@ export function CbtCreateExamModal({ currentUser, kelasList, initialExam, onSave
                       maxLength={2000}
                       className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 resize-y"
                     />
-                    {q.type === 'essai' ? (
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-600">Kunci Jawaban Essai (guru) — pisahkan alternatif dengan tanda |</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="text-[11px] font-bold text-slate-600">Kunci:</label>
+                      <select
+                        value={q.correctAnswer}
+                        onChange={e => handleUpdateQuestion(q.id, { correctAnswer: e.target.value })}
+                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
+                      >
+                        {['A', 'B', 'C', 'D', 'E'].map(key => <option key={key} value={key}>{key}</option>)}
+                      </select>
+                      {q.explanation !== undefined && (
                         <input
                           type="text"
-                          value={q.correctAnswer || ''}
-                          onChange={e => handleUpdateQuestion(q.id, { correctAnswer: e.target.value })}
+                          value={q.explanation || ''}
+                          onChange={e => handleUpdateQuestion(q.id, { explanation: e.target.value })}
+                          placeholder="Pembahasan (opsional)"
                           maxLength={2000}
-                          placeholder="contoh: arsip adalah rekaman kegiatan|rekaman informasi"
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 mt-1"
+                          className="flex-1 min-w-40 p-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
                         />
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <label className="text-[11px] font-bold text-slate-600">Kunci:</label>
-                        <select
-                          value={q.correctAnswer}
-                          onChange={e => handleUpdateQuestion(q.id, { correctAnswer: e.target.value })}
-                          className="p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
-                        >
-                          {['A', 'B', 'C', 'D', 'E'].map(key => <option key={key} value={key}>{key}</option>)}
-                        </select>
-                        {q.explanation !== undefined && (
-                          <input
-                            type="text"
-                            value={q.explanation || ''}
-                            onChange={e => handleUpdateQuestion(q.id, { explanation: e.target.value })}
-                            placeholder="Pembahasan (opsional)"
-                            maxLength={2000}
-                            className="flex-1 min-w-40 p-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800"
-                          />
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
