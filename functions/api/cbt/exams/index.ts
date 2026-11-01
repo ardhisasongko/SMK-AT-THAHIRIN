@@ -1,5 +1,5 @@
 import type { AuthUser } from '../../../_lib/auth';
-import { effectiveCbtStatus, getExamQuestions, hashCbtToken, isCbtStaff, isCbtStudent, todayWIB, canManageCbtExam, canTakeExam, parseJson, validateCbtExamInput } from '../../../_lib/cbt';
+import { effectiveCbtStatus, findEssayCreationViolation, getExamQuestions, hashCbtToken, isCbtStaff, isCbtStudent, todayWIB, canManageCbtExam, canTakeExam, parseJson, validateCbtExamInput } from '../../../_lib/cbt';
 import { jsonResponse } from '../../../_lib/response';
 
 function examTypeValue(body: any): 'ujian' | 'latihan' {
@@ -96,6 +96,9 @@ export const onRequestPost: PagesFunction<Env, any, AuthData> = async ({ env, da
   try { body = await request.json(); } catch { return jsonResponse({ success: false, error: 'Body harus JSON.' }, 400); }
   const validationError = validateCbtExamInput(body);
   if (validationError) return jsonResponse({ success: false, error: validationError }, 400);
+  // Pembuatan soal esai dinonaktifkan: paket baru hanya boleh pilihan ganda.
+  const essayError = findEssayCreationViolation(body.questions);
+  if (essayError) return jsonResponse({ success: false, error: essayError }, 400);
   const questions = body.questions as any[];
   if (!(await validClassTarget(env.DB, body.classTarget))) return jsonResponse({ success: false, error: 'Target kelas tidak ditemukan.' }, 400);
   const startDate = body.startDate;
@@ -135,6 +138,11 @@ export const onRequestPatch: PagesFunction<Env, any, AuthData> = async ({ env, d
   if (!(await validClassTarget(env.DB, body.classTarget))) return jsonResponse({ success: false, error: 'Target kelas tidak ditemukan.' }, 400);
   const existingAttempt = await env.DB.prepare('SELECT id FROM cbt_attempts WHERE exam_id=? LIMIT 1').bind(exam.id).first();
   if (existingAttempt) return jsonResponse({ success: false, error: 'Paket soal tidak dapat diedit setelah ujian mulai dikerjakan.' }, 409);
+  // Paket warisan boleh mempertahankan soal esainya persis seperti tersimpan,
+  // tetapi esai baru / esai yang diubah isinya ditolak (pembuatan esai ditutup).
+  const storedQuestions = await getExamQuestions(env.DB, String(exam.id), true);
+  const essayError = findEssayCreationViolation(body.questions, storedQuestions);
+  if (essayError) return jsonResponse({ success: false, error: essayError }, 400);
   const isActive = Number(exam.is_active ?? 1);
   const storedStatus = body.startDate > todayWIB() ? 'upcoming' : exam.status === 'completed' ? 'completed' : 'active';
   const responseStatus = isActive === 0 ? 'inactive' : storedStatus;
