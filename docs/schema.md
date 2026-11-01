@@ -30,6 +30,15 @@ Relasi lintas lapisan banyak yang **logis tanpa FK fisik** (ciri legacy JSON + S
 | request_count | INTEGER | NOT NULL |
 | window_expires (+0014) | INTEGER | NOT NULL, DEFAULT 0 |
 
+#### `login_lockouts` (0031) — lockout login bertahap
+| Kolom | Tipe | Constraint |
+|---|---|---|
+| key | TEXT | PK — `account:<identifier ternormalisasi>` atau `ip:<alamat IP>` |
+| failures | INTEGER | NOT NULL, DEFAULT 0 — kegagalan beruntun sejak kunci/login berhasil terakhir |
+| lock_level | INTEGER | NOT NULL, DEFAULT 0 — durasi kunci berikutnya naik per level (5→15→60→240→1440 menit) |
+| locked_until | TEXT | — NULL = tidak terkunci; kunci tidak pernah permanen |
+| updated_at | TEXT | NOT NULL — baris yang tidak tersentuh >24 jam dianggap basi dan di-reset |
+
 #### `domain_migrations` (0012) — marker migrasi data domain
 | Kolom | Tipe | Constraint |
 |---|---|---|
@@ -586,6 +595,7 @@ Daftar lengkap ±45 index ada di migrasi; di atas hanya yang paling dipakai quer
 | 0028 | CBT: tabel baru `cbt_question_bank` (bank soal per guru) + 2 index |
 | 0029 | CBT Ruang Kontrol: tabel `cbt_exam_announcements` + `cbt_monitor_actions` (audit) + `cbt_attempts.submitted_by` + 2 index |
 | 0030 | Hardening Fase B: `users` +`totp_secret_enc`/`totp_enabled` (2FA TOTP staf) + tabel `totp_recovery_codes` (hash, sekali pakai) + `auth_challenges` (tantangan login dua langkah) + 2 index |
+| 0031 | Hardening Fase C: tabel `login_lockouts` — lockout login bertahap per akun + per IP (durasi naik per level, tidak pernah permanen) |
 
 ## Anomali & Catatan Penting (keputusan desain)
 

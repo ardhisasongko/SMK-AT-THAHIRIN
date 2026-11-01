@@ -5,6 +5,53 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Hardening Fase C — Turnstile login + lockout bertahap + cakupan rate
+  limit (2 November 2026, BELUM deploy, migrasi baru 0031)**: (1) Turnstile
+  siap-env (`functions/_lib/turnstile.ts`): aktif HANYA bila
+  `TURNSTILE_SITE_KEY` ([vars], publik) DAN secret `TURNSTILE_SECRET_KEY`
+  terisi; verifikasi server-side siteverify di `POST /api/auth/login`,
+  gagal/token kosong/layanan verifikasi tak terjangkau = 401 generik
+  "Verifikasi keamanan gagal". Site key dibagikan ke halaman login lewat
+  `GET /api/auth/login-config` (hanya saat fitur aktif penuh); widget
+  dirender eksplisit di `LoginForm` dan token disertakan pada request
+  login. Env kosong (semua deployment lama) = login persis seperti
+  sebelumnya, tanpa widget. (2) Lockout bertahap (migrasi 0031, tabel
+  `login_lockouts`; `functions/_lib/login-lockout.ts` FAIL-OPEN agar
+  deployment yang belum bermigrasi tidak terkunci total): kunci
+  `account:<identifier>` terkunci setelah 5 kegagalan beruntun dan
+  `ip:<ip>` setelah 50 (menghormati NAT sekolah), durasi naik per level
+  5→15→60→240→1440 menit dan TIDAK pernah permanen; pemeriksaan terjadi
+  SEBELUM verifikasi password (password benar pun ditolak 429 selama
+  terkunci); login berhasil menghapus baris akun; reset password admin
+  juga menghapus kunci akun target (kedua bentuk identifier); baris yang
+  tidak tersentuh >24 jam di-reset. (3) Audit cakupan rate limit endpoint
+  mahal: generate AI sudah 20/hari/pengguna (`ai-cbt`/`ai-modul`), unggah
+  sudah 10/jam (+thumbnail 30/jam), ekspor nilai CBT kini punya ember
+  khusus `export:<user>` 10/jam di luar batas baca global 300/menit.
+  (4) ATURAN WAF TINGKAT AKUN — TIDAK bisa diimplementasikan dari repo;
+  berikut daftar presisi siap-terap per deployment di dashboard Cloudflare
+  (zona domain sekolah masing-masing), dicatat untuk dokumen Fase F:
+  WAF Managed Rules (OWASP) aktif; Bot Fight Mode aktif; aturan rate
+  limiting kustom: (a) path `/api/auth/login` — 10 request/menit/IP →
+  Managed Challenge, (b) path `/api/auth/login/verify-2fa` — 30
+  request/10 menit/IP → Managed Challenge, (c) path `/api/upload` — 10
+  request/jam/IP → Block, (d) path `/api/cbt/generate` +
+  `/api/modul-ajar/generate` — 30 request/jam/IP → Managed Challenge,
+  (e) path `/api/whatsapp/gateway` — hanya izinkan IP operator sekolah
+  (IP Access Rule Allowlist; Block selainnya bila IP operator statis);
+  aturan cache: Bypass cache untuk `/api/*`, TTL panjang hanya untuk
+  `/assets/*` ber-fingerprint; matikan akses deployment preview publik
+  atau lindungi dengan Cloudflare Access; aktifkan notifikasi dashboard
+  untuk lonjakan request, lonjakan 429/5xx, dan pemakaian kuota D1.
+  Test baru `tests/security-hardening-fase-c.test.ts` (10 test): ambang &
+  eskalasi lockout akun, ambang IP 50, fail-open tanpa tabel, lockout di
+  endpoint login + pemulihan via kedaluwarsa dan via reset admin,
+  Turnstile (config hanya saat aktif penuh, token valid/ditolak/kosong,
+  env kosong tidak berubah), ember ekspor 10/jam. Fixture
+  `tests/rapor-export.test.ts` disesuaikan untuk query rate limit baru
+  (asersi tidak berubah). **Deploy produksi menunggu instruksi pemilik**
+  (urutan lengkap di catatan Fase B).
+
 - **Hardening Fase B — 2FA TOTP staf + kebijakan password (2 November 2026,
   BELUM deploy, migrasi baru 0030)**: (1) Verifikasi dua langkah TOTP
   (RFC 6238, HMAC-SHA-1/30 dtk/6 digit, kompatibel aplikasi authenticator)

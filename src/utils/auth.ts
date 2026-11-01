@@ -76,13 +76,14 @@ function mapLoginUser(payload: LoginUserPayload): AuthSession['user'] {
  */
 export async function loginRequest(
   identifier: string,
-  password: string
+  password: string,
+  turnstileToken?: string
 ): Promise<{ ok: boolean; error?: string; session?: AuthSession; twoFactorRequired?: boolean; challengeToken?: string }> {
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, ...(turnstileToken ? { turnstileToken } : {}) }),
     });
     const json = await res.json() as {
       success?: boolean;
