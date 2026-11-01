@@ -51,6 +51,16 @@ export function CbtResultsTable({ submissions, exams, onReview }: CbtResultsTabl
                       }`}>
                         {sub.score} / 100
                       </span>
+                      {sub.gradingStatus === 'pending_grading' && (
+                        <span className="ml-2 px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-100 text-amber-800" title={`Skor PG sementara: ${sub.pgScore ?? sub.score}`}>
+                          Esai menunggu koreksi
+                        </span>
+                      )}
+                      {sub.proctor && (sub.proctor.tabSwitch > 0 || sub.proctor.fullscreenExit > 0) && (
+                        <span className="ml-2 text-[10px] font-semibold text-slate-500" title="Catatan proctoring web: perpindahan tab/aplikasi & keluar layar penuh selama ujian">
+                          Proctoring: tab {sub.proctor.tabSwitch}× · layar penuh keluar {sub.proctor.fullscreenExit}×
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-slate-600">
                       <span className="text-emerald-600 font-bold">{sub.correctCount}</span> Benar • <span className="text-rose-500 font-bold">{sub.wrongCount}</span> Salah
