@@ -1,11 +1,12 @@
 import { getUserFromRequest, type AuthEnv } from '../../../_lib/auth';
 import { isCbtStaff } from '../../../_lib/cbt';
 import { csvResponse, toCsv } from '../../../_lib/csv';
+import { buildXlsx, xlsxResponse } from '../../../_lib/xlsx';
 import { consumeRateLimit } from '../../../_lib/rate-limit';
 
 interface Env extends AuthEnv {}
 
-// Ekspor nilai CBT ke CSV. Guru hanya ujian miliknya; admin/super_admin semua ujian.
+// Ekspor nilai CBT ke CSV (atau Excel .xlsx bila ?format=xlsx). Guru hanya ujian miliknya; admin/super_admin semua ujian.
 export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   const user = await getUserFromRequest(env, request);
   if (!user) return Response.json({ success: false, error: 'Tidak terautentikasi.' }, { status: 401 });
@@ -37,5 +38,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   ];
 
   const date = new Date().toISOString().slice(0, 10);
+  // format=xlsx memakai baris data & ember rate limit yang sama persis
+  // dengan CSV — hanya wadah berkasnya yang berbeda.
+  if (new URL(request.url).searchParams.get('format') === 'xlsx') {
+    return xlsxResponse(buildXlsx('Nilai CBT', rows), `nilai-cbt-${date}.xlsx`);
+  }
   return csvResponse(toCsv(rows), `nilai-cbt-${date}.csv`);
 };

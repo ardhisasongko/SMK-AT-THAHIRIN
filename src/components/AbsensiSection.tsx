@@ -6,6 +6,7 @@ import { validateNISN } from '../utils/validation';
 import { getCurrentLocation, mapsUrl } from '../utils/geo';
 import { uploadPhoto } from '../utils/photo';
 import { escapeCsvCell } from '../utils/download';
+import { downloadXlsx } from '../utils/xlsx';
 import { StudentAbsensiCard } from './StudentAbsensiCard';
 import { dateWIB } from '../utils/date';
 import { authHeaders } from '../utils/auth';
@@ -123,6 +124,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     return () => window.removeEventListener('focus', refresh);
   }, [presensiReady, refreshPresensi]);
   const [rekapClassFilter, setRekapClassFilter] = useState<string>('all');
+  const [exportingXlsx, setExportingXlsx] = useState<boolean>(false);
 
   // Pagination untuk tabel rekap
   const [rekapPage, setRekapPage] = useState<number>(1);
@@ -398,10 +400,10 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     }
   }, [activeTabMode, currentUser?.role]);
 
-  // Export to CSV function
-  const handleExportCSV = () => {
+  // Baris rekap yang sama persis untuk ekspor CSV dan Excel (.xlsx).
+  const buildRekapExportRows = (): { headers: string[]; rows: Array<Array<unknown>> } => {
     const headers = ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Total', 'Persentase'];
-    const rows = siswaList
+    const rows: Array<Array<unknown>> = siswaList
       .filter(siswa => rekapClassFilter === 'all' || siswa.classId === rekapClassFilter)
       .map((siswa, idx) => {
       const sRecords = presensiList.filter(p => p.siswaId === siswa.id && p.tanggal >= rekapStartDate && p.tanggal <= rekapEndDate);
@@ -426,6 +428,12 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         `${pct}%`
       ];
     });
+    return { headers, rows };
+  };
+
+  // Export to CSV function
+  const handleExportCSV = () => {
+    const { headers, rows } = buildRekapExportRows();
 
     // Setiap sel wajib di-escape: nama siswa/kelas kiriman pengguna dapat
     // memuat koma/kutip (merusak kolom) atau awalan formula spreadsheet.
@@ -443,6 +451,20 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Export to Excel (.xlsx) — baris yang sama dengan CSV; library xlsx
+  // dimuat dinamis oleh downloadXlsx agar bundle utama tidak membengkak.
+  const handleExportXlsx = async () => {
+    setExportingXlsx(true);
+    try {
+      const { headers, rows } = buildRekapExportRows();
+      await downloadXlsx('Rekap Absensi', [headers, ...rows], `Rekap_Absensi_SMK_${rekapStartDate}_to_${rekapEndDate}.xlsx`);
+    } catch (error) {
+      console.error('Export Excel rekap absensi gagal:', error);
+    } finally {
+      setExportingXlsx(false);
+    }
   };
 
   // Status badge untuk tampilan ringkas (tabel & kartu)
@@ -891,7 +913,16 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
                 className="flex items-center gap-2 bg-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-emerald-700 cursor-pointer transition-colors"
               >
                 <Download className="w-4 h-4" />
-                <span>Export Excel/CSV</span>
+                <span>Export CSV</span>
+              </button>
+
+              <button
+                onClick={() => void handleExportXlsx()}
+                disabled={exportingXlsx}
+                className="flex items-center gap-2 bg-teal-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-teal-800 cursor-pointer transition-colors disabled:opacity-60"
+              >
+                <Download className="w-4 h-4" />
+                <span>{exportingXlsx ? 'Menyiapkan...' : 'Export Excel (.xlsx)'}</span>
               </button>
               
               <button

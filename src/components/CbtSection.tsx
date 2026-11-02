@@ -39,6 +39,7 @@ import { CbtQuestionBank } from './cbt/CbtQuestionBank';
 import { CbtMonitorPanel } from './cbt/CbtMonitorPanel';
 import { cbtApi } from '../utils/cbt-api';
 import { downloadCsv } from '../utils/download';
+import { downloadXlsxFromUrl } from '../utils/xlsx';
 
 interface CbtSectionProps {
   currentUser: UserType | null;
@@ -72,6 +73,7 @@ export function CbtSection({
   const [analytics, setAnalytics] = useState<CbtAnalyticsType | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState<boolean>(false);
   const [exportingScores, setExportingScores] = useState<boolean>(false);
+  const [exportingScoresXlsx, setExportingScoresXlsx] = useState<boolean>(false);
   const { query: searchTerm, setQuery: setSearchTerm, filtered: filteredExams } = useFilter(
     cbtExams,
     ['title', 'subject']
@@ -290,6 +292,17 @@ export function CbtSection({
     }
   };
 
+  const handleExportScoresXlsx = async () => {
+    setExportingScoresXlsx(true);
+    try {
+      await downloadXlsxFromUrl('/api/cbt/export/scores?format=xlsx', `nilai-cbt-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Ekspor nilai gagal.', 'error');
+    } finally {
+      setExportingScoresXlsx(false);
+    }
+  };
+
   // Full-screen test runner
   if (isTestMode && activeExam && currentUser) {
     return (
@@ -402,6 +415,16 @@ export function CbtSection({
                   >
                     <Download className="w-4 h-4 text-emerald-400" />
                     <span>{exportingScores ? 'Mengunduh...' : 'Ekspor Nilai (CSV)'}</span>
+                  </button>
+
+                  <button
+                    id="btn-export-cbt-scores-xlsx"
+                    onClick={() => void handleExportScoresXlsx()}
+                    disabled={exportingScoresXlsx}
+                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4 text-teal-300" />
+                    <span>{exportingScoresXlsx ? 'Mengunduh...' : 'Ekspor Nilai (Excel)'}</span>
                   </button>
                 </>
               )}
