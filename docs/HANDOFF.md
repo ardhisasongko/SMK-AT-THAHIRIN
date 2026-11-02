@@ -5,6 +5,24 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Kode QR aktivasi 2FA (2 November 2026, TANPA migrasi)** — penyiapan
+  verifikasi dua langkah di `TwoFactorCard` kini menampilkan kode QR dari
+  `otpAuthUrl` (library `react-qr-code` v2.2.0, SVG ringan) yang bisa
+  langsung dipindai aplikasi authenticator (Google Authenticator:
+  tombol + → "Pindai kode QR"), menggantikan kewajiban input manual.
+  Kunci rahasia manual tetap tampil di bawah QR sebagai cadangan; teks
+  otpauth mentah tidak lagi ditampilkan. QR HANYA dirender selama tahap
+  penyiapan (`pendingSecret` aktif dan 2FA belum aktif) — tidak muncul
+  pada status/endpoint mana pun setelah aktivasi selesai, sesuai paparan
+  kunci rahasia yang memang hanya milik pemilik akun. Test baru
+  `tests/TwoFactorCard.test.tsx` (3 test): QR berisi otpauth URL yang
+  benar saat penyiapan, tidak ada QR sebelum setup, tidak ada QR saat
+  2FA sudah aktif. Test: 401 → 404 root (61 → 62 file) + 11 sync-worker.
+  Merge ke `main` langsung live (deploy otomatis Cloudflare Pages);
+  konteks: program hardening A–F sudah go-live sebelumnya hari yang sama
+  (migrasi 0030–0033 teraplikasi di produksi dan secret
+  `TOTP_ENCRYPTION_KEY` terpasang, `twoFactor.configured=true`).
+
 - **Hardening Fase F — paket dokumen keamanan, SOP operasi, templat legal
   (2 November 2026, BELUM deploy, docs-only, TANPA migrasi)** — sekaligus
   menutup PROGRAM HARDENING A–F untuk kesiapan penjualan multi-sekolah:

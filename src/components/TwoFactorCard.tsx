@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ShieldCheck, ShieldAlert, KeyRound, Copy, Check, Loader2 } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { authHeaders } from '../utils/auth';
 
 interface TwoFactorStatus {
@@ -72,6 +73,7 @@ export const TwoFactorCard: React.FC = () => {
       if (res.ok) {
         setRecoveryCodes(Array.isArray(res.data.data.recoveryCodes) ? res.data.data.recoveryCodes : []);
         setPendingSecret('');
+        setOtpAuthUrl('');
         setActivateCode('');
         await loadStatus();
       } else {
@@ -156,7 +158,15 @@ export const TwoFactorCard: React.FC = () => {
       {status.configured && !status.enabled && pendingSecret && (
         <div className="space-y-3 text-xs">
           <p className="text-slate-600 leading-relaxed">
-            1. Buka aplikasi authenticator, pilih tambah akun manual, lalu masukkan kunci rahasia berikut (atau salin tautan otpauth di bawahnya):
+            1. Pindai kode QR berikut dengan aplikasi authenticator Anda (misalnya Google Authenticator: ketuk tombol <strong>+</strong> lalu pilih <strong>“Pindai kode QR”</strong>).
+          </p>
+          <div className="flex justify-center" data-testid="two-factor-qr">
+            <div className="bg-white p-3 rounded-xl border border-slate-200 w-48 max-w-full">
+              <QRCode value={otpAuthUrl} size={192} bgColor="#FFFFFF" fgColor="#000000" style={{ height: 'auto', maxWidth: '100%', width: '100%' }} />
+            </div>
+          </div>
+          <p className="text-slate-600 leading-relaxed">
+            Bila tidak bisa memindai, tambahkan akun secara manual dengan kunci rahasia berikut:
           </p>
           <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
             <code className="min-w-0 break-all font-mono font-bold text-slate-800 tracking-wider">{pendingSecret}</code>
@@ -164,7 +174,6 @@ export const TwoFactorCard: React.FC = () => {
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
-          <p className="break-all font-mono text-[10px] text-slate-400">{otpAuthUrl}</p>
           <p className="text-slate-600">2. Masukkan kode 6 digit yang tampil di aplikasi untuk menyelesaikan aktivasi:</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
