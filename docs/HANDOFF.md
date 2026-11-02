@@ -5,6 +5,33 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Ekspor Excel (.xlsx) absensi, nilai CBT, rapor (2 November 2026, TANPA
+  migrasi)** — memenuhi permintaan kepala sekolah/guru non-IT: di samping
+  ekspor CSV yang TIDAK berubah sama sekali, kini ada unduhan .xlsx asli
+  (SheetJS `xlsx` ^0.18.5, dipindah dari devDependencies ke dependencies
+  karena kini dipakai runtime). Tiga jalur: (1) Rekap absensi (klien,
+  `src/utils/xlsx.ts`): baris yang sama persis dengan CSV dari
+  `buildRekapExportRows`, library dimuat `import()` dinamis — kode
+  SheetJS (±448 KB mentah di chunk vendor) TIDAK masuk bundle awal dan
+  hanya diunduh browser saat tombol ditekan, sheet "Rekap Absensi";
+  tombol lama diluruskan labelnya menjadi "Export CSV" + tombol baru
+  "Export Excel (.xlsx)". (2) Nilai CBT (server): `GET
+  /api/cbt/export/scores?format=xlsx`, baris & ember rate limit
+  `export:<user>` yang sama, sheet "Nilai CBT", tombol "Ekspor Nilai
+  (Excel)". (3) Rapor (server): `GET /api/rapor/:nisn?format=xlsx`, baris
+  yang sama, sheet "Rapor", tombol "Unduh Rapor (Excel)". Keamanan: sel
+  teks berawalan =, +, -, @ dipaksa menjadi sel string murni tanpa elemen
+  formula (`sanitizeXlsxSheet` di `functions/_lib/xlsx.ts` + pasangan di
+  `src/utils/xlsx.ts`) — setara netralisasi formula CSV. Keterbatasan
+  jujur: SheetJS Community Edition menulis nama sheet & lebar kolom,
+  tetapi TIDAK menulis gaya font (header tebal) maupun freeze pane —
+  terbukti dari uji XML; tidak ada styling semu yang diklaim. Test baru
+  `tests/xlsx-export.test.ts` (7 test): xlsx valid (magic PK) & terbaca
+  balik dengan isi sama untuk builder server + klien + kedua endpoint,
+  netralisasi formula terbukti (tidak ada sel formula; NISN nol-depan
+  tetap teks), RBAC ekspor tetap berlaku. Test: 404 → 411 root
+  (62 → 63 file) + 11 sync-worker.
+
 - **Kode QR aktivasi 2FA (2 November 2026, TANPA migrasi)** — penyiapan
   verifikasi dua langkah di `TwoFactorCard` kini menampilkan kode QR dari
   `otpAuthUrl` (library `react-qr-code` v2.2.0, SVG ringan) yang bisa

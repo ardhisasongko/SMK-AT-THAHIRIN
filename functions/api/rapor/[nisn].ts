@@ -1,5 +1,6 @@
 import { getUserFromRequest, type AuthEnv } from '../../_lib/auth';
 import { csvResponse, toCsv } from '../../_lib/csv';
+import { buildXlsx, xlsxResponse } from '../../_lib/xlsx';
 
 interface Env extends AuthEnv {
   SCHOOL_NAME?: string;
@@ -9,7 +10,8 @@ const ATTENDANCE_STATUS = ['Hadir', 'Terlambat', 'Sakit', 'Izin', 'Alpa'];
 
 // Rapor per siswa: identitas, rekap presensi, rekap nilai CBT per mapel + riwayat ujian.
 //   GET /api/rapor/:nisn           -> JSON
-//   GET /api/rapor/:nisn?format=csv -> CSV unduhan
+//   GET /api/rapor/:nisn?format=csv  -> CSV unduhan
+//   GET /api/rapor/:nisn?format=xlsx -> Excel unduhan (baris yang sama)
 export const onRequestGet: PagesFunction<Env, any, Record<string, unknown> & { user: any }> = async ({ env, request, params }) => {
   const user = await getUserFromRequest(env, request);
   if (!user) return Response.json({ success: false, error: 'Tidak terautentikasi.' }, { status: 401 });
@@ -70,7 +72,8 @@ export const onRequestGet: PagesFunction<Env, any, Record<string, unknown> & { u
     ujian: exams,
   };
 
-  if (new URL(request.url).searchParams.get('format') === 'csv') {
+  const formatParam = new URL(request.url).searchParams.get('format');
+  if (formatParam === 'csv' || formatParam === 'xlsx') {
     const rows: Array<Array<unknown>> = [
       ['RAPOR', env.SCHOOL_NAME || 'SMK PLUS AT-THAHIRIN'],
       ['NISN', report.siswa.nisn],
@@ -86,6 +89,10 @@ export const onRequestGet: PagesFunction<Env, any, Record<string, unknown> & { u
       [],
       ['RATA-RATA NILAI', report.cbt.rataRata],
     ];
+    // format=xlsx memakai baris yang sama persis dengan CSV.
+    if (formatParam === 'xlsx') {
+      return xlsxResponse(buildXlsx('Rapor', rows), `rapor-${nisn}.xlsx`);
+    }
     return csvResponse(toCsv(rows), `rapor-${nisn}.csv`);
   }
 

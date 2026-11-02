@@ -3,6 +3,7 @@ import { Award, CalendarCheck2, Download, GraduationCap, Loader2, X } from 'luci
 import type { RaporReport } from '../types';
 import { authHeaders } from '../utils/auth';
 import { downloadCsv } from '../utils/download';
+import { downloadXlsxFromUrl } from '../utils/xlsx';
 
 interface RaporModalProps {
   nisn: string;
@@ -14,6 +15,7 @@ export function RaporModal({ nisn, name, onClose }: RaporModalProps) {
   const [report, setReport] = useState<RaporReport | null>(null);
   const [error, setError] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [downloadingXlsx, setDownloadingXlsx] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +38,17 @@ export function RaporModal({ nisn, name, onClose }: RaporModalProps) {
       setError(e instanceof Error ? e.message : 'Unduh rapor gagal.');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleDownloadXlsx = async () => {
+    setDownloadingXlsx(true);
+    try {
+      await downloadXlsxFromUrl(`/api/rapor/${nisn}?format=xlsx`, `rapor-${nisn}.xlsx`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unduh rapor gagal.');
+    } finally {
+      setDownloadingXlsx(false);
     }
   };
 
@@ -138,6 +151,16 @@ export function RaporModal({ nisn, name, onClose }: RaporModalProps) {
             >
               <Download className="w-4 h-4" />
               <span>{downloading ? 'Mengunduh...' : 'Unduh Rapor (CSV)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handleDownloadXlsx()}
+              disabled={downloadingXlsx}
+              className="w-full flex items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-sm px-4 py-2.5 rounded-xl cursor-pointer disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              <span>{downloadingXlsx ? 'Mengunduh...' : 'Unduh Rapor (Excel)'}</span>
             </button>
           </>
         )}
