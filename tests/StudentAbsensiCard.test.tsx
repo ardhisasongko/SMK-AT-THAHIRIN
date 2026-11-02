@@ -248,4 +248,28 @@ describe('StudentAbsensiCard', () => {
     expect(screen.getByText('Riwayat Saya (14 Hari)')).toBeInTheDocument();
     expect(screen.getByText('Belum ada riwayat.')).toBeInTheDocument();
   });
+
+  it('photo input has no capture attribute so students may use front or rear camera', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-04T00:30:00Z')); // 07:30 WIB
+
+    const { container } = render(
+      <StudentAbsensiCard
+        presensiList={[]}
+        setPresensiList={vi.fn()}
+        siswaList={mockSiswa}
+        currentUser={mockUser}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Isi Presensi Sekarang'));
+
+    const input = container.querySelector('input[type="file"]');
+    expect(input).not.toBeNull();
+    // Tanpa atribut capture: pemilih berkas/kamera bawaan perangkat yang
+    // menentukan, sehingga siswa bebas memakai kamera depan/belakang atau
+    // memilih dari galeri. Validasi berkas tetap di jalur unggahan.
+    expect(input?.getAttribute('capture')).toBeNull();
+    expect(input?.getAttribute('accept')).toBe('image/*');
+  });
 });

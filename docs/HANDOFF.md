@@ -5,6 +5,26 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Foto presensi mandiri bebas kamera depan/belakang (2 November 2026,
+  TANPA migrasi)** — atas permintaan pemilik demi fleksibilitas siswa:
+  atribut `capture="environment"` pada input foto `StudentAbsensiCard`
+  DIHAPUS sepenuhnya, sehingga yang menentukan adalah pemilih
+  berkas/kamera bawaan perangkat siswa — aplikasi kamera perangkat yang
+  terbuka (di sana siswa bisa berpindah kamera depan/belakang dengan
+  tombol bawaan HP-nya) atau memilih dari galeri. Sengaja TIDAK diganti
+  `capture="user"` karena itu hanya memindahkan kekangan ke kamera
+  depan. Label tombol sudah netral sejak sebelumnya ("Ambil / Pilih
+  Foto") dan tidak ada teks/komentar jalur siswa yang menyebut kamera
+  belakang, jadi tidak ada teks yang perlu diubah. Catatan jujur:
+  memilih dari galeri kini secara eksplisit dimungkinkan oleh pemilih
+  perangkat (sebelumnya pun `capture` hanya petunjuk yang tidak
+  memblokir galeri secara mutlak di semua perangkat). Validasi unggahan
+  TIDAK berubah sama sekali (magic bytes, batas 2 MB, kuota unggahan,
+  kompresi canvas). Input foto jalur GURU di `AbsensiSection` tetap
+  memakai `capture="environment"` — di luar cakupan perubahan ini.
+  Test baru di `tests/StudentAbsensiCard.test.tsx`: input foto presensi
+  mandiri kini tanpa atribut `capture` dan `accept` tetap `image/*`.
+
 - **Absensi QR sungguhan — Model A (2 November 2026, TANPA migrasi;
   menunggu secret produksi `QR_CARD_SECRET`)** — tab "Scan QR / NISN" di
   Presensi yang sebelumnya SIMULATOR (ketik NISN) kini memindai kartu

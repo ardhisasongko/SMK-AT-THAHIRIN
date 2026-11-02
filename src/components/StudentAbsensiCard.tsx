@@ -352,7 +352,7 @@ export const StudentAbsensiCard: React.FC<Props> = ({
                   <label className="flex flex-col items-center justify-center gap-2 w-full h-28 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 cursor-pointer hover:border-emerald-400 hover:text-emerald-500 transition-colors">
                     <ImagePlus className="w-6 h-6" />
                     <span className="text-xs font-semibold">Ambil / Pilih Foto</span>
-                    <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} className="hidden" />
+                    <input type="file" accept="image/*" onChange={handleFotoChange} className="hidden" />
                   </label>
                 )}
               </div>
