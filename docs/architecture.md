@@ -90,6 +90,17 @@ Sliding window di tabel `api_rate_limits` (upsert atomik + cleanup bertahap 32 b
 |---|---|---|
 | `mutation:<user\|IP>` | 120 | 60 detik (global middleware) |
 | `login-ip:<IP>` / `login-account:<id>` | 500 / 10 | 15 menit |
+
+Catatan ember login & baca (hemat kuota, hasil uji beban 1.000 siswa):
+`login-ip` hanya menghitung percobaan login yang **gagal** — pemeriksaan
+batas memakai `rateLimitExceeded` (baca tanpa menulis) dan increment hanya
+terjadi di jalur gagal, agar login berhasil massal dari satu NAT sekolah
+tidak tertolak. `login-account` tetap consume per percobaan dan dibersihkan
+saat berhasil; lockout bertahap Fase C tidak berubah. Ember baca
+`read:<user|IP>` 300/60 detik punya satu pengecualian persis:
+`GET /api/cbt/attempts/:id/notices` (polling runner, kini 90 detik) tidak
+dihitung — setiap GET yang terhitung menulis 1 baris D1, dan polling ini
+sebelumnya menyumbang 77% biaya tulis hari ujian.
 | `upload:<user>` | 10 | 1 jam (+20 foto/hari) |
 | `forum-topic:<user>` / `forum-reply:<user>` | 5 / 30 | 1 jam |
 | `cbt-token:<exam>:<user>` | 10 | 15 menit (reset saat token benar) |

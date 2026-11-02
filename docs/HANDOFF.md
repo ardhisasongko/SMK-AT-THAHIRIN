@@ -5,6 +5,49 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Hemat kuota D1 hari ujian (2 November 2026, TANPA migrasi)** — tindak
+  lanjut uji beban 1.000 siswa (`~/workspace/smk-loadtest/LAPORAN-UJI-BEBAN.md`:
+  integritas sempurna, tetapi total tulis hari ujian 60 menit mencapai
+  ±162% kuota gratis 100rb/hari; 77%-nya adalah polling notices). Tiga
+  perubahan sempit: (1) **Polling notices runner 30 → 90 detik**
+  (`NOTICES_INTERVAL_MS` di `CbtTestRunner`) — banner pengumuman,
+  penyesuaian timer perpanjangan, dan layar paksa-kumpul tidak berubah;
+  pengecekan per ujian 60 menit turun 120 → 40. (2) **GET
+  `/api/cbt/attempts/:id/notices` dikecualikan dari ember baca** di
+  middleware (pencocokan metode+jalur persis dengan regex berjangkar;
+  rute lain termasuk monitor guru tetap terhitung) — setiap GET yang
+  terhitung menulis tepat 1 baris `api_rate_limits`, jadi biaya tulis
+  polling per siswa turun 120 → 0; autentikasi + otorisasi per-attempt
+  di handler tidak berubah. (3) **Ember `login-ip` (500/15 mnt) hanya
+  menghitung percobaan login GAGAL**: helper baru `rateLimitExceeded`
+  di `functions/_lib/rate-limit.ts` memeriksa batas tanpa menulis;
+  increment `consumeRateLimit` kini hanya dipanggil di dua jalur gagal
+  kredensial (akun tak ditemukan / password salah / akun nonaktif),
+  berdampingan dengan `recordLoginFailure`. Di uji beban, perilaku lama
+  menolak massal sekolah satu NAT (500 lolos, 501 kena 429); kini login
+  berhasil tidak lagi menggerus jatah. Benteng per-akun TIDAK berubah:
+  ember `login-account` tetap consume per percobaan + dibersihkan saat
+  berhasil, lockout bertahap Fase C (akun 5, IP 50 kegagalan beruntun,
+  5→1440 menit) tetap utuh, dan penolakan Turnstile (nonaktif by env)
+  tidak dihitung — sama seperti perilakunya terhadap lockout. Test
+  regresi baru: `tests/middleware-notices-bucket.test.ts` (notices
+  berulang tidak menulis ember; rute lain tetap terhitung; jalur mirip
+  tapi tak persis tetap terhitung), `tests/login-ip-bucket.test.ts`
+  (unit `rateLimitExceeded` tanpa menulis + jendela berakhir; gagal
+  menaikkan ember tepat satu per kegagalan; berhasil tidak membuat
+  baris ember; ambang 499+1 gagal → login benar berikutnya 429 pesan
+  ember; 499 + berhasil berulang tetap 200), dan test kadens baru di
+  `tests/CbtTestRunnerNotices.test.tsx` (polling pertama tepat di detik
+  ke-90; tiga test lama disesuaikan 30→90 detik, test tambah-waktu
+  memakai tenggat +41 menit agar sisa tampil tetap 39:xx). Mock
+  rate-limit di `tests/auth-login-hardening.test.ts` ditambah ekspor
+  `rateLimitExceeded` (kompatibilitas mock, asersi tidak berubah).
+  Matematika hasil: total tulis hari 1.000 siswa turun dari 162% ke jauh
+  di bawah 50% kuota gratis. Verifikasi: `npm run verify` hijau penuh —
+  **452 test root (68 file) + 11 sync-worker** (naik dari 442/66: +3
+  middleware notices, +6 login/ember, +1 kadens polling), lint,
+  typecheck sync-worker, dan build lulus.
+
 - **Foto presensi mandiri bebas kamera depan/belakang (2 November 2026,
   TANPA migrasi)** — atas permintaan pemilik demi fleksibilitas siswa:
   atribut `capture="environment"` pada input foto `StudentAbsensiCard`

@@ -32,9 +32,12 @@ interface CbtTestRunnerProps {
 
 const CHECKPOINT_INTERVAL_MS = 10 * 60 * 1000;
 // Kanal kendali pengawas (pengumuman, tambah waktu, paksa kumpul) diperiksa
-// berkala selama attempt berjalan — cukup sering agar terasa langsung, cukup
-// jarang agar hemat untuk banyak siswa bersamaan.
-const NOTICES_INTERVAL_MS = 30 * 1000;
+// berkala selama attempt berjalan. 90 detik: tetap terasa cepat di ruangan
+// (pengawas juga hadir langsung), dan hasil uji beban 1.000 siswa — jalur
+// notices dikecualikan dari ember baca di server, tetapi irama yang lebih
+// jarang tetap menghemat baca D1 untuk banyak siswa bersamaan
+// (pengecekan per ujian 60 menit turun 120 → 40).
+const NOTICES_INTERVAL_MS = 90 * 1000;
 
 function readLocalCache(attemptId: string): { answers: { [questionId: string]: string }; doubtful: { [questionId: string]: boolean } } {
   try {

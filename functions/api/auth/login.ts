@@ -1,6 +1,6 @@
 import { verifyPassword, createSession, type AuthEnv } from '../../_lib/auth';
 import { jsonResponse } from '../../_lib/response';
-import { clearRateLimit, consumeRateLimit } from '../../_lib/rate-limit';
+import { clearRateLimit, consumeRateLimit, rateLimitExceeded } from '../../_lib/rate-limit';
 import { sha256Hex, TWO_FACTOR_ROLES } from '../../_lib/totp';
 import {
   accountLockoutKey, clearLoginLockout, getLoginLockoutUntil, ipLockoutKey,
@@ -35,7 +35,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const normalizedIdentifier = identifier.toLowerCase();
   const ipRateKey = `login-ip:${clientIp}`;
   const accountRateKey = `login-account:${normalizedIdentifier}`;
-  if (!(await consumeRateLimit(env.DB, ipRateKey, 500, 15 * 60)) || !(await consumeRateLimit(env.DB, accountRateKey, 10, 15 * 60))) {
+  // Ember IP hanya MENGHITUNG percobaan yang GAGAL (increment terjadi di
+  // jalur gagal di bawah): pemeriksaan di sini membaca hitungan tanpa
+  // menaikkannya, agar ratusan login BERHASIL dari sekolah di balik satu
+  // NAT tidak menghabiskan jatah 500/15 menit (terbukti tertolak massal
+  // pada uji beban 1.000 siswa). Ember akun tetap consume per percobaan
+  // seperti sebelumnya dan dibersihkan saat login berhasil.
+  if (await rateLimitExceeded(env.DB, ipRateKey, 500)) {
+    return jsonResponse({ success: false, error: 'Terlalu banyak percobaan login. Coba lagi beberapa menit.' }, 429);
+  }
+  if (!(await consumeRateLimit(env.DB, accountRateKey, 10, 15 * 60))) {
     return jsonResponse({ success: false, error: 'Terlalu banyak percobaan login. Coba lagi beberapa menit.' }, 429);
   }
 
@@ -63,6 +72,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   ).bind(identifier, identifier).first();
   if (!row) {
     await verifyPassword(password, DUMMY_PASSWORD_HASH);
+    await consumeRateLimit(env.DB, ipRateKey, 500, 15 * 60);
     await recordLoginFailure(env.DB, accountLockKey, ACCOUNT_FAILURE_THRESHOLD);
     await recordLoginFailure(env.DB, ipLockKey, IP_FAILURE_THRESHOLD);
     await recordLoginFailureStat(env.DB);
@@ -71,6 +81,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
   const ok = await verifyPassword(password, String(row.password_hash));
   if (!ok || String(row.status || 'active') !== 'active') {
+    await consumeRateLimit(env.DB, ipRateKey, 500, 15 * 60);
     await recordLoginFailure(env.DB, accountLockKey, ACCOUNT_FAILURE_THRESHOLD);
     await recordLoginFailure(env.DB, ipLockKey, IP_FAILURE_THRESHOLD);
     await recordLoginFailureStat(env.DB);
