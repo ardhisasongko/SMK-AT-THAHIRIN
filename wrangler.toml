@@ -46,3 +46,10 @@ TURNSTILE_SITE_KEY = ""
 # TURNSTILE_SECRET_KEY (hardening Fase C — verifikasi Turnstile login)
 # juga WAJIB secret; pasangannya TURNSTILE_SITE_KEY ada di [vars] atas:
 #   npx wrangler pages secret put TURNSTILE_SECRET_KEY --project-name smk-at-tahirin
+#
+# QR_CARD_SECRET (absensi QR Model A — kunci tanda tangan HMAC kartu pelajar)
+# juga WAJIB secret, JANGAN ditulis di [vars]:
+#   npx wrangler pages secret put QR_CARD_SECRET --project-name smk-at-tahirin
+# Tanpa secret ini fitur kartu QR nonaktif secara aman. Mengganti (rotasi)
+# secret membuat SEMUA kartu QR lama tidak berlaku — kartu harus dicetak
+# ulang untuk seluruh siswa.

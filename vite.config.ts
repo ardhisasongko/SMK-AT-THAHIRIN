@@ -11,6 +11,9 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (!id.includes('node_modules')) return;
+            // jsQR hanya dipakai lewat import() dinamis oleh QrScanner —
+            // pisahkan ke chunk sendiri agar tidak ikut termuat di awal.
+            if (id.includes('jsqr')) return 'qr-decoder';
             if (id.includes('lucide-react')) return 'icons';
             if (id.includes('motion')) return 'motion';
             if (id.includes('react')) return 'react-vendor';

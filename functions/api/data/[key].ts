@@ -344,6 +344,74 @@ async function enqueueAttendanceNotifications(db: D1Database, incoming: any[], p
   }
 }
 
+export interface PresensiWriteResult {
+  ok: boolean;
+  status: number;
+  error?: string;
+  result?: unknown;
+  changedCount?: number;
+  changedRecords?: any[];
+  revision?: number;
+  conflict?: boolean;
+}
+
+/** Baca koleksi presensi saat ini (sumber kebenaran relasional/app_data). */
+export async function loadPresensiRecords(db: D1Database): Promise<any[]> {
+  return ((await getCurrent(db, 'presensi_v1')) as any[] | null) || [];
+}
+
+/**
+ * Satu-satunya jalur tulis presensi: validasi per-rekaman + RBAC kelas
+ * (canEditClassScoped) + stempel inputBy & audit presensi_log + tulis delta
+ * + antrean notifikasi WhatsApp orang tua. Dipakai PUT /api/data/presensi_v1
+ * DAN endpoint pindai kartu QR (functions/api/presensi/qr-scan.ts) agar
+ * perilaku keduanya identik — jangan buat jalur tulis presensi lain.
+ */
+export async function applyPresensiWrite(
+  db: D1Database,
+  user: AuthUser,
+  incoming: unknown,
+  options?: { schoolName?: string; expectedRevision?: number }
+): Promise<PresensiWriteResult> {
+  let previous: any[];
+  let checked: Awaited<ReturnType<typeof validateAndPatchPresensi>>;
+  try {
+    previous = await loadPresensiRecords(db);
+    checked = await validateAndPatchPresensi(db, user, incoming);
+  } catch (error) {
+    console.error('Gagal memproses presensi:', error);
+    return { ok: false, status: 500, error: error instanceof CollectionDataError ? error.message : 'Data presensi tidak dapat diproses.' };
+  }
+  if (!checked.ok) {
+    return { ok: false, status: checked.status, error: checked.error };
+  }
+  // Tulis model DELTA: hanya rekaman yang berubah di-upsert (hemat row writes
+  // D1 free tier). Audit log ikut dalam batch yang sama agar atomik.
+  let write;
+  try {
+    write = await writePresensiDelta(db, {
+      changed: Array.isArray(checked.changedRecords) ? checked.changedRecords : [],
+      merged: Array.isArray(checked.result) ? checked.result : [],
+      expectedRevision: options?.expectedRevision,
+      extraStatements: (checked.logs || []).map(log =>
+        buildPresensiLogStatement(db, log.tanggal, log.siswaId, log.siswaName, log.field, log.oldValue, log.newValue, user)
+      ),
+    });
+  } catch (error) {
+    if (error instanceof CollectionDataError) return { ok: false, status: 400, error: error.message };
+    throw error;
+  }
+  if (write.conflict) {
+    return { ok: false, status: 409, conflict: true, revision: write.revision, error: 'Data telah berubah di perangkat lain. Muat ulang sebelum menyimpan.' };
+  }
+  try {
+    await enqueueAttendanceNotifications(db, Array.isArray(checked.changedRecords) ? checked.changedRecords : [], previous, options?.schoolName);
+  } catch (error) {
+    console.error('Presensi tersimpan, tetapi antrean notifikasi gagal:', error);
+  }
+  return { ok: true, status: 200, result: checked.result, changedCount: checked.changedCount, changedRecords: checked.changedRecords, revision: write.revision };
+}
+
 export const onRequestGet: PagesFunction<Env, any, AuthData> = async ({ env, params, request, data }) => {
   if (!data.user) {
     return jsonResponse({ success: false, error: 'Silakan login terlebih dahulu.' }, 401);
@@ -438,47 +506,21 @@ export const onRequestPut: PagesFunction<Env, any, AuthData> = async ({ env, par
   }
 
   if (isPresensiKey(k)) {
-    let previous: any[];
-    let checked: Awaited<ReturnType<typeof validateAndPatchPresensi>>;
-    try {
-      previous = (await getCurrent(env.DB, k)) as any[] || [];
-      checked = await validateAndPatchPresensi(env.DB, data.user, body);
-    } catch (error) {
-      console.error('Gagal memproses presensi:', error);
-      return jsonResponse({ success: false, error: error instanceof CollectionDataError ? error.message : 'Data presensi tidak dapat diproses.' }, 500);
-    }
-    if (!checked.ok) {
-      return jsonResponse({ success: false, error: checked.error }, checked.status);
-    }
-    // Tulis model DELTA: hanya rekaman yang berubah di-upsert (hemat row writes
-    // D1 free tier). Audit log ikut dalam batch yang sama agar atomik.
-    let write;
-    try {
-      write = await writePresensiDelta(env.DB, {
-        changed: Array.isArray(checked.changedRecords) ? checked.changedRecords : [],
-        merged: Array.isArray(checked.result) ? checked.result : [],
-        expectedRevision: requested.revision,
-        extraStatements: (checked.logs || []).map(log =>
-          buildPresensiLogStatement(env.DB, log.tanggal, log.siswaId, log.siswaName, log.field, log.oldValue, log.newValue, data.user!)
-        ),
-      });
-    } catch (error) {
-      if (error instanceof CollectionDataError) return jsonResponse({ success: false, error: error.message }, 400);
-      throw error;
-    }
-    if (write.conflict) {
-      return jsonResponse({ success: false, error: 'Data telah berubah di perangkat lain. Muat ulang sebelum menyimpan.', revision: write.revision }, 409);
-    }
-    try {
-      await enqueueAttendanceNotifications(env.DB, Array.isArray(checked.changedRecords) ? checked.changedRecords : [], previous, env.SCHOOL_NAME);
-    } catch (error) {
-      console.error('Presensi tersimpan, tetapi antrean notifikasi gagal:', error);
+    const outcome = await applyPresensiWrite(env.DB, data.user, body, {
+      schoolName: env.SCHOOL_NAME,
+      expectedRevision: requested.revision,
+    });
+    if (!outcome.ok) {
+      if (outcome.conflict) {
+        return jsonResponse({ success: false, error: outcome.error, revision: outcome.revision }, 409);
+      }
+      return jsonResponse({ success: false, error: outcome.error }, outcome.status);
     }
     return jsonResponse({
       success: true,
-      data: filterCollectionForUser(checked.result, k, data.user),
-      changed: checked.changedCount,
-      revision: write.revision,
+      data: filterCollectionForUser(outcome.result, k, data.user),
+      changed: outcome.changedCount,
+      revision: outcome.revision,
     });
   }
 

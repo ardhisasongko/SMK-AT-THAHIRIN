@@ -5,6 +5,55 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Absensi QR sungguhan — Model A (2 November 2026, TANPA migrasi;
+  menunggu secret produksi `QR_CARD_SECRET`)** — tab "Scan QR / NISN" di
+  Presensi yang sebelumnya SIMULATOR (ketik NISN) kini memindai kartu
+  pelajar sungguhan dengan kamera. Desain: (1) Payload kartu satu string
+  `SMKQR1:<nisn>:<sig>`; `sig` = potongan HMAC-SHA256 (16 byte pertama,
+  base64url) atas prefix+NISN memakai secret server **`QR_CARD_SECRET`**
+  (`functions/_lib/qr-card.ts`, perbandingan konstan-waktu). Payload
+  HANYA dibuat server. (2) Endpoint: `GET /api/presensi/qr-card`
+  (siswa/ketua_kelas hanya payload dirinya sendiri; staf mengikuti
+  cakupan `canEditClassScoped`; staf tanpa `?nisn` hanya menerima status
+  konfigurasi untuk probe tab pemindai), `GET /api/presensi/qr-cards
+  ?classId=` (payload satu kelas untuk cetak massal, cakupan yang sama),
+  `POST /api/presensi/qr-scan` (verifikasi tanda tangan → catat Hadir).
+  (3) Pencatatan pindai memakai jalur tulis presensi yang SAMA PERSIS
+  dengan input manual: fungsi bersama `applyPresensiWrite` diekstrak
+  dari `functions/api/data/[key].ts` (validasi per-rekaman + RBAC kelas
+  + audit `presensi_log` + stempel `inputBy` + tulis delta + antrean
+  notifikasi WhatsApp) dan PUT koleksi kini memanggilnya juga — tidak
+  ada jalur tulis kedua. Duplikat: sudah tercatat Hadir di tanggal itu →
+  409 tanpa menulis ulang; status lain → dikoreksi menjadi Hadir seperti
+  penandaan manual guru; tanggal masa depan ditolak; siswa tidak boleh
+  memindai (403). (4) Klien: `src/components/QrScanner.tsx` — kamera
+  `getUserMedia` + decoder **jsQR dimuat dinamis** — aturan
+  `manualChunks` baru di `vite.config.ts` memisahkannya ke chunk
+  `qr-decoder` (130,7 KB, gzip 47,5 KB) yang TIDAK masuk preload awal
+  dan hanya diunduh saat kamera diaktifkan; pemindai berhenti setelah
+  satu payload terbaca agar tidak dobel — izin ditolak/tidak ada kamera →
+  pesan sopan + input NISN manual tetap dipertahankan (termasuk alat
+  pemindai USB yang mengetik sebagai keyboard). "Kartu QR Saya"
+  (`QrCardSaya`) tampil di Profil untuk siswa/ketua_kelas. Cetak kartu
+  massal per kelas dari tab pemindai memakai pola cetak rapor
+  (`QrCardPrintSheet` + kelas body `printing-qr-cards` + `@media print`).
+  (5) Keadaan belum terkonfigurasi aman (pola 2FA): tanpa
+  `QR_CARD_SECRET`, endpoint kartu menjawab `configured: false`
+  (UI menampilkan "belum dikonfigurasi administrator", bukan QR rusak)
+  dan endpoint pindai menolak 503. **Tindak lanjut pemilik (di luar
+  repo): pasang secret-nya** — `npx wrangler pages secret put
+  QR_CARD_SECRET --project-name smk-at-tahirin` (string acak ≥32
+  karakter); fitur menyala begitu secret terpasang + deploy berikutnya.
+  **Rotasi secret membuat SEMUA kartu lama tidak berlaku — kartu wajib
+  dicetak ulang untuk seluruh siswa.** Test baru:
+  `tests/qr-absensi.test.ts` (21 test: roundtrip/tamper/secret-lain/
+  format asing, RBAC kartu & kartu kelas, pindai mencatat identik
+  manual + audit + antrean WA, duplikat 409, koreksi status, 503 belum
+  terkonfigurasi) dan `tests/QrAbsensiComponents.test.tsx` (6 test:
+  fallback kamera ditolak/tidak tersedia, Kartu QR Saya
+  terkonfigurasi/belum, lembar cetak kartu). Test: 414 → 441 root
+  (64 → 66 file) + 11 sync-worker.
+
 - **Tombol "Cetak Rapor" satu halaman siap cetak/PDF (2 November 2026,
   TANPA migrasi)** — memenuhi persetujuan pemilik atas mockup rapor:
   `RaporModal` kini punya tombol **Cetak Rapor** di samping unduhan
