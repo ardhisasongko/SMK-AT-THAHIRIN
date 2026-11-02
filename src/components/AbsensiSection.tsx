@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { PresensiRecord, PresensiStatus, PresensiLokasi, Kelas, Siswa, User } from '../types';
 import { SCHOOL_INFO } from '../data/initialData';
 import { useFilter } from '../hooks/useFilter';
@@ -8,6 +9,8 @@ import { uploadPhoto } from '../utils/photo';
 import { escapeCsvCell } from '../utils/download';
 import { downloadXlsx } from '../utils/xlsx';
 import { StudentAbsensiCard } from './StudentAbsensiCard';
+import { QrScanner } from './QrScanner';
+import { QrCardPrintSheet, type QrCardPrintItem } from './QrCardPrintSheet';
 import { dateWIB } from '../utils/date';
 import { authHeaders } from '../utils/auth';
 import { 
@@ -105,9 +108,14 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, currentUser?.role, currentUser?.ketuaStatus, editableClassIds.join(','), selectedClassId]);
 
-  // QR Simulator state
+  // QR Scanner state (kamera sungguhan + cadangan manual NISN)
   const [qrNisnInput, setQrNisnInput] = useState<string>('');
-  const [scanMessage, setScanMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [scanMessage, setScanMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [qrConfigured, setQrConfigured] = useState<boolean | null>(null);
+  const [printingCards, setPrintingCards] = useState(false);
+  const [printCards, setPrintCards] = useState<{ className: string; cards: QrCardPrintItem[] } | null>(null);
+  const lastScanAtRef = useRef(0);
   
   // FIXED: useRef untuk cleanup timer (prevent memory leak)
   const scanMessageTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -383,6 +391,106 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
       scanMessageTimerRef.current = null;
     }, 5000);
   };
+
+  // Tampilkan pesan hasil pindai/manual dengan timer bersih yang sama.
+  const showScanMessage = (msg: { type: 'success' | 'error' | 'info'; text: string }) => {
+    setScanMessage(msg);
+    if (scanMessageTimerRef.current) clearTimeout(scanMessageTimerRef.current);
+    scanMessageTimerRef.current = setTimeout(() => {
+      setScanMessage(null);
+      scanMessageTimerRef.current = null;
+    }, 5000);
+  };
+
+  // Probe status konfigurasi fitur kartu QR saat tab pemindai dibuka, agar
+  // pemberitahuan "belum dikonfigurasi" tampil sebelum kamera dijalankan.
+  useEffect(() => {
+    if (activeTabMode !== 'qr-scanner') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/presensi/qr-card', { headers: authHeaders() });
+        const json = await res.json().catch(() => null) as any;
+        if (!cancelled && res.ok && json?.success && typeof json?.data?.configured === 'boolean') {
+          setQrConfigured(json.data.configured);
+        }
+      } catch { /* diamkan: hasil pemindaian akan melaporkan statusnya sendiri */ }
+    })();
+    return () => { cancelled = true; };
+  }, [activeTabMode]);
+
+  // Hasil pindai kamera: payload diverifikasi tanda tangannya OLEH SERVER
+  // dan presensi dicatat lewat jalur tulis presensi yang sama persis dengan
+  // input manual (validasi + RBAC + audit + notifikasi WA di server).
+  const handleScanPayload = async (payload: string) => {
+    if (scanBusy || Date.now() - lastScanAtRef.current < 2500) return;
+    setScanBusy(true);
+    try {
+      const res = await fetch('/api/presensi/qr-scan', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ payload, tanggal: selectedDate }),
+      });
+      const json = await res.json().catch(() => null) as any;
+      if (res.ok && json?.success) {
+        const d = json.data;
+        showScanMessage({
+          type: 'success',
+          text: `✓ Presensi BERHASIL! ${d.name} (NISN: ${d.nisn}) dicatat HADIR pukul ${String(d.waktuInput || '').slice(0, 5)}${d.correctedFrom ? ` — koreksi dari status ${d.correctedFrom}` : ''}`,
+        });
+        await refreshPresensi?.().catch(() => undefined);
+      } else if (res.status === 409) {
+        showScanMessage({ type: 'info', text: json?.error || 'Siswa sudah tercatat untuk tanggal ini.' });
+      } else {
+        showScanMessage({ type: 'error', text: json?.error || 'Kode QR tidak dapat diproses.' });
+      }
+    } catch {
+      showScanMessage({ type: 'error', text: 'Gagal menghubungi server. Periksa koneksi lalu coba lagi.' });
+    } finally {
+      lastScanAtRef.current = Date.now();
+      setScanBusy(false);
+    }
+  };
+
+  // Cetak kartu QR massal untuk kelas yang sedang dipilih (lembar grid).
+  const handlePrintQrCards = async () => {
+    if (!canEditCurrent || printingCards) return;
+    setPrintingCards(true);
+    try {
+      const res = await fetch(`/api/presensi/qr-cards?classId=${encodeURIComponent(selectedClassId)}`, {
+        headers: authHeaders(),
+      });
+      const json = await res.json().catch(() => null) as any;
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Gagal memuat kartu QR kelas.');
+      if (!json.data.configured) {
+        showScanMessage({ type: 'error', text: 'Fitur kartu QR belum dikonfigurasi oleh administrator sistem, sehingga kartu belum dapat dicetak.' });
+        return;
+      }
+      if (!Array.isArray(json.data.cards) || json.data.cards.length === 0) {
+        showScanMessage({ type: 'info', text: 'Tidak ada siswa aktif pada kelas ini.' });
+        return;
+      }
+      setPrintCards({ className: String(json.data.className || ''), cards: json.data.cards as QrCardPrintItem[] });
+    } catch (error) {
+      showScanMessage({ type: 'error', text: error instanceof Error ? error.message : 'Gagal memuat kartu QR kelas.' });
+    } finally {
+      setPrintingCards(false);
+    }
+  };
+
+  // Jalankan dialog cetak begitu lembar kartu siap dirender lewat portal.
+  useEffect(() => {
+    if (!printCards) return;
+    document.body.classList.add('printing-qr-cards');
+    const cleanup = () => document.body.classList.remove('printing-qr-cards');
+    window.addEventListener('afterprint', cleanup, { once: true });
+    const timer = setTimeout(() => window.print(), 50);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('afterprint', cleanup);
+      cleanup();
+    };
+  }, [printCards]);
 
   // FIXED: Cleanup timer on unmount
   useEffect(() => {
@@ -832,7 +940,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
         </div>
       )}
 
-      {/* MODE 2: QR CODE SCANNER SIMULATOR */}
+      {/* MODE 2: QR CODE SCANNER (kamera sungguhan + cadangan manual) */}
       {activeTabMode === 'qr-scanner' && (
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-8 max-w-3xl mx-auto space-y-6 text-center">
           <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
@@ -842,8 +950,55 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
           <div>
             <h3 className="text-2xl font-bold text-slate-900">Scan QR Code Kartu Pelajar Siswa</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-              Arahkan QR Code Kartu Pelajar ke kamera scanner atau masukkan NISN siswa secara manual di bawah ini.
+              Aktifkan kamera, lalu arahkan kartu QR siswa ke kamera — presensi tercatat otomatis
+              sebagai Hadir untuk tanggal {selectedDate}. Kartu diverifikasi tanda tangan
+              digitalnya oleh server. Bila kamera tidak tersedia, masukkan NISN secara manual
+              di bawah ini (juga kompatibel dengan alat pemindai USB).
             </p>
+          </div>
+
+          {qrConfigured === false && (
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <p className="text-[11px]">
+                Fitur kartu QR belum dikonfigurasi oleh administrator sistem, sehingga pemindaian
+                kartu belum aktif. Pencatatan presensi manual di bawah tetap berjalan seperti biasa.
+              </p>
+            </div>
+          )}
+
+          <QrScanner
+            onPayload={(payload) => void handleScanPayload(payload)}
+            disabled={!canEditCurrent || qrConfigured === false}
+          />
+
+          {scanBusy && (
+            <p className="flex items-center justify-center gap-2 text-[11px] font-bold text-slate-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memproses hasil pindai…
+            </p>
+          )}
+
+          {scanMessage && (
+            <div className={`p-4 rounded-2xl text-xs font-bold border flex items-center justify-center gap-2 animate-in fade-in duration-200 ${
+              scanMessage.type === 'success'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                : scanMessage.type === 'info'
+                  ? 'bg-sky-50 border-sky-300 text-sky-800'
+                  : 'bg-rose-50 border-rose-300 text-rose-800'
+            }`}>
+              {scanMessage.type === 'success'
+                ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                : scanMessage.type === 'info'
+                  ? <AlertCircle className="w-5 h-5 text-sky-600" />
+                  : <XCircle className="w-5 h-5 text-rose-600" />}
+              <span>{scanMessage.text}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-1" aria-hidden="true">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-[10px] font-extrabold tracking-widest text-slate-400">ATAU CATAT MANUAL</span>
+            <span className="h-px flex-1 bg-slate-200" />
           </div>
 
           {/* Quick NISN Click Helper Chips */}
@@ -873,7 +1028,7 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               value={qrNisnInput}
               disabled={!canEditCurrent}
               onChange={(e) => setQrNisnInput(e.target.value)}
-              placeholder="Masukkan NISN atau Scan QR..."
+              placeholder="Masukkan NISN siswa..."
               className="min-w-0 flex-1 px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
@@ -881,21 +1036,48 @@ export const AbsensiSection: React.FC<AbsensiSectionProps> = ({
               disabled={!canEditCurrent}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl shadow-md cursor-pointer text-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Scan
+              Catat Hadir
             </button>
           </form>
 
-          {scanMessage && (
-            <div className={`p-4 rounded-2xl text-xs font-bold border flex items-center justify-center gap-2 animate-in fade-in duration-200 ${
-              scanMessage.type === 'success' 
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-800' 
-                : 'bg-rose-50 border-rose-300 text-rose-800'
-            }`}>
-              {scanMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <XCircle className="w-5 h-5 text-rose-600" />}
-              <span>{scanMessage.text}</span>
+          {/* Cetak kartu QR massal untuk satu kelas */}
+          <div className="space-y-3 border-t border-slate-100 pt-5">
+            <div>
+              <p className="text-xs font-bold text-slate-700">Cetak Kartu QR Kelas</p>
+              <p className="mx-auto mt-1 max-w-md text-[11px] text-slate-500">
+                Cetak lembar kartu QR untuk seluruh siswa pada kelas di bawah ini, lalu gunting
+                per kartu untuk dibagikan. Kartu lama tidak berlaku lagi bila kunci kartu
+                diganti administrator.
+              </p>
             </div>
-          )}
+            <div className="mx-auto flex max-w-md flex-col gap-3 sm:flex-row">
+              <select
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                aria-label="Pilih kelas untuk cetak kartu QR"
+              >
+                {classOptions.map(k => (
+                  <option key={k.id} value={k.id}>{k.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void handlePrintQrCards()}
+                disabled={!canEditCurrent || printingCards}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-5 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {printingCards ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                <span>Cetak Kartu</span>
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      {printCards && createPortal(
+        <QrCardPrintSheet className={printCards.className} cards={printCards.cards} />,
+        document.body
       )}
 
       {/* MODE 3: REKAP LAPORAN PRESENSI */}

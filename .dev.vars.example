@@ -7,3 +7,6 @@ GEMINI_MODEL="gemini-3.6-flash"
 # Kunci enkripsi 2FA TOTP staf (hardening Fase B) — lokal cukup string acak
 # panjang; produksi diatur sebagai Secret Cloudflare Pages dan harus stabil.
 TOTP_ENCRYPTION_KEY="isi-string-acak-minimal-32-karakter-untuk-lokal"
+# Kunci tanda tangan kartu QR presensi (absensi QR Model A) — lokal cukup
+# string acak panjang; produksi diatur sebagai Secret Cloudflare Pages.
+QR_CARD_SECRET="isi-string-acak-minimal-32-karakter-untuk-lokal"

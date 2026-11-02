@@ -32,6 +32,7 @@ import { buildCsv, downloadTextFile } from '../utils/download';
 import { dateWIB } from '../utils/date';
 import { RaporModal } from './RaporModal';
 import { TwoFactorCard } from './TwoFactorCard';
+import { QrCardSaya } from './QrCardSaya';
 import { SystemStatusCard } from './SystemStatusCard';
 
 const normalizeName = (s: string) =>
@@ -492,6 +493,7 @@ export const ProfilSection: React.FC<ProfilSectionProps> = ({
 
         </div>
         {(role === 'guru' || role === 'admin' || role === 'super_admin') && <TwoFactorCard />}
+        {isStudentRole && <QrCardSaya />}
         </>
       )}
 

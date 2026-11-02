@@ -58,3 +58,28 @@
     width: 100%;
   }
 }
+
+/* Lembar cetak kartu QR presensi (QrCardPrintSheet): tersembunyi di layar;
+   saat tombol cetak kartu ditekan, body ber kelas `printing-qr-cards` dan
+   hanya lembar kartu ini yang tampil dalam hasil cetak/PDF. */
+.qr-card-print-sheet {
+  display: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.qr-card-print-sheet * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media print {
+  body.printing-qr-cards #root {
+    display: none !important;
+  }
+
+  body.printing-qr-cards .qr-card-print-sheet {
+    display: block !important;
+    width: 100%;
+  }
+}
