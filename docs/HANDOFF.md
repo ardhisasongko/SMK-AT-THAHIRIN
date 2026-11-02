@@ -5,6 +5,51 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Hardening Fase F — paket dokumen keamanan, SOP operasi, templat legal
+  (2 November 2026, BELUM deploy, docs-only, TANPA migrasi)** — sekaligus
+  menutup PROGRAM HARDENING A–F untuk kesiapan penjualan multi-sekolah:
+  (1) `SECURITY.md` (root): status hardening lengkap — hasil Fase A
+  (8 temuan diperbaiki; 7 temuan terbuka beserta statusnya, termasuk
+  penutupan temuan bias generator oleh Fase B), ringkasan Fase B–F,
+  responsible disclosure (kanal laporan, aturan safe harbor, target
+  triase), dan praktik keamanan yang diterapkan beserta batasan yang
+  diketahui. (2) `docs/operations/SECURITY_OPERATIONS.md`: SOP update
+  keamanan serentak (per deployment backup→migrasi→deploy→verifikasi,
+  canary satu sekolah, rollback kode/data, larangan hotfix di luar
+  repo); SOP respons insiden dengan linimasa jam-per-jam dan kewajiban
+  notifikasi UU PDP Pasal 46 paling lambat 3×24 jam ke subjek data &
+  lembaga (vendor wajib memberi tahu sekolah ≤ 24 jam); SOP backup
+  mingguan + uji restore triwulanan ke D1 drill; aturan WAF/edge presisi
+  siap-terap per zona (dari catatan Fase C — TIDAK dapat dibuat dari
+  repo); SOP kunci per sekolah (satu set kunci per deployment:
+  GEMINI_API_KEY project terpisah, TOTP_ENCRYPTION_KEY stabil,
+  Turnstile per domain, rotasi & pengecualiannya) + panduan nilai
+  `GEMINI_DAILY_LIMIT` (Fase D); runbook monitoring (UptimeRobot/Better
+  Stack ke `/api/health`, ambang tindak lanjut, jadwal cek mingguan —
+  dari Fase E); checklist go-live sekolah baru yang menunjuk
+  `docs/DEPLOY_SCHOOL.md` untuk langkah teknisnya. (3)
+  `docs/legal-templates/`: `PERJANJIAN_PEMROSESAN_DATA.md` (vendor
+  sebagai Prosesor, sekolah sebagai Pengendali; data anak = data
+  spesifik; notifikasi vendor→sekolah 24 jam; sub-prosesor Cloudflare/
+  Google/WhatsApp), `KEBIJAKAN_PRIVASI.md`, dan `SLA.md` (target
+  ketersediaan, waktu respons dukungan, backup/RPO/RTO, kredit layanan)
+  — SETIAP file berkepala mencolok "TEMPLAT — wajib ditinjau penasihat
+  hukum sebelum digunakan; bukan nasihat hukum." (4) Catatan sesi A–F
+  lengkap ada pada entri-entri HANDOFF ini. RINGKASAN PROGRAM: PR #7
+  (A, merge `303f15f2`), PR #8 (B, `67590c37`, migrasi 0030), PR #9 (C,
+  `56f5fc02`, migrasi 0031), PR #10 (D, `837067e9`, migrasi 0032),
+  PR #11 (E, `763cf0a6`, migrasi 0033), PR ini (F, docs-only). Test:
+  365+11 → 401 root + 11 sync-worker (57 → 61 file test root). Yang
+  SADAR tidak dapat dilakukan dari repo dan menjadi tindak lanjut
+  pemilik: menerapkan aturan WAF & monitor uptime eksternal per zona
+  Cloudflare sekolah (daftar presisi di dokumen operasi), meninjau &
+  menandatangani templat legal dengan penasihat hukum, membuat kunci
+  Gemini/Turnstile per sekolah. **Deploy produksi seluruh program
+  (backup → `db:migrate:remote` untuk migrasi 0030–0033 →
+  `pages:deploy` → pasang secret `TOTP_ENCRYPTION_KEY`, opsional
+  Turnstile & `GEMINI_DAILY_LIMIT`) MENUNGGU instruksi pemilik — belum
+  dilakukan.**
+
 - **Hardening Fase E — monitoring: health kaya + panel status admin
   (2 November 2026, BELUM deploy, migrasi baru 0033)**: (1) `GET
   /api/health` diperkaya lewat `functions/_lib/system-status.ts`:
