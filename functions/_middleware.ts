@@ -71,7 +71,15 @@ export const onRequest: PagesFunction<Env, any, AuthData> = async (context) => {
   // Rate limit pembacaan (anti scraping & biaya D1): 300 req/menit per user/IP.
   // Health endpoint dikecualikan untuk uptime monitor; cleanup dimatikan karena
   // pembersihan penuh ditangani cron purge harian.
-  if (path.startsWith('/api/') && !isMutation && method !== 'OPTIONS' && path !== '/api/health') {
+  // Pengecualian sempit: GET notices attempt CBT adalah polling berkala
+  // (90 detik) dari setiap runner ujian aktif. Menghitungnya ke ember baca
+  // membakar tepat 1 baris tulis D1 per pengecekan — 77% biaya tulis hari
+  // ujian pada uji beban 1.000 siswa — tanpa nilai anti-scraping (rute ini
+  // tetap wajib login dan handler menegakkan otorisasi per-attempt).
+  // Pengecualian dicocokkan metode + jalur secara persis; rute lain,
+  // termasuk monitor guru, tetap terhitung seperti sebelumnya.
+  const isAttemptNoticesPoll = method === 'GET' && /^\/api\/cbt\/attempts\/[^/]+\/notices$/.test(path);
+  if (path.startsWith('/api/') && !isMutation && method !== 'OPTIONS' && path !== '/api/health' && !isAttemptNoticesPoll) {
     const clientIp = context.request.headers.get('CF-Connecting-IP') || 'unknown';
     const actor = user?.id || clientIp;
     if (!(await consumeRateLimit(context.env.DB, `read:${actor}`, 300, 60, { cleanup: false }))) {

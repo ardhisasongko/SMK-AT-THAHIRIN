@@ -68,17 +68,19 @@ describe('CbtTestRunner — kanal kendali pengawas (notices)', () => {
     noticesData = { ...noticesData, expiresAt: baseExpiresAt, announcements: [{ id: 'ann1', authorName: 'Pak Guru', message: 'Sisa waktu 10 menit!', createdAt: '2026-11-01 08:00:00' }] };
     renderRunner();
     expect(screen.queryByText(/Sisa waktu 10 menit/)).toBeNull();
-    await advance(30_000);
+    await advance(90_000);
     expect(screen.getByText(/Sisa waktu 10 menit/)).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Tutup pengumuman'));
     expect(screen.queryByText(/Sisa waktu 10 menit/)).toBeNull();
   });
 
   it('menyesuaikan timer saat pengawas menambah waktu + pemberitahuan sopan', async () => {
-    const extended = new Date(Date.now() + 40 * 60_000).toISOString();
+    // Kadens polling kini 90 detik: tenggat baru dibuat +41 menit agar sisa
+    // waktu yang tampil sesudah polling pertama (di detik ke-90) adalah 39:xx.
+    const extended = new Date(Date.now() + 41 * 60_000).toISOString();
     noticesData = { ...noticesData, expiresAt: extended };
     renderRunner();
-    await advance(30_000);
+    await advance(90_000);
     expect(vi.mocked(showToast)).toHaveBeenCalledWith(expect.stringContaining('Waktu ditambah pengawas'), 'success');
     // Timer kini mendekati 40 menit (39:xx setelah tick), bukan 29:xx.
     expect(screen.getByText(/^39:/)).toBeTruthy();
@@ -88,8 +90,22 @@ describe('CbtTestRunner — kanal kendali pengawas (notices)', () => {
     const onFinish = vi.fn(async () => undefined);
     noticesData = { ...noticesData, status: 'submitted', submittedBy: 'proctor', score: 80, expiresAt: baseExpiresAt };
     renderRunner(onFinish);
-    await advance(30_000);
+    await advance(90_000);
     expect(screen.getByText(/Ujian Telah Dikumpulkan oleh Pengawas/)).toBeTruthy();
     expect(onFinish).toHaveBeenCalled();
+  });
+
+  it('polling notices pertama baru terjadi pada detik ke-90, bukan ke-30', async () => {
+    noticesData = { ...noticesData, expiresAt: baseExpiresAt, announcements: [{ id: 'ann1', authorName: 'Pak Guru', message: 'Sisa waktu 10 menit!', createdAt: '2026-11-01 08:00:00' }] };
+    renderRunner();
+    const noticesCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).includes('/notices')).length;
+    await advance(30_000);
+    expect(noticesCalls()).toBe(0);
+    expect(screen.queryByText(/Sisa waktu 10 menit/)).toBeNull();
+    await advance(59_999);
+    expect(noticesCalls()).toBe(0);
+    await advance(1);
+    expect(noticesCalls()).toBe(1);
+    expect(screen.getByText(/Sisa waktu 10 menit/)).toBeTruthy();
   });
 });

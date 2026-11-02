@@ -38,3 +38,23 @@ export async function consumeRateLimit(
 export async function clearRateLimit(db: D1Database, key: string): Promise<void> {
   await db.prepare('DELETE FROM api_rate_limits WHERE key=?').bind(key).run();
 }
+
+/**
+ * Periksa apakah ember untuk `key` sudah mencapai `limit` TANPA menaikkan
+ * hitungan dan tanpa menulis apa pun (satu SELECT). Dipakai jalur yang hanya
+ * boleh menghukum kegagalan — mis. login: pemeriksaan batas dipisah dari
+ * increment, dan increment hanya terjadi di jalur gagal saja.
+ */
+export async function rateLimitExceeded(
+  db: D1Database,
+  key: string,
+  limit: number,
+): Promise<boolean> {
+  const now = Math.floor(Date.now() / 1000);
+  const row = await db.prepare(
+    'SELECT request_count, window_expires FROM api_rate_limits WHERE key = ?',
+  ).bind(key).first<{ request_count: number; window_expires: number }>();
+  if (!row) return false;
+  if (Number(row.window_expires) <= now) return false;
+  return Number(row.request_count) >= limit;
+}

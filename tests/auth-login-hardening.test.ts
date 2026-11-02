@@ -13,6 +13,7 @@ vi.mock('../functions/_lib/auth', () => ({
 vi.mock('../functions/_lib/rate-limit', () => ({
   clearRateLimit: vi.fn(async () => undefined),
   consumeRateLimit: vi.fn(async () => true),
+  rateLimitExceeded: vi.fn(async () => false),
 }));
 
 describe('login hardening', () => {
