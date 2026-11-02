@@ -33,3 +33,28 @@
     border: 1px solid #ddd !important;
   }
 }
+
+/* Lembar cetak rapor (RaporPrintSheet): tersembunyi di layar; saat tombol
+   "Cetak Rapor" ditekan, body ber kelas `printing-rapor` dan hanya lembar
+   ini yang tampil dalam hasil cetak/PDF, seluruh aplikasi disembunyikan. */
+.rapor-print-sheet {
+  display: none;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.rapor-print-sheet * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media print {
+  body.printing-rapor #root {
+    display: none !important;
+  }
+
+  body.printing-rapor .rapor-print-sheet {
+    display: block !important;
+    width: 100%;
+  }
+}

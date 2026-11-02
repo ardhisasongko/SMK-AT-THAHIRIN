@@ -5,6 +5,37 @@ Project: SMK PLUS AT-THAHIRIN (React/Vite + Cloudflare Pages Functions + D1)
 
 ## Status Umum
 
+- **Tombol "Cetak Rapor" satu halaman siap cetak/PDF (2 November 2026,
+  TANPA migrasi)** — memenuhi persetujuan pemilik atas mockup rapor:
+  `RaporModal` kini punya tombol **Cetak Rapor** di samping unduhan
+  CSV/Excel, sehingga tersedia di kedua jalur yang sudah terotorisasi
+  (Profil siswa sendiri dan Kelas untuk staf/ketua kelas); kontrak dan
+  otorisasi endpoint `GET /api/rapor/:nisn` TIDAK berubah. Mekanisme:
+  komponen lembar cetak khusus `src/components/RaporPrintSheet.tsx`
+  dirender lewat portal ke `<body>`, disembunyikan di layar
+  (`display: none`), dan saat tombol ditekan body mendapat kelas
+  `printing-rapor` lalu `window.print()` dipanggil — aturan
+  `@media print` di `src/index.css` menyembunyikan seluruh aplikasi
+  (`#root`) dan hanya menampilkan lembar rapor dengan
+  `print-color-adjust: exact` agar pita zamrud solid ikut tercetak.
+  Isi lembar persis data JSON rapor yang sedang ditampilkan: kop
+  "RAPOR — <nama sekolah dari `SCHOOL_INFO`>", identitas NISN/Nama/
+  Kelas, tabel PRESENSI (5 status + Kehadiran %), tabel NILAI CBT PER
+  MATA PELAJARAN (Mapel | Jumlah Ujian | Rata-rata | Nilai Terbaik),
+  tabel RIWAYAT UJIAN (Tanggal | Mapel | Ujian | Jenis | Skor), kotak
+  RATA-RATA NILAI, dan blok tanda tangan berisi tempat (lokalitas dari
+  konfigurasi sekolah) + tanggal hari ini format Indonesia, "Wali
+  Kelas,", dan garis nama KOSONG — nama wali kelas tidak dikarang
+  karena data rapor memang tidak memilikinya. Keadaan kosong anggun:
+  presensi nol tampil 0 dan 0%; tanpa nilai final tampil catatan
+  "Belum ada nilai CBT yang final." dan rata-rata "—" (bukan 0/NaN);
+  riwayat kosong tidak merender tabelnya sama sekali. Test baru
+  `tests/RaporPrintSheet.test.tsx` (3 test): render lembar dari
+  fixture JSON (semua bagian + angka), keadaan kosong anggun, dan
+  tombol Cetak Rapor di modal memanggil `window.print` (mock) +
+  memasang kelas `printing-rapor`. Test: 411 → 414 root (63 → 64
+  file) + 11 sync-worker.
+
 - **Ekspor Excel (.xlsx) absensi, nilai CBT, rapor (2 November 2026, TANPA
   migrasi)** — memenuhi permintaan kepala sekolah/guru non-IT: di samping
   ekspor CSV yang TIDAK berubah sama sekali, kini ada unduhan .xlsx asli

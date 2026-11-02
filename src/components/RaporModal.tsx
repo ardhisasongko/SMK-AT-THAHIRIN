@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Award, CalendarCheck2, Download, GraduationCap, Loader2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Award, CalendarCheck2, Download, GraduationCap, Loader2, Printer, X } from 'lucide-react';
 import type { RaporReport } from '../types';
 import { authHeaders } from '../utils/auth';
 import { downloadCsv } from '../utils/download';
 import { downloadXlsxFromUrl } from '../utils/xlsx';
+import { RaporPrintSheet } from './RaporPrintSheet';
 
 interface RaporModalProps {
   nisn: string;
@@ -50,6 +52,17 @@ export function RaporModal({ nisn, name, onClose }: RaporModalProps) {
     } finally {
       setDownloadingXlsx(false);
     }
+  };
+
+  // Cetak rapor satu halaman: lembar cetak dirender lewat portal ke body
+  // dan hanya tampil saat mencetak (kelas `printing-rapor` + @media print
+  // di index.css). Kelas dibersihkan otomatis setelah dialog cetak selesai.
+  const handlePrint = () => {
+    document.body.classList.add('printing-rapor');
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('printing-rapor');
+    }, { once: true });
+    window.print();
   };
 
   return (
@@ -162,6 +175,17 @@ export function RaporModal({ nisn, name, onClose }: RaporModalProps) {
               <Download className="w-4 h-4" />
               <span>{downloadingXlsx ? 'Mengunduh...' : 'Unduh Rapor (Excel)'}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-sm px-4 py-2.5 rounded-xl cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Cetak Rapor</span>
+            </button>
+
+            {createPortal(<RaporPrintSheet report={report} />, document.body)}
           </>
         )}
       </div>
